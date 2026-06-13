@@ -1,13 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
-
-interface HipolabsUniversity {
-  name: string;
-  country: string;
-  'state-province': string | null;
-}
+import { catchError, map } from 'rxjs/operators';
+import { INDIAN_COLLEGES, DEFAULT_COLLEGE_SUGGESTIONS } from '../data/indian-colleges.data';
 
 interface StackOverflowTagResponse {
   items: { name: string }[];
@@ -92,24 +87,19 @@ export class ProfileLookupService {
   private readonly http = inject(HttpClient);
 
   searchColleges(query: string): Observable<string[]> {
-    const trimmed = query.trim();
+    const trimmed = query.trim().toLowerCase();
+
     if (trimmed.length < 2) {
-      return of([]);
+      return of([...DEFAULT_COLLEGE_SUGGESTIONS]);
     }
 
-    return this.http
-      .get<HipolabsUniversity[]>('https://universities.hipolabs.com/search', {
-        params: { name: trimmed, country: 'India' }
-      })
-      .pipe(
-        map(universities =>
-          universities
-            .map(u => u.name)
-            .filter((name, index, arr) => arr.indexOf(name) === index)
-            .slice(0, 15)
-        ),
-        catchError(() => of([]))
-      );
+    const words = trimmed.split(/\s+/);
+    const matches = INDIAN_COLLEGES.filter(name => {
+      const lower = name.toLowerCase();
+      return words.every(word => lower.includes(word));
+    }).slice(0, 20);
+
+    return of(matches);
   }
 
   searchSpecializations(query: string): Observable<string[]> {
@@ -154,12 +144,7 @@ export class ProfileLookupService {
   createDebouncedSearch<T>(
     searchFn: (query: string) => Observable<T[]>
   ): (query: string) => Observable<T[]> {
-    return (query: string) =>
-      of(query).pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap(q => searchFn(q))
-      );
+    return searchFn;
   }
 
   private fallbackSkills(query: string): string[] {

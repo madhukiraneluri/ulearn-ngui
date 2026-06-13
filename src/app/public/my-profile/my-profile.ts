@@ -40,7 +40,6 @@ export class MyProfile implements OnInit {
   profileForm!: FormGroup;
   skillsList: string[] = [];
   readonly avatarUrl = signal<string | null>(null);
-  readonly isUploadingAvatar = signal(false);
   readonly isSaving = signal(false);
   private pendingAvatarFile: File | null = null;
 
@@ -121,46 +120,26 @@ export class MyProfile implements OnInit {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
       this.toast.error('Only JPEG, PNG, and WebP images are allowed.');
+      input.value = '';
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       this.toast.error('Image must be smaller than 5MB.');
+      input.value = '';
       return;
     }
 
     this.pendingAvatarFile = file;
 
-    // Show immediate preview
-    const preview = await this.compressImage(file, 200);
-    this.avatarUrl.set(preview);
-    this.cdr.markForCheck();
-
-    // Try uploading to Supabase Storage
-    const user = this.currentUser();
-    if (!user) return;
-
-    this.isUploadingAvatar.set(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `${user.id}/avatar.${ext}`;
-
-      const { error } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
-
-      if (error) {
-        console.warn('Storage upload failed, will save as compressed image:', error.message);
-        this.toast.info('Photo preview saved — will store with your profile on save.');
-        return;
-      }
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      this.avatarUrl.set(`${data.publicUrl}?t=${Date.now()}`);
+      const preview = await this.compressImage(file, 200);
+      this.avatarUrl.set(preview);
+      this.toast.success('Photo selected — click Save Profile to keep it.');
+    } catch {
+      this.toast.error('Could not load image. Please try another file.');
       this.pendingAvatarFile = null;
-      this.toast.success('Photo uploaded');
     } finally {
-      this.isUploadingAvatar.set(false);
       input.value = '';
       this.cdr.markForCheck();
     }
@@ -213,10 +192,39 @@ export class MyProfile implements OnInit {
   }
 
   private async resolveAvatarUrl(): Promise<string | null> {
-    if (this.pendingAvatarFile) {
+    if (!this.pendingAvatarFile) {
+      return this.avatarUrl();
+    }
+
+    const user = this.currentUser();
+    if (!user) {
       return this.compressImage(this.pendingAvatarFile, 200);
     }
-    return this.avatarUrl();
+
+    const file = this.pendingAvatarFile;
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `${user.id}/avatar.${ext}`;
+
+    try {
+      const uploadPromise = supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      const timeoutPromise = new Promise<{ error: { message: string } }>(resolve =>
+        setTimeout(() => resolve({ error: { message: 'timeout' } }), 8000)
+      );
+
+      const { error } = await Promise.race([uploadPromise, timeoutPromise]);
+
+      if (!error) {
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        return `${data.publicUrl}?t=${Date.now()}`;
+      }
+    } catch {
+      // fall through to base64
+    }
+
+    return this.compressImage(file, 200);
   }
 
   private buildProfileUpdate(avatarUrl: string | null): Partial<UserProfile> {

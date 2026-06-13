@@ -5,7 +5,6 @@ import {
   inject,
   input,
   signal,
-  DestroyRef,
   ChangeDetectorRef,
   ElementRef,
   HostListener
@@ -17,7 +16,7 @@ import {
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Observable, Subscription } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-searchable-select',
@@ -36,7 +35,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class SearchableSelect implements ControlValueAccessor {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly elRef = inject(ElementRef);
 
   readonly label = input('');
@@ -124,16 +122,19 @@ export class SearchableSelect implements ControlValueAccessor {
     this.isLoading.set(true);
 
     this.searchSub = this.searchFn()(query)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => {
+          this.isLoading.set(false);
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: results => {
           this.options.set(results);
-          this.isLoading.set(false);
           this.cdr.markForCheck();
         },
         error: () => {
           this.options.set([]);
-          this.isLoading.set(false);
           this.cdr.markForCheck();
         }
       });

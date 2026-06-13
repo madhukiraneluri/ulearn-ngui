@@ -166,11 +166,10 @@ export class AuthService {
     try {
       this.isLoadingSignal.set(true);
 
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
 
       if (error) {
-        this.toast.error(error.message);
-        return false;
+        await supabase.auth.signOut({ scope: 'local' });
       }
 
       this.currentUserSignal.set(null);
@@ -178,10 +177,17 @@ export class AuthService {
       this.isAuthenticatedSignal.set(false);
 
       this.toast.success('Logged out successfully');
-      await this.router.navigate(['/login']);
+      await this.router.navigateByUrl('/auth/login');
       return true;
-    } catch (error: any) {
-      this.toast.error(error.message || 'Sign out failed');
+    } catch (error: unknown) {
+      this.currentUserSignal.set(null);
+      this.profileSignal.set(null);
+      this.isAuthenticatedSignal.set(false);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+
+      const message = error instanceof Error ? error.message : 'Sign out failed';
+      this.toast.error(message);
+      await this.router.navigateByUrl('/auth/login');
       return false;
     } finally {
       this.isLoadingSignal.set(false);

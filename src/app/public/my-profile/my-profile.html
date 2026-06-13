@@ -17,19 +17,13 @@
           } @else {
             <div class="avatar-placeholder">{{ getInitials() }}</div>
           }
-          @if (isUploadingAvatar()) {
-            <div class="avatar-overlay">
-              <span class="spinner"></span>
-            </div>
-          }
         </div>
 
-        <label class="avatar-upload-btn" [class.disabled]="isUploadingAvatar()">
+        <label class="avatar-upload-btn">
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
             (change)="onAvatarSelected($event)"
-            [disabled]="isUploadingAvatar()"
             hidden
           />
           Change Photo
@@ -264,7 +258,7 @@
           <button
             type="submit"
             class="btn-primary"
-            [disabled]="isSaving() || isLoading() || isUploadingAvatar()"
+            [disabled]="isSaving() || isLoading()"
           >
             @if (isSaving() || isLoading()) {
               <span class="spinner"></span>

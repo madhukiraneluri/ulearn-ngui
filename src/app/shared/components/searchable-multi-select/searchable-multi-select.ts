@@ -5,7 +5,6 @@ import {
   output,
   signal,
   inject,
-  DestroyRef,
   ChangeDetectorRef,
   ElementRef,
   HostListener
@@ -13,7 +12,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-searchable-multi-select',
@@ -25,7 +24,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class SearchableMultiSelect {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly elRef = inject(ElementRef);
 
   readonly label = input('Skills');
@@ -82,17 +80,20 @@ export class SearchableMultiSelect {
     this.isLoading.set(true);
 
     this.searchSub = this.searchFn()(query)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => {
+          this.isLoading.set(false);
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: results => {
           const filtered = results.filter(r => !this.selected().includes(r));
           this.options.set(filtered);
-          this.isLoading.set(false);
           this.cdr.markForCheck();
         },
         error: () => {
           this.options.set([]);
-          this.isLoading.set(false);
           this.cdr.markForCheck();
         }
       });
