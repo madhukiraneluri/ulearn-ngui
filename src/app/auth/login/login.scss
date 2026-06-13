@@ -1,111 +1,72 @@
 @use '../../../styles/variables' as *;
 
-.login-container {
+.auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: linear-gradient(135deg, #f7f8fc 0%, #eef2ff 100%);
+  padding: 32px 20px;
+  background: linear-gradient(135deg, #f7f8fc 0%, #eef2ff 55%, #f3effa 100%);
   position: relative;
   overflow: hidden;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    opacity: 0.55;
-  }
-
-  &::before {
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle, rgba(139, 111, 190, 0.28) 0%, transparent 72%);
-    top: 12%;
-    left: -60px;
-    animation: float 10s ease-in-out infinite;
-  }
-
-  &::after {
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle, rgba(79, 140, 255, 0.18) 0%, transparent 72%);
-    bottom: 0;
-    right: -90px;
-    animation: float 12s ease-in-out infinite reverse;
-  }
-
-  @media (max-width: $bp-mobile) {
-    padding: 16px;
-  }
 }
 
-.login-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 24px;
-  border: 1px solid rgba(139, 111, 190, 0.1);
-  box-shadow: 0 8px 32px rgba(139, 111, 190, 0.08),
-              0 2px 8px rgba(0, 0, 0, 0.04);
-  padding: 48px;
+.auth-card {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  border-radius: 28px;
+  border: 1px solid rgba(139, 111, 190, 0.12);
+  box-shadow:
+    0 20px 60px rgba(139, 111, 190, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+  padding: 44px 40px 36px;
   width: 100%;
-  max-width: 500px;
+  max-width: 460px;
   position: relative;
-  z-index: 1;
-  animation: fadeInUp 0.75s ease both;
+  z-index: 2;
+  animation: cardEnter 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @media (max-width: $bp-mobile) {
-    padding: 32px 24px;
-    border-radius: 20px;
+    padding: 36px 24px 28px;
+    border-radius: 22px;
   }
 }
 
-.brand-mark {
+.brand-header {
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 22px;
-  opacity: 0;
-  animation: fadeInUp 0.7s ease both;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(232, 232, 240, 0.9);
+}
 
-  .brand-logo {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    object-fit: cover;
-    border: 1px solid rgba(139, 111, 190, 0.12);
-    box-shadow: 0 10px 30px rgba(79, 67, 167, 0.12);
-    background: #fff;
-  }
+.brand-logo-full {
+  height: 62px;
+  width: auto;
+  max-width: min(100%, 240px);
+  object-fit: contain;
+  display: block;
+  animation: logoReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  filter: drop-shadow(0 6px 18px rgba(139, 111, 190, 0.18));
+  transition: transform 0.35s ease;
 
-  h2 {
-    font-size: 1.1rem;
-    margin: 0;
-    color: var(--purple);
-    letter-spacing: 0.02em;
-  }
-
-  p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--muted);
+  &:hover {
+    transform: scale(1.03);
   }
 }
 
 .card-header {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   text-align: center;
 
   h1 {
-    font-size: 2rem;
+    font-size: 1.85rem;
     font-weight: 800;
-    color: var(--text);
+    color: $text;
     margin: 0 0 8px;
-    font-family: var(--font-heading);
-    animation: fadeInUp 0.7s ease 0.1s both;
-    opacity: 0;
+    font-family: $font-heading;
+    animation: fadeInUp 0.65s ease 0.1s both;
 
     @media (max-width: $bp-mobile) {
       font-size: 1.5rem;
@@ -114,26 +75,34 @@
 
   p {
     font-size: 0.95rem;
-    color: var(--muted);
+    color: $muted;
     margin: 0;
     line-height: 1.5;
-    opacity: 0;
-    animation: fadeInUp 0.7s ease 0.2s both;
+    animation: fadeInUp 0.65s ease 0.18s both;
   }
 }
 
-.login-form {
+.auth-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+}
+
+.anim-item {
+  opacity: 0;
+  animation: fadeInUp 0.65s ease var(--delay, 0s) both;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  opacity: 0;
-  animation: fadeInUp 0.7s ease 0.3s both;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: $text;
 }
 
 .password-header {
@@ -145,71 +114,83 @@
 .forgot-link {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--purple);
+  color: $purple;
   text-decoration: none;
-  transition: color 0.2s ease;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
 
   &:hover {
-    color: #7d5fa8;
-    text-decoration: underline;
+    color: #6a5299;
+    transform: translateX(2px);
   }
 }
 
 .form-input {
-  padding: 12px 16px;
-  border: 2px solid var(--border);
-  border-radius: 12px;
+  padding: 13px 16px;
+  border: 2px solid $border;
+  border-radius: 14px;
   font-size: 0.95rem;
-  font-family: var(--font-base);
-  transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--text);
+  font-family: $font-base;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease,
+    background 0.25s ease;
+  background: rgba(255, 255, 255, 0.72);
+  color: $text;
+  width: 100%;
+  box-sizing: border-box;
 
   &::placeholder {
-    color: var(--muted);
-    opacity: 0.6;
+    color: $muted;
+    opacity: 0.65;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: rgba($purple, 0.35);
   }
 
   &:focus {
     outline: none;
-    border-color: var(--purple);
+    border-color: $purple;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(139, 111, 190, 0.1);
+    box-shadow: 0 0 0 4px rgba($purple, 0.12);
+    transform: translateY(-1px);
   }
 
   &.error {
-    border-color: var(--red);
+    border-color: $red;
 
     &:focus {
-      box-shadow: 0 0 0 3px rgba(224, 92, 92, 0.1);
+      box-shadow: 0 0 0 4px rgba($red, 0.1);
     }
   }
 }
 
 .password-field {
   position: relative;
-  display: flex;
-  align-items: center;
 
   .form-input {
-    padding-right: 44px;
+    padding-right: 48px;
   }
 }
 
 .password-toggle {
   position: absolute;
   right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   background: transparent;
   border: none;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
-  transition: color 0.2s ease;
-  padding: 4px;
+  color: $muted;
+  border-radius: 8px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 
   svg {
     width: 20px;
@@ -217,37 +198,59 @@
   }
 
   &:hover {
-    color: var(--purple);
+    color: $purple;
+    background: rgba($purple, 0.08);
+    transform: translateY(-50%) scale(1.08);
   }
 }
 
 .error-message {
   font-size: 0.8rem;
-  color: var(--red);
+  color: $red;
   padding: 0 4px;
   font-weight: 500;
+  animation: shakeIn 0.35s ease;
 }
 
 .btn-submit {
-  padding: 14px 24px;
-  background: linear-gradient(135deg, var(--purple) 0%, #7d5fa8 100%);
+  width: 100%;
+  padding: 15px 24px;
+  background: linear-gradient(135deg, $purple 0%, #7d5fa8 100%);
   color: #fff;
   border: none;
-  border-radius: 12px;
-  font-size: 0.95rem;
+  border-radius: 14px;
+  font-size: 0.98rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    opacity 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 8px;
-  font-family: var(--font-base);
+  margin-top: 6px;
+  font-family: $font-base;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.55s ease;
+  }
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(139, 111, 190, 0.3);
+    box-shadow: 0 14px 36px rgba($purple, 0.32);
+
+    &::after {
+      transform: translateX(120%);
+    }
   }
 
   &:active:not(:disabled) {
@@ -269,16 +272,83 @@
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
+.card-footer {
+  text-align: center;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid $border;
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: $text;
+
+    .link {
+      color: $purple;
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: #6a5299;
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bg-orb-1 {
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba($purple, 0.22) 0%, transparent 70%);
+  top: 8%;
+  left: -80px;
+  animation: float 11s ease-in-out infinite;
+}
+
+.bg-orb-2 {
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba($blue, 0.16) 0%, transparent 70%);
+  bottom: -80px;
+  right: -100px;
+  animation: float 13s ease-in-out infinite reverse;
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes logoReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -287,121 +357,16 @@
 }
 
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-18px);
-  }
-}
-
-.card-footer {
-  text-align: center;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
-
-  p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text);
-
-    .link {
-      color: var(--purple);
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.2s ease;
-
-      &:hover {
-        color: #7d5fa8;
-        text-decoration: underline;
-      }
-    }
-  }
-}
-
-.decoration {
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(139, 111, 190, 0.08) 0%, transparent 70%);
-  border-radius: 50%;
-  top: -100px;
-  right: -100px;
-  pointer-events: none;
-
-  @media (max-width: $bp-tablet) {
-    display: none;
-  }
-}
-
-.input-wrap {
-  position: relative;
-
-  input { padding-right: 44px; }
-}
-
-.toggle-pw {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 0;
-  display: flex;
-  align-items: center;
-
-  svg { width: 18px; height: 18px; }
-  &:hover { color: var(--purple); }
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 14px;
-  font-size: 0.95rem;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 4px;
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,.4);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.auth-footer {
-  text-align: center;
-  margin-top: 24px;
-  font-size: 0.88rem;
-  color: var(--muted);
-  font-weight: 600;
-
-  a {
-    color: var(--purple);
-    font-weight: 800;
-    text-decoration: none;
-    margin-left: 4px;
-    cursor: pointer;
-
-    &:hover { text-decoration: underline; }
-  }
+@keyframes shakeIn {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }

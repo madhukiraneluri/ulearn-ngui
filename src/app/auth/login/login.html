@@ -1,11 +1,7 @@
-<div class="login-container">
-  <div class="login-card">
-    <div class="brand-mark">
-      <img src="assets/images/logo.jpeg" alt="ULearn" class="brand-logo" />
-      <div>
-        <h2>ULearn</h2>
-        <p>Smart learning, faster growth.</p>
-      </div>
+<div class="auth-page login-page">
+  <div class="auth-card login-card">
+    <div class="brand-header">
+      <img src="assets/images/logo.jpeg" alt="ULearn" class="brand-logo-full" />
     </div>
 
     <div class="card-header">
@@ -13,10 +9,8 @@
       <p>Sign in to your ULearn account</p>
     </div>
 
-    <!-- Form -->
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
-      <!-- Email Field -->
-      <div class="form-group">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form login-form">
+      <div class="form-group anim-item" style="--delay: 0.15s">
         <label for="email" class="form-label">Email Address</label>
         <input
           id="email"
@@ -24,20 +18,18 @@
           formControlName="email"
           class="form-input"
           placeholder="your.email@college.com"
-          [class.error]="form.get('email')?.invalid && form.get('email')?.touched"
+          autocomplete="email"
+          [class.error]="isFieldInvalid('email')"
         />
-        @if (form.get('email')?.invalid && form.get('email')?.touched) {
-          <span class="error-message">
-            {{ getErrorMessage('email') }}
-          </span>
+        @if (isFieldInvalid('email')) {
+          <span class="error-message">{{ getErrorMessage('email') }}</span>
         }
       </div>
 
-      <!-- Password Field -->
-      <div class="form-group">
+      <div class="form-group anim-item" style="--delay: 0.25s">
         <div class="password-header">
           <label for="password" class="form-label">Password</label>
-          <a href="#" class="forgot-link">Forgot password?</a>
+          <a href="#" class="forgot-link" (click)="$event.preventDefault()">Forgot password?</a>
         </div>
         <div class="password-field">
           <input
@@ -46,12 +38,14 @@
             formControlName="password"
             class="form-input"
             placeholder="Enter your password"
-            [class.error]="form.get('password')?.invalid && form.get('password')?.touched"
+            autocomplete="current-password"
+            [class.error]="isFieldInvalid('password')"
           />
           <button
             type="button"
             class="password-toggle"
             (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
             tabindex="-1"
           >
             @if (showPassword) {
@@ -67,18 +61,16 @@
             }
           </button>
         </div>
-        @if (form.get('password')?.invalid && form.get('password')?.touched) {
-          <span class="error-message">
-            {{ getErrorMessage('password') }}
-          </span>
+        @if (isFieldInvalid('password')) {
+          <span class="error-message">{{ getErrorMessage('password') }}</span>
         }
       </div>
 
-      <!-- Submit Button -->
       <button
         type="submit"
+        class="btn-submit anim-item"
+        style="--delay: 0.35s"
         [disabled]="form.invalid || isLoading()"
-        class="btn-submit"
       >
         @if (isLoading()) {
           <span class="loader"></span>
@@ -89,12 +81,11 @@
       </button>
     </form>
 
-    <!-- Footer -->
-    <div class="card-footer">
-      <p>Don't have an account? <a routerLink="/auth/register" class="link">Create one</a></p>
+    <div class="card-footer anim-item" style="--delay: 0.45s">
+      <p>Don't have an account? <a routerLink="/auth/signup" class="link">Create one</a></p>
     </div>
   </div>
 
-  <!-- Decoration -->
-  <div class="decoration"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
 </div>

@@ -30,7 +30,7 @@ export class Login implements OnInit {
 
   form!: FormGroup;
   showPassword = false;
-  returnUrl: string = '/dashboard';
+  returnUrl: string = '/my-courses';
 
   readonly isLoading = this.auth.isLoading;
 
@@ -51,6 +51,7 @@ export class Login implements OnInit {
   }
 
   async onSubmit(): Promise<void> {
+    this.form.markAllAsTouched();
     if (this.form.invalid) {
       return;
     }
@@ -60,9 +61,14 @@ export class Login implements OnInit {
 
     if (success) {
       const profileCompleted = this.auth.profileCompleted();
-      const target = profileCompleted ? this.returnUrl : '/complete-profile';
+      const target = profileCompleted ? this.returnUrl : '/auth/complete-profile';
       await this.router.navigateByUrl(target);
     }
+  }
+
+  isFieldInvalid(fieldName: string): boolean {
+    const control = this.form.get(fieldName);
+    return !!(control?.invalid && control.touched);
   }
 
   getErrorMessage(fieldName: string): string {
@@ -73,7 +79,7 @@ export class Login implements OnInit {
     }
 
     if (control.errors['required']) {
-      return `${fieldName} is required`;
+      return fieldName === 'email' ? 'Email is required' : 'Password is required';
     }
 
     if (control.errors['email']) {

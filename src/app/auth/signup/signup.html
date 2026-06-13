@@ -1,11 +1,7 @@
-<div class="signup-container">
-  <div class="signup-card">
-    <div class="brand-mark">
-      <img src="assets/images/logo.jpeg" alt="ULearn" class="brand-logo" />
-      <div>
-        <h2>ULearn</h2>
-        <p>Explore new paths and build skills faster.</p>
-      </div>
+<div class="auth-page signup-page">
+  <div class="auth-card signup-card">
+    <div class="brand-header">
+      <img src="assets/images/logo.jpeg" alt="ULearn" class="brand-logo-full" />
     </div>
 
     <div class="card-header">
@@ -13,10 +9,9 @@
       <p>Join thousands of students learning with ULearn</p>
     </div>
 
-    <!-- Form -->
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="signup-form">
-      <!-- Full Name Field -->
-      <div class="form-group">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form signup-form">
+      <!-- Full Name -->
+      <div class="form-group anim-item" style="--delay: 0.12s">
         <label for="fullName" class="form-label">Full Name</label>
         <input
           id="fullName"
@@ -24,17 +19,16 @@
           formControlName="fullName"
           class="form-input"
           placeholder="Enter your full name"
-          [class.error]="form.get('fullName')?.invalid && form.get('fullName')?.touched"
+          autocomplete="name"
+          [class.error]="isFieldInvalid('fullName')"
         />
-        @if (form.get('fullName')?.invalid && form.get('fullName')?.touched) {
-          <span class="error-message">
-            {{ getErrorMessage('fullName') }}
-          </span>
+        @if (isFieldInvalid('fullName')) {
+          <span class="error-message">{{ getErrorMessage('fullName') }}</span>
         }
       </div>
 
-      <!-- Email Field -->
-      <div class="form-group">
+      <!-- Email -->
+      <div class="form-group anim-item" style="--delay: 0.18s">
         <label for="email" class="form-label">Email Address</label>
         <input
           id="email"
@@ -42,17 +36,16 @@
           formControlName="email"
           class="form-input"
           placeholder="your.email@college.com"
-          [class.error]="form.get('email')?.invalid && form.get('email')?.touched"
+          autocomplete="email"
+          [class.error]="isFieldInvalid('email')"
         />
-        @if (form.get('email')?.invalid && form.get('email')?.touched) {
-          <span class="error-message">
-            {{ getErrorMessage('email') }}
-          </span>
+        @if (isFieldInvalid('email')) {
+          <span class="error-message">{{ getErrorMessage('email') }}</span>
         }
       </div>
 
-      <!-- Password Field -->
-      <div class="form-group">
+      <!-- Password -->
+      <div class="form-group anim-item" style="--delay: 0.24s">
         <label for="password" class="form-label">Password</label>
         <div class="password-field">
           <input
@@ -61,12 +54,14 @@
             formControlName="password"
             class="form-input"
             placeholder="Create a strong password"
-            [class.error]="form.get('password')?.invalid && form.get('password')?.touched"
+            autocomplete="new-password"
+            [class.error]="isFieldInvalid('password')"
           />
           <button
             type="button"
             class="password-toggle"
             (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
             tabindex="-1"
           >
             @if (showPassword) {
@@ -82,15 +77,20 @@
             }
           </button>
         </div>
-        @if (form.get('password')?.invalid && form.get('password')?.touched) {
-          <span class="error-message">
-            {{ getErrorMessage('password') }}
-          </span>
+        @if (isFieldInvalid('password')) {
+          <span class="error-message">{{ getErrorMessage('password') }}</span>
         }
+
+        <ul class="password-rules">
+          <li [class.met]="passwordRequirementMet('length')">At least 8 characters</li>
+          <li [class.met]="passwordRequirementMet('upper')">One uppercase letter</li>
+          <li [class.met]="passwordRequirementMet('lower')">One lowercase letter</li>
+          <li [class.met]="passwordRequirementMet('number')">One number</li>
+        </ul>
       </div>
 
-      <!-- Confirm Password Field -->
-      <div class="form-group">
+      <!-- Confirm Password -->
+      <div class="form-group anim-item" style="--delay: 0.3s">
         <label for="confirmPassword" class="form-label">Confirm Password</label>
         <div class="password-field">
           <input
@@ -99,12 +99,14 @@
             formControlName="confirmPassword"
             class="form-input"
             placeholder="Confirm your password"
-            [class.error]="form.get('confirmPassword')?.invalid && form.get('confirmPassword')?.touched"
+            autocomplete="new-password"
+            [class.error]="isFieldInvalid('confirmPassword') || hasPasswordMismatch()"
           />
           <button
             type="button"
             class="password-toggle"
             (click)="toggleConfirmPasswordVisibility()"
+            [attr.aria-label]="showConfirmPassword ? 'Hide password' : 'Show password'"
             tabindex="-1"
           >
             @if (showConfirmPassword) {
@@ -120,24 +122,30 @@
             }
           </button>
         </div>
-        @if (form.get('confirmPassword')?.invalid && form.get('confirmPassword')?.touched) {
-          <span class="error-message">
-            Password mismatch
-          </span>
+        @if (isFieldInvalid('confirmPassword')) {
+          <span class="error-message">{{ getErrorMessage('confirmPassword') }}</span>
+        }
+        @if (hasPasswordMismatch()) {
+          <span class="error-message">Passwords do not match</span>
         }
       </div>
 
-      @if (form.errors && form.errors['passwordMismatch'] && form.touched) {
-        <div class="form-error-banner">
-          Passwords do not match
-        </div>
-      }
+      <!-- Terms -->
+      <div class="form-group checkbox-group anim-item" style="--delay: 0.36s">
+        <label class="checkbox-label">
+          <input type="checkbox" formControlName="acceptTerms" />
+          <span>I agree to the <a href="#" class="inline-link">Terms of Service</a> and <a href="#" class="inline-link">Privacy Policy</a></span>
+        </label>
+        @if (isFieldInvalid('acceptTerms')) {
+          <span class="error-message">{{ getErrorMessage('acceptTerms') }}</span>
+        }
+      </div>
 
-      <!-- Submit Button -->
       <button
         type="submit"
+        class="btn-submit anim-item"
+        style="--delay: 0.42s"
         [disabled]="form.invalid || isLoading()"
-        class="btn-submit"
       >
         @if (isLoading()) {
           <span class="loader"></span>
@@ -148,12 +156,11 @@
       </button>
     </form>
 
-    <!-- Footer -->
-    <div class="card-footer">
+    <div class="card-footer anim-item" style="--delay: 0.5s">
       <p>Already have an account? <a routerLink="/auth/login" class="link">Sign in</a></p>
     </div>
   </div>
 
-  <!-- Decoration -->
-  <div class="decoration"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
 </div>
