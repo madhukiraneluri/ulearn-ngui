@@ -1,0 +1,280 @@
+<div class="profile-page">
+  <!-- Header -->
+  <section class="page-header">
+    <div class="header-content">
+      <h1>My Profile</h1>
+      <p>Manage your personal and academic details</p>
+    </div>
+  </section>
+
+  <div class="profile-layout">
+    <!-- Sidebar: Avatar & quick info -->
+    <aside class="profile-sidebar">
+      <div class="avatar-section">
+        <div class="avatar-wrapper">
+          @if (avatarUrl()) {
+            <img [src]="avatarUrl()!" alt="Profile photo" class="avatar-image" />
+          } @else {
+            <div class="avatar-placeholder">{{ getInitials() }}</div>
+          }
+          @if (isUploadingAvatar()) {
+            <div class="avatar-overlay">
+              <span class="spinner"></span>
+            </div>
+          }
+        </div>
+
+        <label class="avatar-upload-btn" [class.disabled]="isUploadingAvatar()">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            (change)="onAvatarSelected($event)"
+            [disabled]="isUploadingAvatar()"
+            hidden
+          />
+          Change Photo
+        </label>
+      </div>
+
+      <div class="sidebar-info">
+        <p class="sidebar-name">{{ profileForm.get('fullName')?.value || 'Your Name' }}</p>
+        <p class="sidebar-email">{{ currentUser()?.email }}</p>
+        @if (profile()?.profile_completed) {
+          <span class="status-badge completed">Profile Complete</span>
+        } @else {
+          <span class="status-badge incomplete">Incomplete</span>
+        }
+      </div>
+    </aside>
+
+    <!-- Main form -->
+    <main class="profile-main">
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
+
+        <!-- Personal Information -->
+        <section class="form-section">
+          <h2 class="section-title">Personal Information</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name</label>
+              <input
+                id="fullName"
+                type="text"
+                formControlName="fullName"
+                class="form-input"
+                placeholder="Your full name"
+              />
+              @if (isFieldInvalid('fullName')) {
+                <span class="error-message">Full name is required (min 2 characters)</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input
+                id="phone"
+                type="tel"
+                formControlName="phone"
+                class="form-input"
+                placeholder="+91 9876543210"
+              />
+              @if (isFieldInvalid('phone')) {
+                <span class="error-message">Enter a valid phone number</span>
+              }
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input
+              type="email"
+              class="form-input disabled"
+              [value]="currentUser()?.email"
+              disabled
+              readonly
+            />
+            <span class="field-hint">Email cannot be changed</span>
+          </div>
+        </section>
+
+        <!-- Academic Information -->
+        <section class="form-section">
+          <h2 class="section-title">Academic Information</h2>
+
+          <app-searchable-select
+            formControlName="collegeName"
+            label="College / University"
+            placeholder="Search Indian colleges & universities..."
+            [searchFn]="searchColleges"
+          />
+          @if (isFieldInvalid('collegeName')) {
+            <span class="error-message">College name is required</span>
+          }
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="degree" class="form-label">Degree</label>
+              <select id="degree" formControlName="degree" class="form-input">
+                <option value="">Select degree</option>
+                <option value="B.Tech">B.Tech</option>
+                <option value="B.Sc">B.Sc</option>
+                <option value="B.A">B.A</option>
+                <option value="B.Com">B.Com</option>
+                <option value="BCA">BCA</option>
+                <option value="M.Tech">M.Tech</option>
+                <option value="M.Sc">M.Sc</option>
+                <option value="MBA">MBA</option>
+                <option value="Other">Other</option>
+              </select>
+              @if (isFieldInvalid('degree')) {
+                <span class="error-message">Degree is required</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <app-searchable-select
+                formControlName="specialization"
+                label="Specialization / Branch"
+                placeholder="Search specializations..."
+                [searchFn]="searchSpecializations"
+              />
+              @if (isFieldInvalid('specialization')) {
+                <span class="error-message">Specialization is required</span>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="currentYear" class="form-label">Current Year</label>
+              <select id="currentYear" formControlName="currentYear" class="form-input">
+                <option value="">Select year</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+                <option value="5">5th Year</option>
+              </select>
+              @if (isFieldInvalid('currentYear')) {
+                <span class="error-message">Current year is required</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="graduationYear" class="form-label">Graduation Year</label>
+              <select id="graduationYear" formControlName="graduationYear" class="form-input">
+                <option value="">Select year</option>
+                @for (year of getYears(); track year) {
+                  <option [value]="year">{{ year }}</option>
+                }
+              </select>
+              @if (isFieldInvalid('graduationYear')) {
+                <span class="error-message">Graduation year is required</span>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- About & Skills -->
+        <section class="form-section">
+          <h2 class="section-title">About & Skills</h2>
+
+          <div class="form-group">
+            <label for="bio" class="form-label">Bio</label>
+            <textarea
+              id="bio"
+              formControlName="bio"
+              class="form-input textarea"
+              placeholder="Share your interests, achievements, or goals..."
+              rows="4"
+            ></textarea>
+            <span class="char-count">
+              {{ profileForm.get('bio')?.value?.length || 0 }}/500
+            </span>
+          </div>
+
+          <app-searchable-multi-select
+            label="Skills"
+            placeholder="Search skills (e.g. javascript, python, react)..."
+            [selected]="skillsList"
+            [searchFn]="searchSkills"
+            (selectedChange)="onSkillsChange($event)"
+          />
+        </section>
+
+        <!-- Professional Links -->
+        <section class="form-section">
+          <h2 class="section-title">Professional Links</h2>
+
+          <div class="form-group">
+            <label for="linkedinUrl" class="form-label">LinkedIn Profile</label>
+            <div class="input-with-icon">
+              <span class="input-icon">in</span>
+              <input
+                id="linkedinUrl"
+                type="url"
+                formControlName="linkedinUrl"
+                class="form-input"
+                placeholder="https://linkedin.com/in/yourprofile"
+              />
+            </div>
+            @if (isFieldInvalid('linkedinUrl')) {
+              <span class="error-message">Invalid LinkedIn URL</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="githubUrl" class="form-label">GitHub Profile</label>
+            <div class="input-with-icon">
+              <span class="input-icon">@</span>
+              <input
+                id="githubUrl"
+                type="url"
+                formControlName="githubUrl"
+                class="form-input"
+                placeholder="https://github.com/yourprofile"
+              />
+            </div>
+            @if (isFieldInvalid('githubUrl')) {
+              <span class="error-message">Invalid GitHub URL</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="portfolioUrl" class="form-label">Portfolio Website</label>
+            <div class="input-with-icon">
+              <span class="input-icon">🌐</span>
+              <input
+                id="portfolioUrl"
+                type="url"
+                formControlName="portfolioUrl"
+                class="form-input"
+                placeholder="https://yourportfolio.com"
+              />
+            </div>
+            @if (isFieldInvalid('portfolioUrl')) {
+              <span class="error-message">Invalid URL</span>
+            }
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="isSaving() || isLoading() || isUploadingAvatar()"
+          >
+            @if (isSaving() || isLoading()) {
+              <span class="spinner"></span>
+              Saving...
+            } @else {
+              Save Profile
+            }
+          </button>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>

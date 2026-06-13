@@ -1,3 +1,81 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth-guard';
+import { roleGuard } from './core/guards/role-guard';
 
-export const routes: Routes = [];
+export const routes: Routes = [
+  // ─── Public ──────────────────────────────────────────────────────────────
+  {
+    path: '',
+    loadComponent: () =>
+      import('./public/home/home').then(m => m.Home)
+  },
+  {
+    path: 'courses',
+    loadComponent: () =>
+      import('./public/courses/courses').then(m => m.Courses)
+  },
+  {
+    path: 'courses/:slug',
+    loadComponent: () =>
+      import('./public/course-detail/course-detail').then(m => m.CourseDetail)
+  },
+  {
+    path: 'internships/:type',
+    loadComponent: () =>
+      import('./public/internships/internships').then(m => m.Internships)
+  },
+  {
+    path: 'research-papers',
+    loadComponent: () =>
+      import('./public/research-papers/research-papers').then(m => m.ResearchPapers)
+  },
+  {
+    path: 'about',
+    loadComponent: () =>
+      import('./public/about/about').then(m => m.About)
+  },
+  {
+    path: 'albums',
+    loadComponent: () =>
+      import('./public/albums/albums').then(m => m.Albums)
+  },
+  {
+    path: 'refer',
+    loadComponent: () =>
+      import('./public/refer/refer').then(m => m.Refer)
+  },
+  {
+    path: 'my-courses',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./public/my-courses/my-courses').then(m => m.MyCourses)
+  },
+  {
+    path: 'profile',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./public/my-profile/my-profile').then(m => m.MyProfile)
+  },
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+  {
+    path: 'auth',
+    loadChildren: () =>
+      import('./auth/auth.routes').then(m => m.authRoutes)
+  },
+
+  // ─── Admin (protected) ────────────────────────────────────────────────────
+  {
+    path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'ADMIN' },
+    loadChildren: () =>
+      import('./admin/admin.routes').then(m => m.adminRoutes)
+  },
+
+  // ─── Fallback ─────────────────────────────────────────────────────────────
+  {
+    path: '**',
+    redirectTo: ''
+  }
+];
