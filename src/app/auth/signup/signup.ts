@@ -76,6 +76,13 @@ export class SignupComponent implements OnInit {
           ]
         ],
         email: ['', [Validators.required, Validators.email]],
+        phoneNumber: [
+          '',
+          [
+            Validators.required,
+            Validators.pattern(/^[0-9]{10,15}$/)
+          ]
+        ],
         password: ['', [Validators.required, passwordStrengthValidator]],
         confirmPassword: ['', [Validators.required]],
         acceptTerms: [false, [Validators.requiredTrue]]
@@ -101,11 +108,11 @@ export class SignupComponent implements OnInit {
 
     this.submitting = true;
     try {
-      const { fullName, email, password } = this.form.getRawValue();
-      const success = await this.auth.signUp(email.trim(), password, fullName.trim());
+      const { fullName, email, password, phoneNumber } = this.form.getRawValue();
+      const success = await this.auth.signUp(email.trim(), password, fullName.trim(), phoneNumber.trim());
 
       if (success) {
-        await this.router.navigate(['/auth/complete-profile']);
+        await this.router.navigate(['/']);
       }
     } finally {
       this.submitting = false;
@@ -144,6 +151,7 @@ export class SignupComponent implements OnInit {
     if (errors['required']) {
       const labels: Record<string, string> = {
         fullName: 'Full name is required',
+        phoneNumber: 'Phone number is required',
         email: 'Email is required',
         password: 'Password is required',
         confirmPassword: 'Please confirm your password',
@@ -153,6 +161,7 @@ export class SignupComponent implements OnInit {
     }
 
     if (errors['email']) return 'Please enter a valid email address';
+    if (errors['pattern'] && fieldName === 'phoneNumber') return 'Please enter a valid 10-15 digit phone number';
     if (errors['minlength']) return 'Name must be at least 2 characters';
     if (errors['maxlength']) return 'Name must be 80 characters or less';
     if (errors['pattern']) return 'Name can only contain letters, spaces, and . \' -';

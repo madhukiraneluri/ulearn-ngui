@@ -45,8 +45,41 @@ export interface CurriculumLesson {
   description: string;
   durationMinutes: number;
   videoUrl?: string;
+  resourceUrl?: string;
+  resourceType?: 'video' | 'file';
   isFree: boolean;
   order: number;
+}
+
+export type ContentBlockType =
+  | 'heading'
+  | 'text'
+  | 'image'
+  | 'two_column'
+  | 'callout'
+  | 'code'
+  | 'quote'
+  | 'divider'
+  | 'gallery'
+  | 'video';
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  orderIndex: number;
+  content: Record<string, unknown>;
+}
+
+export interface LessonWithBlocks extends CurriculumLesson {
+  contentBlocks: ContentBlock[];
+  moduleId: string;
+  moduleOrder: number;
+}
+
+export interface LessonProgress {
+  lessonId: string;
+  completed: boolean;
+  completedAt?: string;
 }
 
 export interface CurriculumModule {
@@ -67,6 +100,8 @@ export interface Mentor {
   linkedInUrl?: string;
 }
 
+export type CourseFormat = '45-day' | '3-month';
+
 export interface Course {
   id: string;
   slug: string;
@@ -78,6 +113,10 @@ export interface Course {
   price: number;
   originalPrice: number;
   durationMonths: number;
+  durationDays?: number;
+  weeklyHours?: number;
+  liveClassCount?: number;
+  courseFormat?: CourseFormat;
   totalLessons: number;
   rating: number;
   totalStudents: number;
@@ -98,6 +137,10 @@ export interface CourseListItem {
   price: number;
   originalPrice: number;
   durationMonths: number;
+  durationDays?: number;
+  weeklyHours?: number;
+  liveClassCount?: number;
+  courseFormat?: CourseFormat;
   totalLessons: number;
   rating: number;
   totalStudents: number;

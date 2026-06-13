@@ -14,6 +14,7 @@ import { takeUntil } from 'rxjs/operators';
 
 import { Course, CurriculumModule, Mentor } from '../../models';
 import { CourseService } from '../../shared/services/course.service';
+import { PaymentService } from '../../shared/services/payment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
 
@@ -29,6 +30,7 @@ export class CourseDetail implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly courseService = inject(CourseService);
+  private readonly paymentService = inject(PaymentService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
@@ -46,10 +48,11 @@ export class CourseDetail implements OnInit, OnDestroy {
   sidebarPulsing = signal(false);
 
   // Computed
-  isEnrolled = computed(() => false); // Future: check enrollment status
+  isEnrolled = signal(false);
 
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
+    const enrollAfterLogin = this.route.snapshot.queryParamMap.get('enroll') === 'true';
 
     if (slug) {
       this.courseService
@@ -60,6 +63,29 @@ export class CourseDetail implements OnInit, OnDestroy {
             if (courseData) {
               this.course.set(courseData);
               this.isLoading.set(false);
+
+              const firstModule = courseData.curriculum.find((m) => m.order === 1);
+              if (firstModule) {
+                this.expandedModule.set(firstModule.id);
+              }
+
+              if (this.auth.isLoggedIn()) {
+                const user = this.auth.currentUser();
+                if (user) {
+                  void this.courseService
+                    .isUserEnrolled(courseData.id, user.id)
+                    .then((v) => {
+                      this.isEnrolled.set(v);
+                      if (enrollAfterLogin && !v) {
+                        void this.handleEnrollClick();
+                      }
+                    });
+                }
+              } else if (enrollAfterLogin) {
+                this.router.navigate(['/auth/login'], {
+                  queryParams: { returnUrl: `/courses/${slug}?enroll=true` }
+                });
+              }
             } else {
               this.isLoading.set(false);
             }
@@ -70,6 +96,8 @@ export class CourseDetail implements OnInit, OnDestroy {
             this.toast.error('Failed to load course');
           }
         });
+    } else {
+      this.isLoading.set(false);
     }
   }
 
@@ -99,7 +127,7 @@ export class CourseDetail implements OnInit, OnDestroy {
       this.lockMessage.set({
         message: 'Enroll to unlock all modules',
         action: 'enroll',
-        actionLabel: 'Enroll Now'
+        actionLabel: 'Pay & Enroll'
       });
       this.triggerSidebarPulse();
     }
@@ -118,14 +146,74 @@ export class CourseDetail implements OnInit, OnDestroy {
   }
 
   handleEnrollClick(): void {
-    const slug = this.course()?.slug;
+    const course = this.course();
+    if (!course) return;
+
+    if (this.auth.isLoggedIn() && this.isEnrolled()) {
+      const course = this.course();
+      const firstLesson = course?.curriculum[0]?.lessons[0];
+      if (course && firstLesson) {
+        this.router.navigate(['/learn', course.slug, firstLesson.id]);
+      } else {
+        this.router.navigate(['/my-courses']);
+      }
+      return;
+    }
+
     if (!this.auth.isLoggedIn()) {
       this.router.navigate(['/auth/login'], {
-        queryParams: { returnUrl: `/courses/${slug}` }
+        queryParams: { returnUrl: `/courses/${course.slug}?enroll=true` }
       });
-    } else {
-      this.toast.info('Enrollment coming soon!');
+      return;
     }
+
+    this.paymentService.setPendingEnrollment({
+      courseId: course.id,
+      slug: course.slug,
+      price: course.price
+    });
+
+    void this.paymentService.startCheckout({
+      courseId: course.id,
+      slug: course.slug,
+      price: course.price
+    });
+  }
+
+  handleLessonClick(module: CurriculumModule, lesson: CurriculumModule['lessons'][number]): void {
+    if (!this.canAccessModule(module)) {
+      if (!this.auth.isLoggedIn()) {
+        const slug = this.course()?.slug;
+        this.router.navigate(['/auth/login'], {
+          queryParams: { returnUrl: `/learn/${slug}/${lesson.id}` }
+        });
+        return;
+      }
+      this.lockMessage.set({
+        message: 'Enroll to access this live class',
+        action: 'enroll',
+        actionLabel: 'Pay & Enroll'
+      });
+      this.triggerSidebarPulse();
+      return;
+    }
+
+    const slug = this.course()?.slug;
+    if (slug) {
+      this.router.navigate(['/learn', slug, lesson.id]);
+    }
+  }
+
+  formatCourseSchedule(): string {
+    const c = this.course();
+    if (!c) return '';
+    if (c.courseFormat === '45-day' && c.durationDays && c.liveClassCount) {
+      return `${c.durationDays} days · ${c.liveClassCount} live classes`;
+    }
+    if (c.courseFormat === '3-month' && c.weeklyHours && c.liveClassCount) {
+      return `3 months · ${c.weeklyHours} hrs/week · ${c.liveClassCount} live classes`;
+    }
+    return `${c.durationMonths} months · ${c.totalLessons} lessons`;
   }
 
   handleSecondaryButtonClick(): void {

@@ -199,8 +199,8 @@
                 </span>
                 <div class="course-title">{{ course.title }}</div>
                 <div class="course-meta">
-                  <span>⏱ {{ course.durationMonths }} Months</span>
-                  <span>🎥 {{ course.totalLessons }} Lessons</span>
+                  <span>📅 {{ formatCourseLabel(course) }}</span>
+                  <span>🎓 {{ course.liveClassCount ?? course.totalLessons }} live classes</span>
                   <span>⭐ {{ course.rating }}</span>
                   <span>👥 {{ course.totalStudents | number }}</span>
                 </div>

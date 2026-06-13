@@ -15,6 +15,11 @@ export const routes: Routes = [
       import('./public/courses/courses').then(m => m.Courses)
   },
   {
+    path: 'learn/:courseSlug/:lessonId',
+    loadComponent: () =>
+      import('./public/learn/learn').then(m => m.Learn)
+  },
+  {
     path: 'courses/:slug',
     loadComponent: () =>
       import('./public/course-detail/course-detail').then(m => m.CourseDetail)

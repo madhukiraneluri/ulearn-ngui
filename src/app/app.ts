@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, OnInit } from '@angular/core';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { Navbar } from './shared/components/navbar/navbar';
 import { Footer } from './shared/components/footer/footer';
 import { ToastComponent } from './shared/components/toast/toast';
@@ -22,4 +22,15 @@ import { ToastComponent } from './shared/components/toast/toast';
     }
   `]
 })
-export class App {}
+export class App implements OnInit {
+  private readonly router = inject(Router);
+
+  ngOnInit(): void {
+    this.router.events.subscribe(evt => {
+      if (evt instanceof NavigationEnd) {
+        // small delay to allow the new view to render
+        setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }), 10);
+      }
+    });
+  }
+}

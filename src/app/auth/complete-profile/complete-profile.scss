@@ -31,6 +31,7 @@
   background: var(--bg-glass);
   box-shadow: var(--shadow);
   border-radius: var(--border-radius);
+  animation: cardEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   padding: 2.5rem 2rem 2rem 2rem;
   max-width: 480px;
   width: 100%;
@@ -41,6 +42,11 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(18px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .profile-header {
@@ -214,6 +220,12 @@
     &:hover {
       background: #2563eb;
     }
+    &:disabled, &[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      filter: grayscale(8%);
+      box-shadow: none;
+    }
     &.btn-submit {
       box-shadow: 0 2px 8px 0 rgba(79,140,255,0.12);
     }
@@ -252,7 +264,7 @@
   .skip-btn {
     background: none;
     border: none;
-    color: #888;
+    color: #666;
     font-size: 1rem;
     text-decoration: underline;
     cursor: pointer;

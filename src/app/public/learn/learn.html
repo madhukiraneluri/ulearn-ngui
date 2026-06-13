@@ -1,0 +1,158 @@
+@if (isLoading()) {
+  <div class="learn-loading">
+    <div class="spinner"></div>
+    <p>Loading lesson…</p>
+  </div>
+} @else if (course() && currentLesson()) {
+  <div class="learn-layout">
+    <!-- Sidebar -->
+    <aside class="learn-sidebar">
+      <div class="sidebar-header">
+        <a class="back-link" [routerLink]="['/courses', course()!.slug]">← Back to course</a>
+        <h2 class="course-title">{{ course()!.title }}</h2>
+      </div>
+
+      <div class="modules-list">
+        @for (module of course()!.curriculum; track module.id) {
+          <div class="module-group">
+            <button
+              type="button"
+              class="module-toggle"
+              (click)="toggleModule(module.id)"
+            >
+              <span class="module-name">{{ module.title }}</span>
+              <span class="chevron" [class.open]="expandedModule() === module.id">▾</span>
+            </button>
+
+            @if (expandedModule() === module.id) {
+              <div class="lessons-list">
+                @for (lesson of module.lessons; track lesson.id) {
+                  @let sidebarLesson = toSidebarLesson(lesson, module.id, module.order);
+                  <button
+                    type="button"
+                    class="lesson-item"
+                    [class.active]="isLessonActive(lesson.id)"
+                    [class.completed]="isLessonCompleted(lesson.id)"
+                    [class.locked]="isLessonLocked(sidebarLesson)"
+                    (click)="navigateToLesson(sidebarLesson)"
+                  >
+                    <span class="lesson-icon">
+                      @if (isLessonLocked(sidebarLesson)) {
+                        🔒
+                      } @else if (isLessonCompleted(lesson.id)) {
+                        ✓
+                      } @else {
+                        ○
+                      }
+                    </span>
+                    <span class="lesson-title">{{ lesson.title }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="sidebar-progress">
+        <div class="progress-label">
+          <span>Progress</span>
+          <span>{{ progressPercent() }}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="learn-content">
+      <header class="lesson-header">
+        <h1>{{ currentLesson()!.title }}</h1>
+        <div class="lesson-meta">
+          <span>{{ formatDuration(currentLesson()!.durationMinutes) }}</span>
+          @if (currentLesson()!.isFree) {
+            <span class="free-badge">Free preview</span>
+          }
+        </div>
+      </header>
+
+      @if (currentLesson()!.videoUrl) {
+        <div class="video-container">
+          <video controls [src]="currentLesson()!.videoUrl" preload="metadata">
+            Your browser does not support video playback.
+          </video>
+        </div>
+        <button
+          type="button"
+          class="btn-mark-complete"
+          [disabled]="markingComplete() || isCurrentLessonComplete()"
+          (click)="markComplete()"
+        >
+          @if (isCurrentLessonComplete()) {
+            ✓ Completed
+          } @else {
+            Mark lesson complete
+          }
+        </button>
+      }
+
+      <div class="content-blocks">
+        @for (block of currentLesson()!.contentBlocks; track block.id) {
+          @switch (block.type) {
+            @case ('heading') { <app-block-heading [content]="block.content" /> }
+            @case ('text') { <app-block-text [content]="block.content" /> }
+            @case ('image') { <app-block-image [content]="block.content" /> }
+            @case ('two_column') { <app-block-two-column [content]="block.content" /> }
+            @case ('callout') { <app-block-callout [content]="block.content" /> }
+            @case ('code') { <app-block-code [content]="block.content" /> }
+            @case ('quote') { <app-block-quote [content]="block.content" /> }
+            @case ('divider') { <app-block-divider /> }
+            @case ('gallery') { <app-block-gallery [content]="block.content" /> }
+            @case ('video') { <app-block-video [content]="block.content" /> }
+          }
+        }
+      </div>
+
+      @if (!currentLesson()!.videoUrl) {
+        <button
+          type="button"
+          class="btn-mark-complete"
+          [disabled]="markingComplete() || isCurrentLessonComplete()"
+          (click)="markComplete()"
+        >
+          @if (isCurrentLessonComplete()) {
+            ✓ Completed
+          } @else {
+            Mark lesson complete
+          }
+        </button>
+      }
+
+      <nav class="lesson-nav">
+        @if (previousLesson()) {
+          <button type="button" class="btn-nav btn-prev" (click)="goPrevious()">
+            ← {{ previousLesson()!.title }}
+          </button>
+        } @else {
+          <span></span>
+        }
+
+        @if (nextLesson()) {
+          <button type="button" class="btn-nav btn-next" (click)="goNext()">
+            {{ nextLesson()!.title }} →
+          </button>
+        } @else {
+          <button type="button" class="btn-nav btn-next btn-complete" (click)="markComplete()">
+            Course Complete ✓
+          </button>
+        }
+      </nav>
+    </main>
+  </div>
+} @else {
+  <div class="learn-error">
+    <h2>Lesson not found</h2>
+    <a routerLink="/courses">Browse courses</a>
+  </div>
+}

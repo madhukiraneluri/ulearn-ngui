@@ -25,13 +25,11 @@
             <!-- College Name -->
             <div class="form-group">
               <label for="collegeName" class="form-label">College/University Name</label>
-              <input
-                id="collegeName"
-                type="text"
+              <app-searchable-select
                 formControlName="collegeName"
-                class="form-input"
-                placeholder="e.g., Indian Institute of Technology"
-              />
+                [placeholder]="'Search college'"
+                [searchFn]="searchColleges"
+              ></app-searchable-select>
               @if (academicForm.get('collegeName')?.invalid && academicForm.get('collegeName')?.touched) {
                 <span class="error-message">Required field</span>
               }
@@ -57,13 +55,15 @@
             <!-- Specialization -->
             <div class="form-group">
               <label for="specialization" class="form-label">Specialization/Branch</label>
-              <input
-                id="specialization"
-                type="text"
+              <app-searchable-select
                 formControlName="specialization"
-                class="form-input"
-                placeholder="e.g., Computer Science, Electronics"
-              />
+                [placeholder]="'Search specialization'"
+                [searchFn]="searchSpecializations"
+              ></app-searchable-select>
+
+              @if (showCustomSpecialization) {
+                <input id="customSpecialization" type="text" formControlName="customSpecialization" class="form-input" placeholder="Enter specialization" />
+              }
             </div>
 
             <!-- Current Year & Graduation Year -->

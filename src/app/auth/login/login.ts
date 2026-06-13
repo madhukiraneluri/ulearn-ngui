@@ -30,13 +30,13 @@ export class Login implements OnInit {
 
   form!: FormGroup;
   showPassword = false;
-  returnUrl: string = '/my-courses';
+  returnUrl: string = '/';
 
   readonly isLoading = this.auth.isLoading;
 
   ngOnInit(): void {
     this.initializeForm();
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
   }
 
   initializeForm(): void {
@@ -60,9 +60,7 @@ export class Login implements OnInit {
     const success = await this.auth.signIn(email, password);
 
     if (success) {
-      const profileCompleted = this.auth.profileCompleted();
-      const target = profileCompleted ? this.returnUrl : '/auth/complete-profile';
-      await this.router.navigateByUrl(target);
+      await this.router.navigateByUrl(this.returnUrl || '/');
     }
   }
 

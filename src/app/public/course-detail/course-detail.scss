@@ -482,6 +482,23 @@
   }
 }
 
+.module-item {
+  &.module-locked {
+    .module-header.is-locked {
+      background: rgba(122, 122, 144, 0.06);
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(139, 111, 190, 0.08);
+      }
+
+      .module-info h4 {
+        color: var(--muted);
+      }
+    }
+  }
+}
+
 .module-header {
   display: flex;
   align-items: center;
@@ -1132,4 +1149,33 @@
   .body-inner {
     padding-bottom: 120px;
   }
+}
+
+.lesson-item.lesson-clickable {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+
+  &:hover {
+    background: rgba(139, 111, 190, 0.06);
+  }
+
+  .open-label {
+    font-size: 0.82rem;
+    color: var(--purple);
+    font-weight: 600;
+  }
+
+  .lock-label {
+    font-size: 0.9rem;
+  }
+}
+
+.curriculum-header .schedule-hint {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
 }

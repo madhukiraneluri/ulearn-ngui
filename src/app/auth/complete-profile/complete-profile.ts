@@ -4,6 +4,8 @@ import {
   OnInit,
   inject
 } from '@angular/core';
+import { Observable, of } from 'rxjs';
+import { ProfileLookupService } from '../../shared/services/profile-lookup.service';
 import {
   FormBuilder,
   FormGroup,
@@ -12,6 +14,7 @@ import {
   FormControl
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { SearchableSelect } from '../../shared/components/searchable-select/searchable-select';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import type { UserProfile } from '../../core/supabase.client';
@@ -20,7 +23,7 @@ import type { UserProfile } from '../../core/supabase.client';
   selector: 'app-complete-profile',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SearchableSelect],
   templateUrl: './complete-profile.html',
   styleUrl: './complete-profile.scss'
 })
@@ -31,6 +34,32 @@ export class CompleteProfileComponent implements OnInit {
 
   currentStep = 1;
   totalSteps = 3;
+
+  // Dropdown options (can be replaced by remote fetch later)
+  colleges: string[] = [
+    'Indian Institute of Technology',
+    'National Institute of Technology',
+    'Delhi University',
+    'Anna University',
+    'Other'
+  ];
+
+  specializations: string[] = [
+    'Computer Science',
+    'Electronics',
+    'Mechanical',
+    'Civil',
+    'Business',
+    'Other'
+  ];
+
+  showCustomSpecialization = false;
+
+  // search function for colleges used by SearchableSelect
+  private readonly lookup = inject(ProfileLookupService);
+  // delegate searches to ProfileLookupService
+  readonly searchColleges = (q: string) => this.lookup.searchColleges(q);
+  readonly searchSpecializations = (q: string) => this.lookup.searchSpecializations(q);
 
   // Step 1: Academic Information
   academicForm!: FormGroup;
@@ -57,14 +86,20 @@ export class CompleteProfileComponent implements OnInit {
     if (profile) {
       this.loadProfileData(profile);
     }
+
+    // update showCustomSpecialization when specialization control changes
+    this.academicForm.get('specialization')?.valueChanges.subscribe((v: string) => {
+      this.showCustomSpecialization = v === 'Other';
+    });
   }
 
   initializeForms(): void {
     // Step 1: Academic Information
     this.academicForm = this.fb.group({
-      collegeName: ['', [Validators.required, Validators.minLength(2)]],
+      collegeName: ['', [Validators.required]],
       degree: ['', [Validators.required]],
       specialization: ['', [Validators.required]],
+      customSpecialization: [''],
       currentYear: ['', [Validators.required, Validators.min(1), Validators.max(6)]],
       graduationYear: ['', [Validators.required]]
     });
@@ -89,6 +124,7 @@ export class CompleteProfileComponent implements OnInit {
         collegeName: profile.college_name || '',
         degree: profile.degree || '',
         specialization: profile.specialization || '',
+        customSpecialization: '',
         currentYear: profile.current_year || '',
         graduationYear: profile.graduation_year || ''
       });
@@ -127,10 +163,8 @@ export class CompleteProfileComponent implements OnInit {
     }
   }
 
-  skipStep(): void {
-    if (this.currentStep < this.totalSteps) {
-      this.currentStep++;
-    }
+  async skipStep(): Promise<void> {
+    await this.router.navigate(['/']);
   }
 
   addSkill(skill: string): void {
@@ -138,6 +172,13 @@ export class CompleteProfileComponent implements OnInit {
     if (trimmed && !this.skillsList.includes(trimmed)) {
       this.skillsList = [...this.skillsList, trimmed];
       this.skillInput = '';
+    }
+  }
+
+  onSpecializationChange(value: string): void {
+    this.showCustomSpecialization = value === 'Other';
+    if (!this.showCustomSpecialization) {
+      this.academicForm.get('customSpecialization')?.setValue('');
     }
   }
 
@@ -169,10 +210,15 @@ export class CompleteProfileComponent implements OnInit {
       const career = this.careerForm.value;
       const links = this.linksForm.value;
 
+      // If user selected "Other" specialization and provided a custom value, use that
+      const specializationValue = academic.specialization === 'Other' && academic.customSpecialization
+        ? academic.customSpecialization
+        : academic.specialization;
+
       const profileData: Partial<UserProfile> = {
         college_name: academic.collegeName,
         degree: academic.degree,
-        specialization: academic.specialization,
+        specialization: specializationValue,
         current_year: academic.currentYear ? Number(academic.currentYear) : null,
         graduation_year: academic.graduationYear ? Number(academic.graduationYear) : null,
         bio: career.bio || null,
@@ -186,7 +232,7 @@ export class CompleteProfileComponent implements OnInit {
       const success = await this.auth.updateProfile(user.id, profileData);
 
       if (success) {
-        await this.router.navigate(['/my-courses']);
+        await this.router.navigate(['/']);
       }
     } finally {
       this.submitting = false;
@@ -194,7 +240,12 @@ export class CompleteProfileComponent implements OnInit {
   }
 
   isStep1Valid(): boolean {
-    return this.academicForm.valid;
+    if (!this.academicForm.valid) return false;
+    if (this.showCustomSpecialization) {
+      const custom = this.academicForm.get('customSpecialization')?.value;
+      return !!(custom && String(custom).trim().length > 0);
+    }
+    return true;
   }
 
   isStep3Valid(): boolean {

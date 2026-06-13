@@ -1,0 +1,2 @@
+-- Lesson content blocks and progress tracking
+-- Applied via Supabase MCP: lesson_content_and_progress

@@ -97,7 +97,7 @@ export class AuthService {
     }
   }
 
-  async signUp(email: string, password: string, fullName: string): Promise<boolean> {
+  async signUp(email: string, password: string, fullName: string, phoneNumber?: string): Promise<boolean> {
     try {
       this.isLoadingSignal.set(true);
 
@@ -106,13 +106,19 @@ export class AuthService {
         password,
         options: {
           data: {
-            full_name: fullName
+            full_name: fullName,
+            phone_number: phoneNumber
           }
         }
       });
 
       if (authError) {
-        this.toast.error(authError.message);
+        const msg = (authError.message || '').toLowerCase();
+        if (msg.includes('already') || msg.includes('duplicate') || msg.includes('registered') || msg.includes('exists')) {
+          this.toast.error('Email already exists. Please sign in or use password recovery.');
+        } else {
+          this.toast.error(authError.message);
+        }
         return false;
       }
 
@@ -132,6 +138,7 @@ export class AuthService {
           {
             id: authData.user.id,
             full_name: fullName,
+            phone: phoneNumber,
             profile_completed: false
           }
         ]);
@@ -203,7 +210,7 @@ export class AuthService {
       await supabase.auth.signOut({ scope: 'local' });
 
       // Revoke server session in background — do not block the UI
-      void supabase.auth.signOut({ scope: 'global' }).catch(() => {});
+      void supabase.auth.signOut({ scope: 'global' }).catch(() => { });
 
       this.toast.success('Logged out successfully');
       await this.router.navigateByUrl('/auth/login', { replaceUrl: true });

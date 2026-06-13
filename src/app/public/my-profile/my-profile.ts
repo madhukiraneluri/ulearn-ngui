@@ -98,6 +98,11 @@ export class MyProfile implements OnInit {
       portfolioUrl: profile.portfolio_url || ''
     });
 
+    // Disable fields as per requirements
+    if (profile.full_name) this.profileForm.get('fullName')?.disable();
+    if (profile.phone) this.profileForm.get('phone')?.disable();
+    if (profile.college_name) this.profileForm.get('collegeName')?.disable();
+
     this.skillsList = profile.skills ? [...profile.skills] : [];
     this.avatarUrl.set(profile.avatar_url);
   }

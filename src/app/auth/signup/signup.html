@@ -13,72 +13,58 @@
       <!-- Full Name -->
       <div class="form-group anim-item" style="--delay: 0.12s">
         <label for="fullName" class="form-label">Full Name</label>
-        <input
-          id="fullName"
-          type="text"
-          formControlName="fullName"
-          class="form-input"
-          placeholder="Enter your full name"
-          autocomplete="name"
-          [class.error]="isFieldInvalid('fullName')"
-        />
+        <input id="fullName" type="text" formControlName="fullName" class="form-input"
+          placeholder="Enter your full name" autocomplete="name" [class.error]="isFieldInvalid('fullName')" />
         @if (isFieldInvalid('fullName')) {
-          <span class="error-message">{{ getErrorMessage('fullName') }}</span>
+        <span class="error-message">{{ getErrorMessage('fullName') }}</span>
+        }
+      </div>
+
+      <!-- Phone Number -->
+      <div class="form-group anim-item" style="--delay: 0.15s">
+        <label for="phoneNumber" class="form-label">Phone Number</label>
+        <input id="phoneNumber" type="tel" formControlName="phoneNumber" class="form-input"
+          placeholder="e.g. 9876543210" autocomplete="tel" [class.error]="isFieldInvalid('phoneNumber')" />
+        @if (isFieldInvalid('phoneNumber')) {
+        <span class="error-message">{{ getErrorMessage('phoneNumber') }}</span>
         }
       </div>
 
       <!-- Email -->
-      <div class="form-group anim-item" style="--delay: 0.18s">
+      <div class="form-group anim-item" style="--delay: 0.21s">
         <label for="email" class="form-label">Email Address</label>
-        <input
-          id="email"
-          type="email"
-          formControlName="email"
-          class="form-input"
-          placeholder="your.email@college.com"
-          autocomplete="email"
-          [class.error]="isFieldInvalid('email')"
-        />
+        <input id="email" type="email" formControlName="email" class="form-input" placeholder="your.email@college.com"
+          autocomplete="email" [class.error]="isFieldInvalid('email')" />
         @if (isFieldInvalid('email')) {
-          <span class="error-message">{{ getErrorMessage('email') }}</span>
+        <span class="error-message">{{ getErrorMessage('email') }}</span>
         }
       </div>
 
       <!-- Password -->
-      <div class="form-group anim-item" style="--delay: 0.24s">
+      <div class="form-group anim-item" style="--delay: 0.27s">
         <label for="password" class="form-label">Password</label>
         <div class="password-field">
-          <input
-            id="password"
-            [type]="showPassword ? 'text' : 'password'"
-            formControlName="password"
-            class="form-input"
-            placeholder="Create a strong password"
-            autocomplete="new-password"
-            [class.error]="isFieldInvalid('password')"
-          />
-          <button
-            type="button"
-            class="password-toggle"
-            (click)="togglePasswordVisibility()"
-            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
-            tabindex="-1"
-          >
+          <input id="password" [type]="showPassword ? 'text' : 'password'" formControlName="password" class="form-input"
+            placeholder="Create a strong password" autocomplete="new-password"
+            [class.error]="isFieldInvalid('password')" />
+          <button type="button" class="password-toggle" (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'" tabindex="-1">
             @if (showPassword) {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
             } @else {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
             }
           </button>
         </div>
         @if (isFieldInvalid('password')) {
-          <span class="error-message">{{ getErrorMessage('password') }}</span>
+        <span class="error-message">{{ getErrorMessage('password') }}</span>
         }
 
         <ul class="password-rules">
@@ -90,68 +76,55 @@
       </div>
 
       <!-- Confirm Password -->
-      <div class="form-group anim-item" style="--delay: 0.3s">
+      <div class="form-group anim-item" style="--delay: 0.33s">
         <label for="confirmPassword" class="form-label">Confirm Password</label>
         <div class="password-field">
-          <input
-            id="confirmPassword"
-            [type]="showConfirmPassword ? 'text' : 'password'"
-            formControlName="confirmPassword"
-            class="form-input"
-            placeholder="Confirm your password"
-            autocomplete="new-password"
-            [class.error]="isFieldInvalid('confirmPassword') || hasPasswordMismatch()"
-          />
-          <button
-            type="button"
-            class="password-toggle"
-            (click)="toggleConfirmPasswordVisibility()"
-            [attr.aria-label]="showConfirmPassword ? 'Hide password' : 'Show password'"
-            tabindex="-1"
-          >
+          <input id="confirmPassword" [type]="showConfirmPassword ? 'text' : 'password'"
+            formControlName="confirmPassword" class="form-input" placeholder="Confirm your password"
+            autocomplete="new-password" [class.error]="isFieldInvalid('confirmPassword') || hasPasswordMismatch()" />
+          <button type="button" class="password-toggle" (click)="toggleConfirmPasswordVisibility()"
+            [attr.aria-label]="showConfirmPassword ? 'Hide password' : 'Show password'" tabindex="-1">
             @if (showConfirmPassword) {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
             } @else {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
             }
           </button>
         </div>
         @if (isFieldInvalid('confirmPassword')) {
-          <span class="error-message">{{ getErrorMessage('confirmPassword') }}</span>
+        <span class="error-message">{{ getErrorMessage('confirmPassword') }}</span>
         }
         @if (hasPasswordMismatch()) {
-          <span class="error-message">Passwords do not match</span>
+        <span class="error-message">Passwords do not match</span>
         }
       </div>
 
       <!-- Terms -->
-      <div class="form-group checkbox-group anim-item" style="--delay: 0.36s">
+      <div class="form-group checkbox-group anim-item" style="--delay: 0.39s">
         <label class="checkbox-label">
           <input type="checkbox" formControlName="acceptTerms" />
-          <span>I agree to the <a href="#" class="inline-link">Terms of Service</a> and <a href="#" class="inline-link">Privacy Policy</a></span>
+          <span>I agree to the <a href="#" class="inline-link">Terms of Service</a> and <a href="#"
+              class="inline-link">Privacy Policy</a></span>
         </label>
         @if (isFieldInvalid('acceptTerms')) {
-          <span class="error-message">{{ getErrorMessage('acceptTerms') }}</span>
+        <span class="error-message">{{ getErrorMessage('acceptTerms') }}</span>
         }
       </div>
 
-      <button
-        type="submit"
-        class="btn-submit anim-item"
-        style="--delay: 0.42s"
-        [disabled]="form.invalid || isLoading()"
-      >
+      <button type="submit" class="btn-submit anim-item" style="--delay: 0.45s"
+        [disabled]="form.invalid || isLoading()">
         @if (isLoading()) {
-          <span class="loader"></span>
-          Creating account...
+        <span class="loader"></span>
+        Creating account...
         } @else {
-          Start Learning
+        Start Learning
         }
       </button>
     </form>

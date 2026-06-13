@@ -283,7 +283,15 @@ export class Courses implements OnInit, OnDestroy {
     return map[cat];
   }
 
-  formatPrice(price: number): string {
+  formatCourseLabel(course: CourseListItem): string {
+    if (course.courseFormat === '45-day' && course.durationDays) {
+      return `${course.durationDays} days`;
+    }
+    if (course.courseFormat === '3-month') {
+      return '3 months · 12 hrs/week';
+    }
+    return `${course.durationMonths} months`;
+  }
     return '₹' + price.toLocaleString('en-IN');
   }
 

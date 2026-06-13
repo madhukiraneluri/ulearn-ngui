@@ -64,10 +64,10 @@ export class Register {
       }
 
       // Use supabase signUp
-      const success = await this.auth.signUp(email, password, name);
+      const success = await this.auth.signUp(email, password, name, phone);
       if (success) {
-        this.toast.success('Account created successfully! Please complete your profile.');
-        this.router.navigate(['/complete-profile']);
+        this.toast.success('Account created successfully! Redirecting to dashboard.');
+        this.router.navigate(['/']);
       } else {
         this.toast.error('Registration failed. Please try again.');
       }
