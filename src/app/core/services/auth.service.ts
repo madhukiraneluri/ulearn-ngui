@@ -21,6 +21,7 @@ export class AuthService {
   private profileSignal = signal<UserProfile | null>(null);
   private isLoadingSignal = signal(false);
   private isAuthenticatedSignal = signal(false);
+  private readonly sessionInitPromise: Promise<void>;
 
   currentUser = computed(() => this.currentUserSignal());
   profile = computed(() => this.profileSignal());
@@ -28,39 +29,70 @@ export class AuthService {
   isLoggedIn = computed(() => this.isAuthenticatedSignal());
   profileCompleted = computed(() => this.profileSignal()?.profile_completed ?? false);
 
+  private static readonly PROTECTED_PREFIXES = ['/my-courses', '/profile', '/admin'];
+
   constructor() {
-    this.initializeAuth();
+    this.sessionInitPromise = this.initializeAuth();
   }
 
-  private initializeAuth(): void {
-    void this.restoreSession();
+  /** Wait for session restore, then return whether user is authenticated. */
+  async ensureSessionChecked(): Promise<boolean> {
+    await this.sessionInitPromise;
+    const { data: { session } } = await supabase.auth.getSession();
 
-    supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
+    if (session?.user) {
+      this.applySession(session.user);
+      return true;
+    }
+
+    this.clearAuthState();
+    return false;
+  }
+
+  private async initializeAuth(): Promise<void> {
+    await this.restoreSession();
+
+    supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
-        this.currentUserSignal.set({
-          id: session.user.id,
-          email: session.user.email || '',
-          user_metadata: session.user.user_metadata
-        });
-        this.isAuthenticatedSignal.set(true);
+        this.applySession(session.user);
         await this.loadProfile(session.user.id);
-      } else {
-        this.currentUserSignal.set(null);
-        this.profileSignal.set(null);
-        this.isAuthenticatedSignal.set(false);
+        return;
+      }
+
+      this.clearAuthState();
+
+      if (event === 'SIGNED_OUT' && this.isProtectedUrl(this.router.url)) {
+        await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
       }
     });
+  }
+
+  private applySession(user: Session['user']): void {
+    this.currentUserSignal.set({
+      id: user.id,
+      email: user.email || '',
+      user_metadata: user.user_metadata
+    });
+    this.isAuthenticatedSignal.set(true);
+  }
+
+  private clearAuthState(): void {
+    this.currentUserSignal.set(null);
+    this.profileSignal.set(null);
+    this.isAuthenticatedSignal.set(false);
+  }
+
+  private isProtectedUrl(url: string): boolean {
+    const path = url.split('?')[0];
+    return AuthService.PROTECTED_PREFIXES.some(prefix =>
+      path === prefix || path.startsWith(`${prefix}/`)
+    );
   }
 
   private async restoreSession(): Promise<void> {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      this.currentUserSignal.set({
-        id: session.user.id,
-        email: session.user.email || '',
-        user_metadata: session.user.user_metadata
-      });
-      this.isAuthenticatedSignal.set(true);
+      this.applySession(session.user);
       await this.loadProfile(session.user.id);
     }
   }
@@ -164,9 +196,7 @@ export class AuthService {
     this.isSigningOut = true;
 
     // Clear app state immediately so UI updates without waiting on network
-    this.currentUserSignal.set(null);
-    this.profileSignal.set(null);
-    this.isAuthenticatedSignal.set(false);
+    this.clearAuthState();
 
     try {
       // Local sign-out clears persisted session in the browser (instant)

@@ -52,11 +52,6 @@ export class MyProfile implements OnInit {
   readonly searchSkills = (q: string) => this.lookup.searchSkills(q);
 
   ngOnInit(): void {
-    if (!this.auth.isLoggedIn()) {
-      this.router.navigate(['/auth/login'], { queryParams: { returnUrl: '/profile' } });
-      return;
-    }
-
     this.initializeForm();
     void this.fetchAndLoadProfile();
   }
