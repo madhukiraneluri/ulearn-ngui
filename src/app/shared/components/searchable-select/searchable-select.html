@@ -1,0 +1,41 @@
+<div class="searchable-select" [class.disabled]="isControlDisabled()">
+  @if (label()) {
+    <label class="form-label">{{ label() }}</label>
+  }
+
+  <div class="input-wrapper">
+    <input
+      type="text"
+      class="form-input"
+      [placeholder]="placeholder()"
+      [value]="searchText()"
+      [disabled]="isControlDisabled()"
+      (input)="onInputChange($any($event.target).value)"
+      (focus)="onFocus()"
+      autocomplete="off"
+    />
+    @if (searchText() && !isControlDisabled()) {
+      <button type="button" class="clear-btn" (click)="clearSelection()" tabindex="-1">✕</button>
+    }
+  </div>
+
+  @if (isOpen() && !isControlDisabled()) {
+    <ul class="dropdown-list">
+      @if (isLoading()) {
+        <li class="dropdown-item loading">Searching...</li>
+      } @else if (options().length === 0) {
+        <li class="dropdown-item empty">No results found</li>
+      } @else {
+        @for (option of options(); track option) {
+          <li
+            class="dropdown-item"
+            [class.selected]="option === searchText()"
+            (mousedown)="selectOption(option)"
+          >
+            {{ option }}
+          </li>
+        }
+      }
+    </ul>
+  }
+</div>

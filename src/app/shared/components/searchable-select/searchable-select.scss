@@ -1,0 +1,105 @@
+@use '../../../../styles/variables' as *;
+
+.searchable-select {
+  position: relative;
+  margin-bottom: 16px;
+
+  &.disabled {
+    opacity: 0.6;
+  }
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text;
+  margin-bottom: 6px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  border: 1.5px solid $border;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: $text;
+  background: $card;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: $blue;
+    box-shadow: 0 0 0 3px rgba($blue, 0.12);
+  }
+
+  &:disabled {
+    background: $bg;
+    cursor: not-allowed;
+  }
+}
+
+.clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: $muted;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px;
+
+  &:hover {
+    color: $text;
+  }
+}
+
+.dropdown-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: $card;
+  border: 1.5px solid $border;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  z-index: 50;
+}
+
+.dropdown-item {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: $text;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover,
+  &.selected {
+    background: rgba($blue, 0.08);
+    color: $blue;
+  }
+
+  &.loading,
+  &.empty {
+    color: $muted;
+    cursor: default;
+    font-style: italic;
+
+    &:hover {
+      background: transparent;
+      color: $muted;
+    }
+  }
+}
