@@ -163,31 +163,25 @@ export class AuthService {
     if (this.isSigningOut) return false;
     this.isSigningOut = true;
 
+    // Clear app state immediately so UI updates without waiting on network
+    this.currentUserSignal.set(null);
+    this.profileSignal.set(null);
+    this.isAuthenticatedSignal.set(false);
+
     try {
-      this.isLoadingSignal.set(true);
+      // Local sign-out clears persisted session in the browser (instant)
+      await supabase.auth.signOut({ scope: 'local' });
 
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
-
-      if (error) {
-        await supabase.auth.signOut({ scope: 'local' });
-      }
-
-      this.currentUserSignal.set(null);
-      this.profileSignal.set(null);
-      this.isAuthenticatedSignal.set(false);
+      // Revoke server session in background — do not block the UI
+      void supabase.auth.signOut({ scope: 'global' }).catch(() => {});
 
       this.toast.success('Logged out successfully');
-      await this.router.navigateByUrl('/auth/login');
+      await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
       return true;
     } catch (error: unknown) {
-      this.currentUserSignal.set(null);
-      this.profileSignal.set(null);
-      this.isAuthenticatedSignal.set(false);
-      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-
       const message = error instanceof Error ? error.message : 'Sign out failed';
       this.toast.error(message);
-      await this.router.navigateByUrl('/auth/login');
+      await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
       return false;
     } finally {
       this.isLoadingSignal.set(false);

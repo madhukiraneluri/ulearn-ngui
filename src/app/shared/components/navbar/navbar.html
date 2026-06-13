@@ -86,8 +86,8 @@
       @if (!auth.isLoggedIn()) {
         <a class="nav-login" routerLink="/auth/login">Login</a>
       } @else {
-        <div class="nav-item dropdown-trigger">
-          <div class="nav-user">
+        <div class="nav-item dropdown-trigger" [class.open]="userMenuOpen()">
+          <div class="nav-user" (click)="toggleUserMenu($event)">
             <div class="user-avatar">
               {{ auth.profile()?.full_name?.charAt(0) || auth.currentUser()?.email?.charAt(0) }}
             </div>
@@ -96,16 +96,16 @@
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div class="dropdown dropdown-right">
-            <a routerLink="/my-courses">
+          <div class="dropdown dropdown-right" (click)="$event.stopPropagation()">
+            <a routerLink="/my-courses" (click)="closeUserMenu()">
               <span class="dot" style="background: var(--blue)"></span>
               My Courses
             </a>
-            <a routerLink="/profile">
+            <a routerLink="/profile" (click)="closeUserMenu()">
               <span class="dot" style="background: var(--purple)"></span>
               My Profile
             </a>
-            <button type="button" class="dropdown-link" (click)="logout()">
+            <button type="button" class="dropdown-link" (click)="logout($event)">
               <span class="dot" style="background: var(--red)"></span>
               Logout
             </button>
@@ -229,6 +229,6 @@
     <button class="drawer-login" (click)="navigateWithQuery('/auth/login', {})">Login</button>
   } @else {
     <div class="drawer-item" (click)="navigateWithQuery('/my-courses', {})">My Courses</div>
-    <div class="drawer-item" (click)="logout()">Logout</div>
+    <div class="drawer-item" (click)="logout($event)">Logout</div>
   }
 </div>

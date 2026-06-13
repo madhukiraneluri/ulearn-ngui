@@ -80,12 +80,15 @@
 
 // ── Dropdown ──────────────────────────────────────────────────────────────────
 .dropdown-trigger {
+  &.open .dropdown,
   &:hover .dropdown {
     opacity: 1;
     pointer-events: all;
     transform: translateY(0);
   }
 
+  &.open .nav-link svg,
+  &.open .nav-user svg,
   &:hover .nav-link svg,
   &:hover .nav-user svg {
     transform: rotate(180deg);
@@ -96,7 +99,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  padding-top: 8px;
+  padding-top: 4px;
   min-width: 230px;
   z-index: 200;
   opacity: 0;
@@ -105,6 +108,16 @@
     opacity 0.15s,
     transform 0.15s;
   transform: translateY(-4px);
+
+  // Bridge the gap so hover/click doesn't drop between trigger and menu
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+  }
 
   &.dropdown-right {
     left: auto;
