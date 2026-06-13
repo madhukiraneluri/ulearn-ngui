@@ -1,0 +1,234 @@
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="logo-wrap" routerLink="/">
+      <img src="assets/images/logo.jpeg" alt="ULearn" class="logo-img" />
+    </a>
+
+    <div class="nav-links">
+      <!-- Research Courses -->
+      <div class="nav-item dropdown-trigger">
+        <div class="nav-link" (click)="navigateWithQuery('/courses', {research: 'true'})">
+          Research Courses
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+        <div class="dropdown">
+          <a (click)="navigateWithQuery('/courses', { category: 'technical', research: 'true' })">
+            <span class="dot" style="background: var(--purple)"></span>
+            Technical Research
+          </a>
+          <a (click)="navigateWithQuery('/courses', { category: 'business', research: 'true' })">
+            <span class="dot" style="background: var(--blue)"></span>
+            Management Research
+          </a>
+        </div>
+      </div>
+
+      <!-- Courses -->
+      <div class="nav-item dropdown-trigger">
+        <div class="nav-link" (click)="navigateWithQuery('/courses', {})">
+          Courses
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+        <div class="dropdown">
+          <a (click)="navigateWithQuery('/courses', { category: 'technical' })">
+            <span class="dot" style="background: var(--purple)"></span>
+            Technical
+          </a>
+          <a (click)="navigateWithQuery('/courses', { category: 'creative' })">
+            <span class="dot" style="background: var(--orange)"></span>
+            Creative
+          </a>
+          <a (click)="navigateWithQuery('/courses', { category: 'business' })">
+            <span class="dot" style="background: var(--green)"></span>
+            Business
+          </a>
+          <a (click)="navigateWithQuery('/courses', {})">
+            <span class="dot" style="background: var(--blue)"></span>
+            All Courses
+          </a>
+        </div>
+      </div>
+
+      <!-- Internships -->
+      <div class="nav-item dropdown-trigger">
+        <div class="nav-link" (click)="navigateWithQuery('/internships/short', {})">
+          Internships
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+        <div class="dropdown">
+          <a (click)="navigateWithQuery('/internships/short', {})">
+            <span class="dot" style="background: var(--green)"></span>
+            Short Term Internships
+          </a>
+          <a (click)="navigateWithQuery('/internships/long', {})">
+            <span class="dot" style="background: var(--purple)"></span>
+            Long Term Internships
+          </a>
+        </div>
+      </div>
+
+      <a class="nav-link" routerLink="/refer" routerLinkActive="active">
+        Refer &amp; Earn
+        <span class="badge">₹500</span>
+      </a>
+      <a class="nav-link" routerLink="/about" routerLinkActive="active">About</a>
+
+      @if (auth.isAdmin()) {
+        <a class="nav-link" routerLink="/admin" routerLinkActive="active">Admin Panel</a>
+      }
+
+      @if (!auth.isLoggedIn()) {
+        <a class="nav-login" routerLink="/auth/login">Login</a>
+      } @else {
+        <div class="nav-item dropdown-trigger">
+          <div class="nav-user">
+            <div class="user-avatar">
+              {{ auth.profile()?.full_name?.charAt(0) || auth.currentUser()?.email?.charAt(0) }}
+            </div>
+            <span>{{ auth.profile()?.full_name || auth.currentUser()?.email }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+          <div class="dropdown dropdown-right">
+            <a routerLink="/my-courses">
+              <span class="dot" style="background: var(--blue)"></span>
+              My Courses
+            </a>
+            <a routerLink="/profile">
+              <span class="dot" style="background: var(--purple)"></span>
+              My Profile
+            </a>
+            <button type="button" class="dropdown-link" (click)="logout()">
+              <span class="dot" style="background: var(--red)"></span>
+              Logout
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <button
+      class="hamburger"
+      [class.open]="mobileMenuOpen()"
+      (click)="toggleMobileMenu()"
+      aria-label="Menu"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+@if (mobileMenuOpen()) {
+  <div class="drawer-overlay" (click)="closeMobileMenu()"></div>
+}
+
+<div class="mobile-drawer" [class.open]="mobileMenuOpen()">
+  <div class="drawer-header">
+    <img src="assets/images/logo.jpeg" alt="ULearn" class="drawer-logo" />
+    <button class="drawer-close" (click)="closeMobileMenu()">✕</button>
+  </div>
+
+  <!-- Research Courses -->
+  <div class="drawer-item" (click)="toggleDrawerMenu('research')">
+    Research Courses
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      [class.rotated]="isDrawerMenuOpen('research')"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  </div>
+  @if (isDrawerMenuOpen('research')) {
+    <div class="drawer-sub">
+      <a (click)="navigateWithQuery('/courses', { category: 'technical', research: 'true' })">
+        <span class="dot" style="background: var(--purple)"></span>Technical Research
+      </a>
+      <a (click)="navigateWithQuery('/courses', { category: 'business', research: 'true' })">
+        <span class="dot" style="background: var(--blue)"></span>Management Research
+      </a>
+    </div>
+  }
+
+  <!-- Courses -->
+  <div class="drawer-item" (click)="toggleDrawerMenu('courses')">
+    Courses
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      [class.rotated]="isDrawerMenuOpen('courses')"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  </div>
+  @if (isDrawerMenuOpen('courses')) {
+    <div class="drawer-sub">
+      <a (click)="navigateWithQuery('/courses', { category: 'technical' })">
+        <span class="dot" style="background: var(--purple)"></span>Technical
+      </a>
+      <a (click)="navigateWithQuery('/courses', { category: 'creative' })">
+        <span class="dot" style="background: var(--orange)"></span>Creative
+      </a>
+      <a (click)="navigateWithQuery('/courses', { category: 'business' })">
+        <span class="dot" style="background: var(--green)"></span>Business
+      </a>
+      <a (click)="navigateWithQuery('/courses', {})">
+        <span class="dot" style="background: var(--blue)"></span>All Courses
+      </a>
+    </div>
+  }
+
+  <!-- Internships -->
+  <div class="drawer-item" (click)="toggleDrawerMenu('internships')">
+    Internships
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      [class.rotated]="isDrawerMenuOpen('internships')"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  </div>
+  @if (isDrawerMenuOpen('internships')) {
+    <div class="drawer-sub">
+      <a (click)="navigateWithQuery('/internships/short', {})">
+        <span class="dot" style="background: var(--green)"></span>Short Term
+      </a>
+      <a (click)="navigateWithQuery('/internships/long', {})">
+        <span class="dot" style="background: var(--purple)"></span>Long Term
+      </a>
+    </div>
+  }
+
+  <div class="drawer-item" (click)="navigateWithQuery('/refer', {})">
+    Refer &amp; Earn
+    <span class="badge" style="margin-left: auto">₹500</span>
+  </div>
+  <div class="drawer-item" (click)="navigateWithQuery('/about', {})">About</div>
+
+  @if (auth.isAdmin()) {
+    <div class="drawer-item" (click)="navigateWithQuery('/admin', {})">Admin Panel</div>
+  }
+
+  @if (!auth.isLoggedIn()) {
+    <button class="drawer-login" (click)="navigateWithQuery('/auth/login', {})">Login</button>
+  } @else {
+    <div class="drawer-item" (click)="navigateWithQuery('/my-courses', {})">My Courses</div>
+    <div class="drawer-item" (click)="logout()">Logout</div>
+  }
+</div>
