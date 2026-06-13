@@ -1,0 +1,282 @@
+<div class="profile-container">
+  <div class="profile-card">
+    <!-- Header -->
+    <div class="profile-header">
+      <h1>Complete Your Profile</h1>
+      <p>Help us know you better to personalize your learning experience</p>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
+      </div>
+      <p class="progress-text">Step {{ currentStep }} of {{ totalSteps }}</p>
+    </div>
+
+    <!-- Form Steps -->
+    <div class="form-steps">
+      <!-- STEP 1: Academic Information -->
+      @if (currentStep === 1) {
+        <div class="step-content fade-in">
+          <h2 class="step-title">Academic Information</h2>
+
+          <form [formGroup]="academicForm" class="step-form">
+            <!-- College Name -->
+            <div class="form-group">
+              <label for="collegeName" class="form-label">College/University Name</label>
+              <input
+                id="collegeName"
+                type="text"
+                formControlName="collegeName"
+                class="form-input"
+                placeholder="e.g., Indian Institute of Technology"
+              />
+              @if (academicForm.get('collegeName')?.invalid && academicForm.get('collegeName')?.touched) {
+                <span class="error-message">Required field</span>
+              }
+            </div>
+
+            <!-- Degree -->
+            <div class="form-group">
+              <label for="degree" class="form-label">Degree</label>
+              <select id="degree" formControlName="degree" class="form-input">
+                <option value="">Select degree</option>
+                <option value="B.Tech">B.Tech</option>
+                <option value="B.Sc">B.Sc</option>
+                <option value="B.A">B.A</option>
+                <option value="B.Com">B.Com</option>
+                <option value="BCA">BCA</option>
+                <option value="M.Tech">M.Tech</option>
+                <option value="M.Sc">M.Sc</option>
+                <option value="MBA">MBA</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <!-- Specialization -->
+            <div class="form-group">
+              <label for="specialization" class="form-label">Specialization/Branch</label>
+              <input
+                id="specialization"
+                type="text"
+                formControlName="specialization"
+                class="form-input"
+                placeholder="e.g., Computer Science, Electronics"
+              />
+            </div>
+
+            <!-- Current Year & Graduation Year -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="currentYear" class="form-label">Current Year</label>
+                <select id="currentYear" formControlName="currentYear" class="form-input">
+                  <option value="">Select year</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                  <option value="5">5th Year</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="graduationYear" class="form-label">Graduation Year</label>
+                <select id="graduationYear" formControlName="graduationYear" class="form-input">
+                  <option value="">Select year</option>
+                  @for (year of getYears(); track year) {
+                    <option [value]="year">{{ year }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- STEP 2: Career Information -->
+      @if (currentStep === 2) {
+        <div class="step-content fade-in">
+          <h2 class="step-title">Career Information</h2>
+
+          <form [formGroup]="careerForm" class="step-form">
+            <!-- Bio -->
+            <div class="form-group">
+              <label for="bio" class="form-label">Tell us about yourself (Optional)</label>
+              <textarea
+                id="bio"
+                formControlName="bio"
+                class="form-input textarea"
+                placeholder="Share your interests, achievements, or goals..."
+                rows="5"
+              ></textarea>
+              <span class="char-count">
+                {{ careerForm.get('bio')?.value?.length || 0 }}/500
+              </span>
+            </div>
+
+            <!-- Skills -->
+            <div class="form-group">
+              <label for="skillInput" class="form-label">Key Skills</label>
+              <div class="skill-input-wrapper">
+                <input
+                  id="skillInput"
+                  type="text"
+                  [value]="skillInput"
+                  (input)="skillInput = $any($event.target).value"
+                  (keydown)="onSkillInputKeydown($event, skillInput)"
+                  class="form-input"
+                  placeholder="Add a skill and press Enter"
+                />
+                <button
+                  type="button"
+                  (click)="addSkill(skillInput)"
+                  class="add-skill-btn"
+                >
+                  Add
+                </button>
+              </div>
+
+              <!-- Skills Tags -->
+              @if (skillsList.length > 0) {
+                <div class="skills-tags">
+                  @for (skill of skillsList; track skill) {
+                    <div class="skill-tag">
+                      <span>{{ skill }}</span>
+                      <button
+                        type="button"
+                        (click)="removeSkill(skill)"
+                        class="remove-skill"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- STEP 3: Professional Links -->
+      @if (currentStep === 3) {
+        <div class="step-content fade-in">
+          <h2 class="step-title">Professional Links</h2>
+
+          <form [formGroup]="linksForm" class="step-form">
+            <!-- LinkedIn -->
+            <div class="form-group">
+              <label for="linkedinUrl" class="form-label">LinkedIn Profile (Optional)</label>
+              <div class="input-with-icon">
+                <span class="input-icon">in</span>
+                <input
+                  id="linkedinUrl"
+                  type="url"
+                  formControlName="linkedinUrl"
+                  class="form-input"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                />
+              </div>
+              @if (linksForm.get('linkedinUrl')?.invalid && linksForm.get('linkedinUrl')?.touched) {
+                <span class="error-message">Invalid LinkedIn URL</span>
+              }
+            </div>
+
+            <!-- GitHub -->
+            <div class="form-group">
+              <label for="githubUrl" class="form-label">GitHub Profile (Optional)</label>
+              <div class="input-with-icon">
+                <span class="input-icon">@</span>
+                <input
+                  id="githubUrl"
+                  type="url"
+                  formControlName="githubUrl"
+                  class="form-input"
+                  placeholder="https://github.com/yourprofile"
+                />
+              </div>
+              @if (linksForm.get('githubUrl')?.invalid && linksForm.get('githubUrl')?.touched) {
+                <span class="error-message">Invalid GitHub URL</span>
+              }
+            </div>
+
+            <!-- Portfolio -->
+            <div class="form-group">
+              <label for="portfolioUrl" class="form-label">Portfolio Website (Optional)</label>
+              <div class="input-with-icon">
+                <span class="input-icon">🌐</span>
+                <input
+                  id="portfolioUrl"
+                  type="url"
+                  formControlName="portfolioUrl"
+                  class="form-input"
+                  placeholder="https://yourportfolio.com"
+                />
+              </div>
+              @if (linksForm.get('portfolioUrl')?.invalid && linksForm.get('portfolioUrl')?.touched) {
+                <span class="error-message">Invalid URL</span>
+              }
+            </div>
+          </form>
+        </div>
+      }
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="button-group">
+      @if (currentStep > 1) {
+        <button
+          type="button"
+          (click)="prevStep()"
+          class="btn-secondary"
+          [disabled]="isLoading()"
+        >
+          ← Previous
+        </button>
+      }
+
+      @if (currentStep < totalSteps) {
+        <button
+          type="button"
+          (click)="nextStep()"
+          class="btn-primary"
+          [disabled]="!isStep1Valid() || isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="loader"></span>
+          }
+          Next →
+        </button>
+      }
+
+      @if (currentStep === totalSteps) {
+        <button
+          type="button"
+          (click)="submitProfile()"
+          class="btn-primary btn-submit"
+          [disabled]="!isStep3Valid() || isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="loader"></span>
+            Completing...
+          } @else {
+            Complete Profile
+          }
+        </button>
+      }
+    </div>
+
+    <!-- Skip for now option (except on last step) -->
+    @if (currentStep < totalSteps) {
+      <div class="skip-option">
+        <button type="button" (click)="skipStep()" class="skip-btn">
+          Skip for now
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Decoration -->
+  <div class="decoration"></div>
+</div>

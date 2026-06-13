@@ -1,0 +1,46 @@
+// ─── CSS Custom Properties (used in templates) ────────────────────────────
+:root {
+  --green:   #4CAF50;
+  --lgreen:  #7BC67E;
+  --yellow:  #F9C74F;
+  --orange:  #F4845F;
+  --blue:    #5B9BD5;
+  --red:     #E05C5C;
+  --purple:  #8B6FBE;
+  --bg:      #F7F8FC;
+  --card:    #FFFFFF;
+  --text:    #3A3A4A;
+  --muted:   #7A7A90;
+  --border:  #E8E8F0;
+  --navy:    #1E1E2E;
+}
+
+// ─── SCSS Variables (used inside component SCSS files) ────────────────────
+$green:   #4CAF50;
+$lgreen:  #7BC67E;
+$yellow:  #F9C74F;
+$orange:  #F4845F;
+$blue:    #5B9BD5;
+$red:     #E05C5C;
+$purple:  #8B6FBE;
+$bg:      #F7F8FC;
+$card:    #FFFFFF;
+$text:    #3A3A4A;
+$muted:   #7A7A90;
+$border:  #E8E8F0;
+$navy:    #1E1E2E;
+
+// ─── Typography ───────────────────────────────────────────────────────────
+$font-base:    'Nunito', sans-serif;
+$font-heading: 'Poppins', sans-serif;
+
+// ─── Breakpoints ──────────────────────────────────────────────────────────
+$bp-mobile:  480px;
+$bp-tablet:  768px;
+$bp-desktop: 1024px;
+$bp-wide:    1280px;
+
+// ─── Layout ───────────────────────────────────────────────────────────────
+$section-pad-y: 72px;
+$section-pad-x: 24px;
+$max-width:     1280px;

@@ -1,0 +1,376 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1 — HERO
+════════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+
+    <div class="hero-content">
+      <div class="hero-tag">
+        <span class="pulse-dot"></span>
+        80,000+ Students Enrolled
+      </div>
+
+      <h1>
+        Learn with<br>
+        <span
+          class="rotating-word"
+          [style.color]="rotatingWords[activeWordIndex()].color">
+          {{ rotatingWords[activeWordIndex()].text }}
+        </span>
+      </h1>
+
+      <p class="hero-sub">
+        Land your dream role with hands-on courses designed by
+        working professionals from top companies.
+      </p>
+
+      <div class="hero-cta">
+        <button class="btn-primary" (click)="goToCourses()">Explore Courses</button>
+        <button class="btn-outline" (click)="goToInternships()">View Internships</button>
+      </div>
+
+      <div class="hero-stats">
+        @for (stat of stats; track stat.label) {
+          <div class="stat">
+            <div class="stat-num" [style.color]="stat.color">{{ stat.value }}</div>
+            <div class="stat-label">{{ stat.label }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="hero-banner">
+      <img src="assets/images/students learning.png" alt="Students learning at ULearn" />
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2 — ABOUT
+════════════════════════════════════════════════════════════════ -->
+<section class="about-section">
+  <div class="section-inner">
+    <div class="about-grid">
+
+      <div class="about-visual">
+        @for (stat of aboutStats; track stat.label) {
+          <div class="about-card">
+            <div class="about-icon">{{ stat.icon }}</div>
+            <div class="about-num" [style.color]="stat.color">{{ stat.value }}</div>
+            <div class="about-lbl">{{ stat.label }}</div>
+          </div>
+        }
+      </div>
+
+      <div class="about-content">
+        <div class="section-badge about-badge">About ULearn</div>
+        <h2>We're on a mission to make quality education accessible</h2>
+        <p>
+          ULearn bridges the gap between academic learning and industry expectations.
+          Our courses are built by practitioners — every lesson maps to real-world
+          skills employers want.
+        </p>
+        <ul class="about-points">
+          @for (point of aboutPoints; track point.text) {
+            <li>
+              <span class="check-circle" [style.background]="point.color">✓</span>
+              {{ point.text }}
+            </li>
+          }
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3 — AI/ML RESEARCH HIGHLIGHT
+════════════════════════════════════════════════════════════════ -->
+<section class="research-section">
+  <div class="section-inner">
+
+    <div class="section-header">
+      <div class="section-badge research-badge">🔬 Research Programme</div>
+      <div class="section-title" style="color:#fff">
+        AI &amp; Machine Learning Research
+      </div>
+      <div class="section-sub" style="color:rgba(255,255,255,.6)">
+        Dive deep into cutting-edge AI research with guidance from IIT &amp; industry researchers
+      </div>
+    </div>
+
+    <div class="research-card">
+      <div class="research-left">
+        <h3>AI/ML Research Course</h3>
+        <p>
+          A rigorous, project-driven research programme that takes you from fundamentals
+          to publishing-ready research. Work on real datasets, build original models,
+          and get mentored by active AI researchers.
+        </p>
+        <div class="research-tags">
+          @for (tag of researchTags; track tag) {
+            <span class="rtag">{{ tag }}</span>
+          }
+        </div>
+        <button class="btn-primary" (click)="goToResearch()">
+          Enroll for Research Programme →
+        </button>
+      </div>
+
+      <div class="research-stats">
+        @for (stat of researchStats; track stat.label) {
+          <div class="r-stat">
+            <div class="r-stat-num" [style.color]="stat.color">{{ stat.value }}</div>
+            <div class="r-stat-lbl">{{ stat.label }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 4 — FEATURED COURSES
+════════════════════════════════════════════════════════════════ -->
+<section class="courses-section">
+  <div class="section-inner">
+
+    <div class="section-header">
+      <div class="section-badge" style="background:rgba(91,155,213,.12);color:var(--blue)">
+        📚 Popular Courses
+      </div>
+      <div class="section-title">Courses built for your career</div>
+      <div class="section-sub">
+        From technical skills to creative mastery — every course is taught by working professionals
+      </div>
+    </div>
+
+    <div class="courses-grid">
+      @for (course of featuredCourses(); track course.id) {
+        <div class="course-card" (click)="goToCourse(course.slug)">
+          <div class="course-stripe" [style.background]="getCategoryColor(course.category)"></div>
+          <div class="course-thumb">
+            @if (course.thumbnailUrl) {
+              <img [src]="course.thumbnailUrl" [alt]="course.title" class="course-thumb-img" />
+            } @else {
+              <span class="course-emoji">{{ getCategoryEmoji(course.category) }}</span>
+            }
+          </div>
+          <div class="course-body">
+            <span class="course-tag"
+              [style.background]="getCategoryTagBg(course.category)"
+              [style.color]="getCategoryColor(course.category)">
+              {{ course.category | titlecase }}
+            </span>
+            <div class="course-title">{{ course.title }}</div>
+            <div class="course-meta">
+              <span>⏱ {{ course.durationMonths }} Months</span>
+              <span>🎥 {{ course.totalLessons }} Lessons</span>
+              <span>⭐ {{ course.rating }}</span>
+            </div>
+          </div>
+          <div class="course-footer">
+            <div class="price-wrap">
+              <div class="course-price">{{ formatPrice(course.price) }}</div>
+              <div class="original-price">{{ formatPrice(course.originalPrice) }}</div>
+              <div class="discount-badge">
+                {{ getDiscount(course.price, course.originalPrice) }}% OFF
+              </div>
+            </div>
+            <button class="enroll-btn"
+              (click)="$event.stopPropagation(); goToCourse(course.slug)">
+              View Course
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="view-all-wrap">
+      <button class="btn-outline" (click)="goToAllCourses()">
+        View All Courses →
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 5 — INTERNSHIPS
+════════════════════════════════════════════════════════════════ -->
+<section class="internships-section">
+  <div class="section-inner">
+
+    <div class="section-header">
+      <div class="section-badge" style="background:rgba(76,175,80,.12);color:var(--green)">
+        💼 Internships
+      </div>
+      <div class="section-title">Kickstart your career with real experience</div>
+      <div class="section-sub">
+        Get placed with our partner companies — even while you're still learning
+      </div>
+    </div>
+
+    <div class="intern-grid">
+      @for (intern of internships(); track intern.id) {
+        <div class="intern-home-card" (click)="goToInternship(intern.type)">
+          <div class="intern-card-top">
+            <div class="intern-icon"
+              [style.background]="getTypeColor(intern.type) + '1a'">
+              {{ intern.type === 'short' ? '⚡' : '🚀' }}
+            </div>
+            <div class="intern-badges">
+              <span class="intern-type-badge"
+                [style.background]="getTypeColor(intern.type) + '1a'"
+                [style.color]="getTypeColor(intern.type)">
+                {{ getTypeLabel(intern.type) }}
+              </span>
+              <span class="intern-mode-badge"
+                [style.background]="getModeColor(intern.mode) + '1a'"
+                [style.color]="getModeColor(intern.mode)">
+                {{ intern.mode | titlecase }}
+              </span>
+            </div>
+          </div>
+          <h3 class="intern-title">{{ intern.title }}</h3>
+          <p class="intern-desc">{{ intern.description }}</p>
+          <div class="intern-meta">
+            <span>⏱ {{ intern.durationLabel }}</span>
+            <span>💰 {{ formatStipend(intern.stipendPerMonth) }}</span>
+          </div>
+          <div class="intern-chips">
+            @for (skill of intern.skills.slice(0, 3); track skill) {
+              <span class="chip">{{ skill }}</span>
+            }
+            @if (intern.skills.length > 3) {
+              <span class="chip">+{{ intern.skills.length - 3 }} more</span>
+            }
+          </div>
+          <div class="intern-footer">
+            <span class="intern-status">
+              <span class="status-dot open"></span> Open
+            </span>
+            <span class="intern-arrow">Explore →</span>
+          </div>
+        </div>
+      }
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 6 — RESEARCH PAPERS PREVIEW
+════════════════════════════════════════════════════════════════ -->
+<section class="papers-section">
+  <div class="section-inner">
+
+    <div class="section-header">
+      <div class="section-badge" style="background:rgba(91,155,213,.12);color:var(--blue)">
+        📄 Published Research
+      </div>
+      <div class="section-title">Our Research Papers</div>
+      <div class="section-sub">
+        Cutting-edge research by our mentors and students, published in
+        top-tier journals and conferences
+      </div>
+    </div>
+
+    <div class="papers-preview-list">
+      @for (paper of featuredPapers(); track paper.id) {
+        <div class="paper-preview-card">
+          <div class="paper-preview-top">
+            <div class="paper-cat-tag"
+              [style.background]="getCategoryInfo(paper.category).color + '1a'"
+              [style.color]="getCategoryInfo(paper.category).color">
+              {{ getCategoryInfo(paper.category).icon }}
+              {{ getCategoryInfo(paper.category).label }}
+            </div>
+            <div class="paper-venue-tag">{{ paper.venue }}</div>
+          </div>
+          <h3 class="paper-preview-title">{{ paper.title }}</h3>
+          <div class="paper-preview-authors">
+            @for (author of paper.authors; track author; let last = $last) {
+              <span>{{ author }}</span>
+              @if (!last) { <span class="author-sep">·</span> }
+            }
+          </div>
+          <p class="paper-preview-abstract">
+            {{ truncateAbstract(paper.abstract) }}
+          </p>
+          <div class="paper-preview-footer">
+            <span class="paper-citations">{{ paper.citations }} citations · {{ paper.year }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="view-all-wrap">
+      <button class="btn-outline" (click)="goToAllPapers()">
+        View All Research Papers →
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 7 — TESTIMONIALS
+════════════════════════════════════════════════════════════════ -->
+<section class="testimonials-section">
+  <div class="section-inner">
+
+    <div class="section-header">
+      <div class="section-badge" style="background:rgba(249,199,79,.15);color:#b38000">
+        ⭐ Student Stories
+      </div>
+      <div class="section-title">Real results. Real people.</div>
+      <div class="section-sub">
+        Hear from students who transformed their careers with ULearn
+      </div>
+    </div>
+
+    <div class="testi-grid">
+      @for (t of testimonials; track t.name) {
+        <div class="testi-card">
+          <div class="stars">★★★★★</div>
+          <p>"{{ t.quote }}"</p>
+          <div class="testi-author">
+            <div class="avatar" [style.background]="t.color">{{ t.avatar }}</div>
+            <div>
+              <div class="author-name">{{ t.name }}</div>
+              <div class="author-role">{{ t.role }}</div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 8 — REFER & EARN BANNER
+════════════════════════════════════════════════════════════════ -->
+<div class="refer-wrap">
+  <div class="refer">
+    <div class="refer-left">
+      <div class="section-badge refer-badge">🎁 Refer &amp; Earn</div>
+      <h2>Share ULearn. Earn <span style="color:var(--green)">₹500</span> per referral.</h2>
+      <p>
+        Refer a friend to any ULearn course and earn ₹500 for every
+        successful enrollment. No limits — the more you share, the more you earn!
+      </p>
+      <button class="btn-primary" (click)="goToRefer()" style="margin-top:20px">
+        Start Referring →
+      </button>
+    </div>
+    <div class="refer-right">
+      <div class="refer-amount">₹500</div>
+      <div class="refer-sublabel">per successful referral</div>
+    </div>
+  </div>
+</div>

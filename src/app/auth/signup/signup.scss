@@ -1,0 +1,319 @@
+@use '../../../styles/variables' as *;
+
+.signup-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #f7f8fc 0%, #eef2ff 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  &::before {
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(139, 111, 190, 0.24) 0%, transparent 72%);
+    top: 10%;
+    left: -60px;
+    animation: float 10s ease-in-out infinite;
+  }
+
+  &::after {
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(79, 140, 255, 0.16) 0%, transparent 72%);
+    bottom: -60px;
+    right: -90px;
+    animation: float 12s ease-in-out infinite reverse;
+  }
+
+  @media (max-width: $bp-mobile) {
+    padding: 16px;
+  }
+}
+
+.signup-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+  border: 1px solid rgba(139, 111, 190, 0.1);
+  box-shadow: 0 8px 32px rgba(139, 111, 190, 0.08),
+              0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 48px;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.75s ease both;
+
+  @media (max-width: $bp-mobile) {
+    padding: 32px 24px;
+    border-radius: 20px;
+  }
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  opacity: 0;
+  animation: fadeInUp 0.75s ease both;
+
+  .brand-logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    object-fit: cover;
+    border: 1px solid rgba(139, 111, 190, 0.12);
+    box-shadow: 0 10px 30px rgba(79, 67, 167, 0.12);
+    background: #fff;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin: 0;
+    color: var(--purple);
+    letter-spacing: 0.02em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+}
+
+.card-header {
+  margin-bottom: 32px;
+  text-align: center;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 8px;
+    font-family: var(--font-heading);
+    opacity: 0;
+    animation: fadeInUp 0.7s ease 0.1s both;
+
+    @media (max-width: $bp-mobile) {
+      font-size: 1.5rem;
+    }
+  }
+
+  p {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+    opacity: 0;
+    animation: fadeInUp 0.7s ease 0.2s both;
+  }
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  animation: fadeInUp 0.7s ease 0.3s both;
+}
+
+.form-input {
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: var(--font-base);
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text);
+
+  &::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--purple);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(139, 111, 190, 0.1);
+  }
+
+  &.error {
+    border-color: var(--red);
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(224, 92, 92, 0.1);
+    }
+  }
+}
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .form-input {
+    padding-right: 44px;
+  }
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: color 0.2s ease;
+  padding: 4px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    color: var(--purple);
+  }
+}
+
+.error-message {
+  font-size: 0.8rem;
+  color: var(--red);
+  padding: 0 4px;
+  font-weight: 500;
+}
+
+.form-error-banner {
+  padding: 12px 16px;
+  background: rgba(224, 92, 92, 0.1);
+  border: 1px solid rgba(224, 92, 92, 0.3);
+  border-radius: 10px;
+  color: var(--red);
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.btn-submit {
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--purple) 0%, #7d5fa8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--font-base);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(139, 111, 190, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text);
+
+    .link {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: #7d5fa8;
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.decoration {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139, 111, 190, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  top: -100px;
+  right: -100px;
+  pointer-events: none;
+
+  @media (max-width: $bp-tablet) {
+    display: none;
+  }
+}

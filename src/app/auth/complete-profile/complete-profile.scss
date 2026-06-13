@@ -1,0 +1,293 @@
+/*
+  Modern, responsive SCSS for the 3-step onboarding flow (profile completion page)
+  - Glassmorphism card
+  - Progress bar
+  - Step transitions
+  - Responsive layout
+  - Button and input styling
+  - Skills chips
+*/
+
+:root {
+  --primary: #4f8cff;
+  --accent: #e0e7ff;
+  --danger: #ff4f4f;
+  --bg-glass: rgba(255,255,255,0.7);
+  --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --border-radius: 18px;
+  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.profile-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%);
+  padding: 2rem 1rem;
+}
+
+.profile-card {
+  background: var(--bg-glass);
+  box-shadow: var(--shadow);
+  border-radius: var(--border-radius);
+  padding: 2.5rem 2rem 2rem 2rem;
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(12px);
+  border: 1.5px solid #e0e7ff;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 0.25rem;
+  }
+  p {
+    color: #555;
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+
+.progress-section {
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e7ff;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      transition: width var(--transition);
+    }
+  }
+  .progress-text {
+    font-size: 0.95rem;
+    color: #4f8cff;
+    text-align: right;
+    margin: 0;
+  }
+}
+
+.form-steps {
+  .step-content {
+    animation: fadeIn 0.4s;
+    .step-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    .step-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      .form-label {
+        font-weight: 500;
+        color: #222;
+        margin-bottom: 0.1rem;
+      }
+      .form-input, .textarea {
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px;
+        border: 1.5px solid #c7d2fe;
+        background: #f8fafc;
+        font-size: 1rem;
+        transition: border-color var(--transition);
+        &:focus {
+          border-color: var(--primary);
+          outline: none;
+        }
+      }
+      .textarea {
+        resize: vertical;
+        min-height: 80px;
+        max-height: 200px;
+      }
+      .error-message {
+        color: var(--danger);
+        font-size: 0.92rem;
+        margin-top: 0.1rem;
+      }
+      .char-count {
+        font-size: 0.85rem;
+        color: #888;
+        align-self: flex-end;
+      }
+    }
+    .form-row {
+      display: flex;
+      gap: 1rem;
+      .form-group {
+        flex: 1;
+      }
+    }
+    .input-with-icon {
+      display: flex;
+      align-items: center;
+      .input-icon {
+        margin-right: 0.5rem;
+        color: var(--primary);
+        font-size: 1.1rem;
+      }
+      .form-input {
+        flex: 1;
+      }
+    }
+    .skill-input-wrapper {
+      display: flex;
+      gap: 0.5rem;
+      .form-input {
+        flex: 1;
+      }
+      .add-skill-btn {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0 1.1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background var(--transition);
+        &:hover {
+          background: #2563eb;
+        }
+      }
+    }
+    .skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      .skill-tag {
+        background: var(--accent);
+        color: #222;
+        border-radius: 16px;
+        padding: 0.3rem 0.9rem 0.3rem 0.8rem;
+        display: flex;
+        align-items: center;
+        font-size: 0.97rem;
+        .remove-skill {
+          background: none;
+          border: none;
+          color: var(--danger);
+          font-size: 1.1rem;
+          margin-left: 0.4rem;
+          cursor: pointer;
+        }
+      }
+    }
+  }
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.7rem 2.2rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--transition);
+    &:hover {
+      background: #2563eb;
+    }
+    &.btn-submit {
+      box-shadow: 0 2px 8px 0 rgba(79,140,255,0.12);
+    }
+    .loader {
+      border: 2px solid #e0e7ff;
+      border-top: 2px solid #4f8cff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+  }
+  .btn-secondary {
+    background: #fff;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    border-radius: 8px;
+    padding: 0.7rem 2.2rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    &:hover {
+      background: #e0e7ff;
+      color: #2563eb;
+    }
+  }
+}
+
+.skip-option {
+  text-align: center;
+  margin-top: 1.2rem;
+  .skip-btn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1rem;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color var(--transition);
+    &:hover {
+      color: var(--primary);
+    }
+  }
+}
+
+.decoration {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #4f8cff 0%, #e0e7ff 100%);
+  opacity: 0.18;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+@media (max-width: 600px) {
+  .profile-card {
+    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    max-width: 100vw;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

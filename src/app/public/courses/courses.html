@@ -1,0 +1,334 @@
+<div class="courses-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div class="page-header-left">
+        <h1>All Courses</h1>
+        <p>{{ filteredCourses().length }} courses found</p>
+      </div>
+      <div class="page-header-right">
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search courses..."
+            [value]="filters().searchQuery"
+            (input)="setSearch($any($event.target).value)"
+          />
+        </div>
+        <select class="sort-select" (change)="setSortBy($any($event.target).value)">
+          @for (opt of sortOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+        <button class="mobile-filter-btn" (click)="toggleMobilePanel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+            <line x1="11" y1="18" x2="13" y2="18" />
+          </svg>
+          Filters
+          @if (activeFilterCount() > 0) {
+            <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="courses-layout">
+    <!-- ── FILTER PANEL (desktop) ─────────────────────────────────────────── -->
+    <aside class="filter-panel" [class.collapsed]="!filterPanelOpen()">
+      <div class="filter-header">
+        <span class="filter-title">
+          Filters
+          @if (activeFilterCount() > 0) {
+            <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+          }
+        </span>
+        <div class="filter-header-actions">
+          @if (activeFilterCount() > 0) {
+            <button class="clear-btn" (click)="clearAllFilters()">Clear all</button>
+          }
+          <button class="collapse-btn" (click)="toggleFilterPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-body">
+        <!-- Category -->
+        <div class="filter-group">
+          <div class="filter-group-title">Category</div>
+          @for (opt of categoryOptions; track opt.value) {
+            <div class="filter-checkbox" (click)="toggleCategory(opt.value)">
+              <div
+                class="checkbox"
+                [class.checked]="isCategorySelected(opt.value)"
+                [style.border-color]="isCategorySelected(opt.value) ? opt.color : ''"
+                [style.background]="isCategorySelected(opt.value) ? opt.color : ''"
+              >
+                @if (isCategorySelected(opt.value)) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                }
+              </div>
+              <span>{{ opt.label }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Duration -->
+        <div class="filter-group">
+          <div class="filter-group-title">Duration</div>
+          @for (opt of durationOptions; track opt.value) {
+            <div class="filter-checkbox" (click)="toggleDuration(opt.value)">
+              <div
+                class="checkbox"
+                [class.checked]="isDurationSelected(opt.value)"
+                [style.border-color]="isDurationSelected(opt.value) ? 'var(--purple)' : ''"
+                [style.background]="isDurationSelected(opt.value) ? 'var(--purple)' : ''"
+              >
+                @if (isDurationSelected(opt.value)) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                }
+              </div>
+              <span>{{ opt.label }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Rating -->
+        <div class="filter-group">
+          <div class="filter-group-title">Rating</div>
+          @for (opt of ratingOptions; track opt.value) {
+            <div class="filter-radio" (click)="setRating(opt.value)">
+              <div class="radio" [class.checked]="filters().rating === opt.value">
+                @if (filters().rating === opt.value) {
+                  <div class="radio-dot"></div>
+                }
+              </div>
+              <span>{{ opt.label }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Type -->
+        <div class="filter-group">
+          <div class="filter-group-title">Type</div>
+          <div class="filter-checkbox" (click)="toggleResearch()">
+            <div
+              class="checkbox"
+              [class.checked]="filters().researchOnly"
+              [style.border-color]="filters().researchOnly ? 'var(--purple)' : ''"
+              [style.background]="filters().researchOnly ? 'var(--purple)' : ''"
+            >
+              @if (filters().researchOnly) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              }
+            </div>
+            <span>Research Courses Only</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── COURSE CARDS ──────────────────────────────────────────────────── -->
+    <div class="courses-content">
+      @if (isLoading()) {
+        <div class="loading-grid">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="skeleton-card">
+              <div class="skeleton-thumb"></div>
+              <div class="skeleton-body">
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line medium"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (filteredCourses().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <h3>No courses found</h3>
+          <p>Try adjusting your filters or search query</p>
+          <button class="btn-primary" (click)="clearAllFilters()">Clear Filters</button>
+        </div>
+      } @else {
+        <div class="cards-grid">
+          @for (course of filteredCourses(); track course.id) {
+            <div class="course-card" (click)="openCourse(course.slug)">
+              <div
+                class="course-stripe"
+                [style.background]="getCategoryColor(course.category)"
+              ></div>
+              <div class="course-thumb">
+                @if (course.thumbnailUrl) {
+                  <img [src]="course.thumbnailUrl" [alt]="course.title" class="course-thumb-img" />
+                } @else {
+                  <span class="course-emoji">{{ getCategoryEmoji(course.category) }}</span>
+                }
+                @if (course.isResearchCourse) {
+                  <span class="research-badge">🔬 Research</span>
+                }
+              </div>
+              <div class="course-body">
+                <span
+                  class="course-tag"
+                  [style.background]="getCategoryTagBg(course.category)"
+                  [style.color]="getCategoryColor(course.category)"
+                >
+                  {{ course.category | titlecase }}
+                </span>
+                <div class="course-title">{{ course.title }}</div>
+                <div class="course-meta">
+                  <span>⏱ {{ course.durationMonths }} Months</span>
+                  <span>🎥 {{ course.totalLessons }} Lessons</span>
+                  <span>⭐ {{ course.rating }}</span>
+                  <span>👥 {{ course.totalStudents | number }}</span>
+                </div>
+              </div>
+              <div class="course-footer">
+                <div class="price-wrap">
+                  <div class="course-price">{{ formatPrice(course.price) }}</div>
+                  <div class="original-price">{{ formatPrice(course.originalPrice) }}</div>
+                  <div class="discount-badge">
+                    {{ getDiscount(course.price, course.originalPrice) }}% OFF
+                  </div>
+                </div>
+                <button
+                  class="enroll-btn"
+                  (click)="$event.stopPropagation(); openCourse(course.slug)"
+                >
+                  View Course
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ── MOBILE FILTER DRAWER ──────────────────────────────────────────────── -->
+@if (mobilePanelOpen()) {
+  <div class="mobile-overlay" (click)="toggleMobilePanel()"></div>
+}
+
+<div class="mobile-filter-drawer" [class.open]="mobilePanelOpen()">
+  <div class="drawer-header">
+    <span class="filter-title">
+      Filters
+      @if (activeFilterCount() > 0) {
+        <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+      }
+    </span>
+    <div style="display: flex; gap: 12px; align-items: center">
+      @if (activeFilterCount() > 0) {
+        <button class="clear-btn" (click)="clearAllFilters()">Clear all</button>
+      }
+      <button class="drawer-close-btn" (click)="toggleMobilePanel()">✕</button>
+    </div>
+  </div>
+
+  <div class="filter-body">
+    <div class="filter-group">
+      <div class="filter-group-title">Category</div>
+      @for (opt of categoryOptions; track opt.value) {
+        <div class="filter-checkbox" (click)="toggleCategory(opt.value)">
+          <div
+            class="checkbox"
+            [class.checked]="isCategorySelected(opt.value)"
+            [style.border-color]="isCategorySelected(opt.value) ? opt.color : ''"
+            [style.background]="isCategorySelected(opt.value) ? opt.color : ''"
+          >
+            @if (isCategorySelected(opt.value)) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            }
+          </div>
+          <span>{{ opt.label }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Duration</div>
+      @for (opt of durationOptions; track opt.value) {
+        <div class="filter-checkbox" (click)="toggleDuration(opt.value)">
+          <div
+            class="checkbox"
+            [class.checked]="isDurationSelected(opt.value)"
+            [style.border-color]="isDurationSelected(opt.value) ? 'var(--purple)' : ''"
+            [style.background]="isDurationSelected(opt.value) ? 'var(--purple)' : ''"
+          >
+            @if (isDurationSelected(opt.value)) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            }
+          </div>
+          <span>{{ opt.label }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Rating</div>
+      @for (opt of ratingOptions; track opt.value) {
+        <div class="filter-radio" (click)="setRating(opt.value)">
+          <div class="radio" [class.checked]="filters().rating === opt.value">
+            @if (filters().rating === opt.value) {
+              <div class="radio-dot"></div>
+            }
+          </div>
+          <span>{{ opt.label }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Type</div>
+      <div class="filter-checkbox" (click)="toggleResearch()">
+        <div
+          class="checkbox"
+          [class.checked]="filters().researchOnly"
+          [style.border-color]="filters().researchOnly ? 'var(--purple)' : ''"
+          [style.background]="filters().researchOnly ? 'var(--purple)' : ''"
+        >
+          @if (filters().researchOnly) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          }
+        </div>
+        <span>Research Courses Only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-footer">
+    <button class="btn-primary" style="width: 100%; border: none" (click)="toggleMobilePanel()">
+      Show {{ filteredCourses().length }} Courses
+    </button>
+  </div>
+</div>

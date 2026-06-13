@@ -1,0 +1,123 @@
+<div class="my-courses-container">
+  <!-- Header -->
+  <section class="header-section">
+    <div class="header-content">
+      <h1>My Courses</h1>
+      <p>Continue learning where you left off</p>
+    </div>
+  </section>
+
+  <!-- Filter Tabs -->
+  <section class="filter-section">
+    <div class="filter-tabs">
+      <button 
+        class="filter-tab" 
+        [class.active]="filterBy() === 'all'"
+        (click)="setFilter('all')"
+      >
+        All Courses
+        <span class="count">({{ myCourses().length }})</span>
+      </button>
+      <button 
+        class="filter-tab" 
+        [class.active]="filterBy() === 'in-progress'"
+        (click)="setFilter('in-progress')"
+      >
+        In Progress
+        <span class="count">({{ myCourses().filter(c => c.progress > 0 && c.progress < 100).length }})</span>
+      </button>
+      <button 
+        class="filter-tab" 
+        [class.active]="filterBy() === 'completed'"
+        (click)="setFilter('completed')"
+      >
+        Completed
+        <span class="count">({{ myCourses().filter(c => c.progress === 100).length }})</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Courses Grid -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading your courses...</p>
+    </div>
+  } @else if (getFilteredCourses().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">📚</div>
+      <h2>No courses found</h2>
+      <p>Start learning by exploring our course catalog</p>
+      <button class="btn-primary" routerLink="/courses">
+        Browse Courses
+      </button>
+    </div>
+  } @else {
+    <section class="courses-grid">
+      @for (course of getFilteredCourses(); track course.id) {
+        <div class="course-card">
+          <!-- Course Header -->
+          <div class="course-header">
+            <span class="category-badge" [style.background]="getCategoryColor(course.category)">
+              {{ course.category }}
+            </span>
+            <div class="course-title">{{ course.title }}</div>
+          </div>
+
+          <!-- Course Meta -->
+          <div class="course-meta">
+            <div class="meta-item">
+              <span class="meta-label">Instructor</span>
+              <span class="meta-value">{{ course.instructor }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Enrolled</span>
+              <span class="meta-value">{{ course.enrolledDate | date: 'MMM dd, yyyy' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Last Accessed</span>
+              <span class="meta-value">{{ course.lastAccessed | date: 'MMM dd, yyyy' }}</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <span class="progress-label">Progress</span>
+              <span class="progress-percent">{{ course.progress }}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="course.progress" [style.background]="getProgressColor(course.progress)"></div>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button class="btn-continue" (click)="continueCourse(course.id)">
+            @if (course.progress === 100) {
+              <span>View Certificate</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                <polyline points="13 2 13 9 20 9"/>
+              </svg>
+            } @else {
+              <span>Continue Learning</span>
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            }
+          </button>
+        </div>
+      }
+    </section>
+  }
+</div>
+
+@if (myCourses().length === 0) {
+  <div class="cta-section">
+    <h2>Ready to learn something new?</h2>
+    <p>Explore thousands of courses from expert instructors</p>
+    <button class="btn-primary" routerLink="/courses">
+      Start Learning Today
+    </button>
+  </div>
+}

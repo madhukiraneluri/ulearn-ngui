@@ -1,0 +1,470 @@
+@if (isLoading()) {
+  <div class="hero hero-skeleton">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="skeleton-badge"></div>
+        <div class="skeleton-title"></div>
+        <div class="skeleton-description"></div>
+        <div class="skeleton-meta"></div>
+        <div class="skeleton-avatars"></div>
+      </div>
+      <div class="hero-right">
+        <div class="skeleton-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-skeleton">
+    <div class="skeleton-tabs"></div>
+    <div class="skeleton-modules">
+      @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+        <div class="skeleton-module-item"></div>
+      }
+    </div>
+  </div>
+} @else if (!course()) {
+  <!-- 404 Not Found State -->
+  <div class="not-found">
+    <div class="not-found-content">
+      <h1>Course Not Found</h1>
+      <p>The course you're looking for doesn't exist or has been removed.</p>
+      <button class="btn-primary" (click)="navigateToAllCourses()">
+        Browse All Courses
+      </button>
+    </div>
+  </div>
+} @else {
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="hero-inner">
+      <!-- Hero Left -->
+      <div class="hero-left">
+        <div
+          class="category-badge"
+          [style.backgroundColor]="getCategoryTagBg(course()!.category)"
+          [style.color]="getCategoryColor(course()!.category)"
+        >
+          {{ getCategoryLabel(course()!.category) }}
+        </div>
+
+        <h1 class="course-title">{{ course()!.title }}</h1>
+        <p class="course-description">{{ course()!.description }}</p>
+
+        <!-- Meta Row -->
+        <div class="meta-row">
+          <div class="meta-item">
+            <span class="icon">⭐</span>
+            <span class="value">{{ course()!.rating.toFixed(1) }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="icon">👥</span>
+            <span class="value">
+              {{ (course()!.totalStudents / 1000).toFixed(1) }}K students
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="icon">⏱</span>
+            <span class="value">{{ formatDuration(course()!.durationMonths * 30 * 24 * 60) }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="icon">🎥</span>
+            <span class="value">{{ course()!.totalLessons }} lessons</span>
+          </div>
+        </div>
+
+        <!-- Mentor Avatars -->
+        @if (course()!.mentors && course()!.mentors.length > 0) {
+          <div class="mentor-avatars">
+            @for (mentor of course()!.mentors.slice(0, 5); track mentor.id) {
+              <div
+                class="mentor-avatar"
+                [title]="mentor.name"
+                [style.backgroundColor]="getCategoryColor(course()!.category)"
+              >
+                @if (mentor.avatarUrl) {
+                  <img [src]="mentor.avatarUrl" [alt]="mentor.name" />
+                } @else {
+                  {{ getInitials(mentor.name) }}
+                }
+              </div>
+            }
+            @if (course()!.mentors.length > 5) {
+              <div class="mentor-avatar-more">+{{ course()!.mentors.length - 5 }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Hero Right - Enroll Card -->
+      <div class="hero-right">
+        <div class="enroll-card" [class.pulse]="sidebarPulsing()">
+          <div class="price-section">
+            <div class="discounted-price">
+              {{ formatPrice(course()!.price) }}
+            </div>
+            <div class="original-price">
+              {{ formatPrice(course()!.originalPrice) }}
+            </div>
+            <div class="discount-badge">
+              {{ getDiscount(course()!.price, course()!.originalPrice) }}% OFF
+            </div>
+          </div>
+
+          <p class="limited-label">Limited time offer</p>
+
+          <button
+            class="btn-primary btn-enroll"
+            (click)="handleEnrollClick()"
+          >
+            @if (auth.isLoggedIn() && isEnrolled()) {
+              Continue Learning →
+            } @else {
+              Enroll Now
+            }
+          </button>
+
+          <p class="guarantee">✓ 30-day money back guarantee</p>
+
+          <div class="includes">
+            <h4>This course includes:</h4>
+            <ul>
+              <li>
+                <span class="checkmark">✓</span>
+                {{ course()!.totalLessons }} on-demand video lessons
+              </li>
+              <li>
+                <span class="checkmark">✓</span>
+                Downloadable notes per lesson
+              </li>
+              <li>
+                <span class="checkmark">✓</span>
+                Certificate of completion
+              </li>
+              <li>
+                <span class="checkmark">✓</span>
+                Lifetime access
+              </li>
+              <li>
+                <span class="checkmark">✓</span>
+                Mentor Q&A support
+              </li>
+              <li>
+                <span class="checkmark">✓</span>
+                Mobile & desktop access
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BODY SECTION -->
+  <section class="body">
+    <div class="body-inner">
+      <!-- Left Column - Tabs Content -->
+      <div class="content-left">
+        <!-- Video Preview (for first free lesson) -->
+        @if (
+          course()!.curriculum.length > 0 &&
+          course()!.curriculum[0].lessons.length > 0 &&
+          getFirstFreeLessonIndex() >= 0
+        ) {
+          <div class="video-section">
+            <div class="video-container">
+              <div class="video-placeholder">
+                <div class="play-button">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <div class="free-badge">Free Preview</div>
+              </div>
+            </div>
+            <h3 class="video-title">
+              {{ course()!.curriculum[0].lessons[getFirstFreeLessonIndex()].title }}
+            </h3>
+          </div>
+        }
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+          <button
+            class="tab-button"
+            [class.active]="activeTab() === 'curriculum'"
+            (click)="activeTab.set('curriculum')"
+          >
+            Curriculum
+          </button>
+          <button
+            class="tab-button"
+            [class.active]="activeTab() === 'about'"
+            (click)="activeTab.set('about')"
+          >
+            About
+          </button>
+          <button
+            class="tab-button"
+            [class.active]="activeTab() === 'mentors'"
+            (click)="activeTab.set('mentors')"
+          >
+            Mentors
+          </button>
+        </div>
+
+        <!-- CURRICULUM TAB -->
+        @if (activeTab() === 'curriculum') {
+          <div class="tab-content curriculum-tab">
+            <div class="curriculum-header">
+              <h3>{{ course()!.curriculum.length }} Modules · {{ course()!.totalLessons }} Lessons</h3>
+            </div>
+
+            <!-- Modules Accordion -->
+            <div class="modules-list">
+              @for (module of course()!.curriculum; track module.id) {
+                <div class="module-item">
+                  <!-- Module Header -->
+                  <div
+                    class="module-header"
+                    (click)="handleModuleClick(module)"
+                    [class.expandable]="canAccessModule(module)"
+                  >
+                    <div class="module-left">
+                      <div
+                        class="module-number"
+                        [class.free]="canAccessModule(module)"
+                        [class.locked]="!canAccessModule(module)"
+                      >
+                        @if (canAccessModule(module)) {
+                          <span>{{ module.order }}</span>
+                        } @else {
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                              d="M7 10h10V7c0-1.1-.9-2-2-2h-6c-1.1 0-2 .9-2 2v3zm11 1H6v6c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2v-6zm1-9H6c-2.2 0-4 1.8-4 4v10c0 2.2 1.8 4 4 4h6c2.2 0 4-1.8 4-4V6c0-2.2-1.8-4-4-4z"
+                            />
+                          </svg>
+                        }
+                      </div>
+                      <div class="module-info">
+                        <h4>{{ module.title }}</h4>
+                        <span class="lesson-count">
+                          {{ module.lessons.length }} lessons · {{ formatDuration(getTotalLessonDuration(module)) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="module-right">
+                      @if (module.order === 1) {
+                        <span class="free-preview-badge">Free preview</span>
+                      }
+                      <svg
+                        class="chevron"
+                        [class.rotated]="isModuleExpanded(module.id)"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- Module Lessons -->
+                  @if (isModuleExpanded(module.id)) {
+                    <div class="module-lessons" [class.locked]="shouldShowLockOverlay(module)">
+                      @for (lesson of module.lessons; track lesson.id) {
+                        <div class="lesson-item">
+                          <div class="lesson-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                          <div class="lesson-info">
+                            <h5>{{ lesson.title }}</h5>
+                            <span class="lesson-duration"> {{ formatDuration(lesson.durationMinutes) }}</span>
+                          </div>
+                          @if (lesson.isFree) {
+                            <span class="free-badge">Free</span>
+                          }
+                        </div>
+                      }
+
+                      @if (shouldShowLockOverlay(module)) {
+                        <div class="blur-overlay"></div>
+                      }
+                    </div>
+                  }
+
+                  <!-- Lock Message -->
+                  @if (lockMessage() && !canAccessModule(module)) {
+                    <div class="lock-message">
+                      <p>{{ lockMessage()!.message }}</p>
+                      <button
+                        class="btn-secondary"
+                        (click)="handleLockAction()"
+                      >
+                        {{ lockMessage()!.actionLabel }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ABOUT TAB -->
+        @if (activeTab() === 'about') {
+          <div class="tab-content about-tab">
+            <div class="about-section">
+              <h3>About this course</h3>
+              <p>{{ course()!.description }}</p>
+            </div>
+
+            <div class="about-section">
+              <h3>What you'll learn</h3>
+              <ul class="learning-points">
+                <li>Master the core concepts and best practices</li>
+                <li>Build real-world projects from scratch</li>
+                <li>Work on industry-standard tools and frameworks</li>
+                <li>Get hands-on experience with live mentor guidance</li>
+                <li>Publish your work and receive professional feedback</li>
+              </ul>
+            </div>
+
+            <div class="about-section">
+              <h3>Prerequisites</h3>
+              <ul class="learning-points">
+                <li>Basic understanding of programming concepts</li>
+                <li>Passion to learn and build projects</li>
+                <li>Commitment of 5-10 hours per week</li>
+              </ul>
+            </div>
+          </div>
+        }
+
+        <!-- MENTORS TAB -->
+        @if (activeTab() === 'mentors') {
+          <div class="tab-content mentors-tab">
+            <div class="mentors-grid">
+              @for (mentor of course()!.mentors; track mentor.id) {
+                <div class="mentor-card">
+                  <div class="mentor-avatar-large">
+                    @if (mentor.avatarUrl) {
+                      <img [src]="mentor.avatarUrl" [alt]="mentor.name" />
+                    } @else {
+                      <div class="avatar-initials">
+                        {{ getInitials(mentor.name) }}
+                      </div>
+                    }
+                  </div>
+                  <h4>{{ mentor.name }}</h4>
+                  <p class="mentor-role">{{ mentor.role }}</p>
+                  <p class="mentor-company">{{ mentor.company }}</p>
+                  <p class="mentor-bio">{{ mentor.bio }}</p>
+                  @if (mentor.linkedInUrl) {
+                    <a
+                      class="mentor-link"
+                      [href]="mentor.linkedInUrl"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      LinkedIn Profile →
+                    </a>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Right Column - Sticky Sidebar -->
+      <aside class="sidebar">
+        <div class="sticky-sidebar">
+          <!-- Enroll Popup Card -->
+          <div class="sidebar-card enroll-popup" [class.pulse]="sidebarPulsing()">
+            <h3>Unlock the full course</h3>
+            <p>
+              Get access to all {{ course()!.curriculum.length }} modules, {{ course()!.totalLessons }} lessons, and mentor support
+            </p>
+
+            <div class="sidebar-price">
+              <span class="price">{{ formatPrice(course()!.price) }}</span>
+              <span class="original">{{ formatPrice(course()!.originalPrice) }}</span>
+              <span class="discount">{{ getDiscount(course()!.price, course()!.originalPrice) }}% OFF</span>
+            </div>
+
+            <button
+              class="btn-primary btn-sidebar-enroll"
+              (click)="handleEnrollClick()"
+            >
+              @if (auth.isLoggedIn() && isEnrolled()) {
+                Continue Learning →
+              } @else {
+                Enroll Now
+              }
+            </button>
+
+            @if (!auth.isLoggedIn() || !isEnrolled()) {
+              <button
+                class="btn-secondary btn-sidebar-secondary"
+                (click)="handleSecondaryButtonClick()"
+              >
+                @if (!auth.isLoggedIn()) {
+                  Log In
+                } @else {
+                  View Payment
+                }
+              </button>
+            }
+          </div>
+
+          <!-- Course Includes Card -->
+          <div class="sidebar-card includes-card">
+            <h4>This course includes</h4>
+            <ul class="includes-list">
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                {{ course()!.totalLessons }} on-demand videos
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Downloadable notes
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Certificate of completion
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Lifetime access
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Mentor Q&A support
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Mobile & desktop access
+              </li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+}

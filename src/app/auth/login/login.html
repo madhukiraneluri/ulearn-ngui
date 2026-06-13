@@ -1,0 +1,100 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="brand-mark">
+      <img src="assets/images/logo.jpeg" alt="ULearn" class="brand-logo" />
+      <div>
+        <h2>ULearn</h2>
+        <p>Smart learning, faster growth.</p>
+      </div>
+    </div>
+
+    <div class="card-header">
+      <h1>Welcome Back</h1>
+      <p>Sign in to your ULearn account</p>
+    </div>
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="email" class="form-label">Email Address</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          class="form-input"
+          placeholder="your.email@college.com"
+          [class.error]="form.get('email')?.invalid && form.get('email')?.touched"
+        />
+        @if (form.get('email')?.invalid && form.get('email')?.touched) {
+          <span class="error-message">
+            {{ getErrorMessage('email') }}
+          </span>
+        }
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <div class="password-header">
+          <label for="password" class="form-label">Password</label>
+          <a href="#" class="forgot-link">Forgot password?</a>
+        </div>
+        <div class="password-field">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            class="form-input"
+            placeholder="Enter your password"
+            [class.error]="form.get('password')?.invalid && form.get('password')?.touched"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="togglePasswordVisibility()"
+            tabindex="-1"
+          >
+            @if (showPassword) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            }
+          </button>
+        </div>
+        @if (form.get('password')?.invalid && form.get('password')?.touched) {
+          <span class="error-message">
+            {{ getErrorMessage('password') }}
+          </span>
+        }
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        [disabled]="form.invalid || isLoading()"
+        class="btn-submit"
+      >
+        @if (isLoading()) {
+          <span class="loader"></span>
+          Signing in...
+        } @else {
+          Continue Learning
+        }
+      </button>
+    </form>
+
+    <!-- Footer -->
+    <div class="card-footer">
+      <p>Don't have an account? <a routerLink="/auth/register" class="link">Create one</a></p>
+    </div>
+  </div>
+
+  <!-- Decoration -->
+  <div class="decoration"></div>
+</div>

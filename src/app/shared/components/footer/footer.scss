@@ -1,0 +1,126 @@
+@use '../../../../styles/variables' as *;
+
+.footer {
+  background: var(--navy);
+  color: #fff;
+  padding: 60px 24px 28px;
+}
+
+.footer-inner {
+  max-width: $max-width;
+  margin: 0 auto;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+
+  @media (max-width: $bp-desktop) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: $bp-mobile) {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+// ── Brand ─────────────────────────────────────────────────────────────────────
+.footer-brand {
+  p {
+    color: rgba(255,255,255,.5);
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.7;
+    margin-top: 12px;
+    max-width: 300px;
+  }
+}
+
+.footer-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(1.1);
+}
+
+.footer-socials {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,.7);
+  transition: all 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+
+  svg { width: 16px; height: 16px; }
+
+  &:hover {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+  }
+}
+
+// ── Columns ───────────────────────────────────────────────────────────────────
+.footer-col {
+  h5 {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    color: rgba(255,255,255,.4);
+  }
+
+  a {
+    display: block;
+    color: rgba(255,255,255,.65);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    transition: color 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover { color: var(--purple); }
+  }
+}
+
+// ── Bottom ────────────────────────────────────────────────────────────────────
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  p {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,.35);
+    font-weight: 600;
+  }
+
+  @media (max-width: $bp-mobile) {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+.footer-made {
+  color: rgba(255,255,255,.25) !important;
+}

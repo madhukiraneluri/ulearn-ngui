@@ -1,0 +1,335 @@
+<div class="internships-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div class="page-header-left">
+        <h1>Internships</h1>
+        <p>{{ filteredInternships().length }} internships available</p>
+      </div>
+      <div class="page-header-right">
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search internships..."
+            [value]="filters().searchQuery"
+            (input)="setSearch($any($event.target).value)"
+          />
+        </div>
+        <select class="sort-select" (change)="setSortBy($any($event.target).value)">
+          @for (opt of sortOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+        <button class="mobile-filter-btn" (click)="toggleMobilePanel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="11" y1="18" x2="13" y2="18"/>
+          </svg>
+          Filters
+          @if (activeFilterCount() > 0) {
+            <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="internships-layout">
+
+    <!-- Filter Panel -->
+    <aside class="filter-panel" [class.collapsed]="!filterPanelOpen()">
+      <div class="filter-header">
+        <span class="filter-title">
+          Filters
+          @if (activeFilterCount() > 0) {
+            <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+          }
+        </span>
+        <div class="filter-header-actions">
+          @if (activeFilterCount() > 0) {
+            <button class="clear-btn" (click)="clearAllFilters()">Clear all</button>
+          }
+          <button class="collapse-btn" (click)="toggleFilterPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-body">
+
+        <!-- Type -->
+        <div class="filter-group">
+          <div class="filter-group-title">Type</div>
+          @for (opt of typeOptions; track opt.value) {
+            <div class="filter-checkbox" (click)="toggleType(opt.value)">
+              <div class="checkbox"
+                [class.checked]="isTypeSelected(opt.value)"
+                [style.border-color]="isTypeSelected(opt.value) ? opt.color : ''"
+                [style.background]="isTypeSelected(opt.value) ? opt.color : ''">
+                @if (isTypeSelected(opt.value)) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                }
+              </div>
+              <span>{{ opt.label }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Mode -->
+        <div class="filter-group">
+          <div class="filter-group-title">Work Mode</div>
+          @for (opt of modeOptions; track opt.value) {
+            <div class="filter-checkbox" (click)="toggleMode(opt.value)">
+              <div class="checkbox"
+                [class.checked]="isModeSelected(opt.value)"
+                [style.border-color]="isModeSelected(opt.value) ? opt.color : ''"
+                [style.background]="isModeSelected(opt.value) ? opt.color : ''">
+                @if (isModeSelected(opt.value)) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                }
+              </div>
+              <span>{{ opt.label }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Domain -->
+        <div class="filter-group">
+          <div class="filter-group-title">Domain</div>
+          @for (opt of domainOptions; track opt.value) {
+            <div class="filter-checkbox" (click)="toggleDomain(opt.value)">
+              <div class="checkbox"
+                [class.checked]="isDomainSelected(opt.value)"
+                [style.border-color]="isDomainSelected(opt.value) ? opt.color : ''"
+                [style.background]="isDomainSelected(opt.value) ? opt.color : ''">
+                @if (isDomainSelected(opt.value)) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                }
+              </div>
+              <span>{{ opt.value }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- PPO -->
+        <div class="filter-group">
+          <div class="filter-group-title">Opportunity</div>
+          <div class="filter-checkbox" (click)="togglePPO()">
+            <div class="checkbox"
+              [class.checked]="filters().ppoOnly"
+              [style.border-color]="filters().ppoOnly ? 'var(--green)' : ''"
+              [style.background]="filters().ppoOnly ? 'var(--green)' : ''">
+              @if (filters().ppoOnly) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              }
+            </div>
+            <span>PPO Available</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Cards -->
+    <div class="internships-content">
+
+      @if (isLoading()) {
+        <div class="loading-grid">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="skeleton-card">
+              <div class="skeleton-body">
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-line short"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (filteredInternships().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <h3>No internships found</h3>
+          <p>Try adjusting your filters or search query</p>
+          <button class="btn-primary" (click)="clearAllFilters()">Clear Filters</button>
+        </div>
+      } @else {
+        <div class="cards-grid">
+          @for (intern of filteredInternships(); track intern.id) {
+            <div class="intern-detail-card">
+
+              <div class="card-top">
+                <div class="card-icon" [style.background]="getTypeColor(intern.type) + '1a'">
+                  {{ intern.type === 'short' ? '⚡' : '🚀' }}
+                </div>
+                <div class="card-badges">
+                  <span class="type-badge"
+                    [style.background]="getTypeColor(intern.type) + '1a'"
+                    [style.color]="getTypeColor(intern.type)">
+                    {{ getTypeLabel(intern.type) }}
+                  </span>
+                  <span class="mode-badge"
+                    [style.background]="getModeColor(intern.mode) + '1a'"
+                    [style.color]="getModeColor(intern.mode)">
+                    {{ intern.mode | titlecase }}
+                  </span>
+                  @if (intern.hasPPO) {
+                    <span class="ppo-badge">⭐ PPO</span>
+                  }
+                </div>
+              </div>
+
+              <h3 class="card-title">{{ intern.title }}</h3>
+              <p class="card-desc">{{ intern.description }}</p>
+
+              <div class="card-meta">
+                <span>⏱ {{ intern.durationLabel }}</span>
+                <span>💰 {{ formatStipend(intern.stipendPerMonth) }}</span>
+                <span>📁 {{ intern.domain }}</span>
+              </div>
+
+              <div class="card-skills">
+                @for (skill of intern.skills; track skill) {
+                  <span class="skill-chip">{{ skill }}</span>
+                }
+              </div>
+
+              <div class="card-footer">
+                <span class="status-dot" [class.open]="intern.status === 'open'">
+                  {{ intern.status === 'open' ? 'Open' : 'Closed' }}
+                </span>
+                <button class="apply-btn"
+                  [disabled]="intern.status === 'closed'"
+                  [class.disabled]="intern.status === 'closed'">
+                  Apply Now
+                </button>
+              </div>
+
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Filter Drawer -->
+@if (mobilePanelOpen()) {
+  <div class="mobile-overlay" (click)="toggleMobilePanel()"></div>
+}
+
+<div class="mobile-filter-drawer" [class.open]="mobilePanelOpen()">
+  <div class="drawer-header">
+    <span class="filter-title">
+      Filters
+      @if (activeFilterCount() > 0) {
+        <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+      }
+    </span>
+    <div style="display:flex;gap:12px;align-items:center">
+      @if (activeFilterCount() > 0) {
+        <button class="clear-btn" (click)="clearAllFilters()">Clear all</button>
+      }
+      <button class="drawer-close-btn" (click)="toggleMobilePanel()">✕</button>
+    </div>
+  </div>
+  <div class="filter-body">
+    <div class="filter-group">
+      <div class="filter-group-title">Type</div>
+      @for (opt of typeOptions; track opt.value) {
+        <div class="filter-checkbox" (click)="toggleType(opt.value)">
+          <div class="checkbox" [class.checked]="isTypeSelected(opt.value)"
+            [style.border-color]="isTypeSelected(opt.value) ? opt.color : ''"
+            [style.background]="isTypeSelected(opt.value) ? opt.color : ''">
+            @if (isTypeSelected(opt.value)) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
+          </div>
+          <span>{{ opt.label }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Work Mode</div>
+      @for (opt of modeOptions; track opt.value) {
+        <div class="filter-checkbox" (click)="toggleMode(opt.value)">
+          <div class="checkbox" [class.checked]="isModeSelected(opt.value)"
+            [style.border-color]="isModeSelected(opt.value) ? opt.color : ''"
+            [style.background]="isModeSelected(opt.value) ? opt.color : ''">
+            @if (isModeSelected(opt.value)) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
+          </div>
+          <span>{{ opt.label }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Domain</div>
+      @for (opt of domainOptions; track opt.value) {
+        <div class="filter-checkbox" (click)="toggleDomain(opt.value)">
+          <div class="checkbox" [class.checked]="isDomainSelected(opt.value)"
+            [style.border-color]="isDomainSelected(opt.value) ? opt.color : ''"
+            [style.background]="isDomainSelected(opt.value) ? opt.color : ''">
+            @if (isDomainSelected(opt.value)) {
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            }
+          </div>
+          <span>{{ opt.value }}</span>
+        </div>
+      }
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <div class="filter-group-title">Opportunity</div>
+      <div class="filter-checkbox" (click)="togglePPO()">
+        <div class="checkbox" [class.checked]="filters().ppoOnly"
+          [style.border-color]="filters().ppoOnly ? 'var(--green)' : ''"
+          [style.background]="filters().ppoOnly ? 'var(--green)' : ''">
+          @if (filters().ppoOnly) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          }
+        </div>
+        <span>PPO Available</span>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-primary" style="width:100%;border:none;"
+      (click)="toggleMobilePanel()">
+      Show {{ filteredInternships().length }} Internships
+    </button>
+  </div>
+</div>
