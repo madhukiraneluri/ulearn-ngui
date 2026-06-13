@@ -115,7 +115,9 @@ export interface Course {
   durationMonths: number;
   durationDays?: number;
   weeklyHours?: number;
-  liveClassCount?: number;
+  /** Mapped from DB live_class_count */
+  classCount?: number;
+  hoursPerClass?: number;
   courseFormat?: CourseFormat;
   totalLessons: number;
   rating: number;
@@ -139,7 +141,9 @@ export interface CourseListItem {
   durationMonths: number;
   durationDays?: number;
   weeklyHours?: number;
-  liveClassCount?: number;
+  /** Mapped from DB live_class_count */
+  classCount?: number;
+  hoursPerClass?: number;
   courseFormat?: CourseFormat;
   totalLessons: number;
   rating: number;
@@ -219,6 +223,21 @@ export interface Enrollment {
   enrolledAt: string;
   status: EnrollmentStatus;
   progressPercent: number;
+}
+
+export interface UserEnrolledCourse {
+  enrollmentId: string;
+  courseId: string;
+  slug: string;
+  title: string;
+  category: CourseCategory;
+  thumbnailUrl?: string;
+  totalLessons: number;
+  classCount?: number;
+  hoursPerClass?: number;
+  progress: number;
+  enrolledAt: string;
+  firstLessonId?: string;
 }
 
 export interface Student {

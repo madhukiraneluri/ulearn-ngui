@@ -4,6 +4,10 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #f7f8fc 0%, #eef2ff 100%);
   padding: 60px 24px;
+
+  @media (max-width: $bp-mobile) {
+    padding: 32px 16px;
+  }
 }
 
 // ─── Header Section ──────────────────────────────────────────────────────────

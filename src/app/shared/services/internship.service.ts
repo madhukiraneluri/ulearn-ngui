@@ -24,7 +24,7 @@ const MOCK_INTERNSHIPS: Internship[] = [
   {
     id: '3', title: 'Digital Marketing Internship',
     type: 'short', mode: 'remote', domain: 'Marketing',
-    description: 'Run real ad campaigns, manage social media, and analyse growth metrics for a live product.',
+    description: 'Run real ad campaigns, manage social media, and analyse growth metrics for a real product.',
     durationLabel: '6 Weeks', stipendPerMonth: 4500,
     hasPPO: false, status: 'open',
     skills: ['Google Ads', 'Meta Ads', 'SEO', 'Analytics'],

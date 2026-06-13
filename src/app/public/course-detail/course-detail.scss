@@ -29,6 +29,11 @@
   gap: 60px;
   align-items: start;
 
+  &.hero-enrolled {
+    grid-template-columns: 1fr;
+    max-width: 900px;
+  }
+
   @media (max-width: $bp-tablet) {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -70,7 +75,134 @@
   line-height: 1.6;
   opacity: 0.9;
   margin: 0;
-  max-width: 500px;
+  max-width: 640px;
+}
+
+.hero-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #fff;
+  opacity: 0.95;
+}
+
+.hero-about {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+
+  .learning-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 20px;
+
+    @media (max-width: $bp-mobile) {
+      grid-template-columns: 1fr;
+    }
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.92);
+
+      &::before {
+        content: '✓';
+        color: #c8f0c8;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+    }
+  }
+}
+
+.hero-mentors {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hero-mentors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+
+  @media (max-width: $bp-mobile) {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 12px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+.hero-mentor-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+
+  @media (max-width: $bp-mobile) {
+    flex: 0 0 240px;
+    scroll-snap-align: start;
+  }
+}
+
+.hero-mentor-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.hero-mentor-info {
+  min-width: 0;
+  color: #fff;
+
+  h4 {
+    margin: 0 0 2px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .hero-mentor-role {
+    margin: 0;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .hero-mentor-company {
+    margin: 2px 0 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.72);
+  }
 }
 
 .meta-row {
@@ -146,6 +278,12 @@
 // ENROLL CARD (Hero & Sidebar)
 // ─────────────────────────────────────────────────────────────────────────────
 
+.hero-right {
+  @media (max-width: $bp-tablet) {
+    width: 100%;
+  }
+}
+
 .enroll-card {
   background: var(--card);
   border-radius: 18px;
@@ -155,6 +293,12 @@
 
   @media (max-width: $bp-tablet) {
     padding: 24px;
+    max-width: 100%;
+  }
+
+  @media (max-width: $bp-mobile) {
+    padding: 20px 16px;
+    border-radius: 14px;
   }
 
   &.pulse {
@@ -384,57 +528,10 @@
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TABS
+// CURRICULUM SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
-.tabs {
-  display: flex;
-  gap: 24px;
-  border-bottom: 2px solid var(--border);
-  margin-bottom: 32px;
-
-  @media (max-width: $bp-mobile) {
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-}
-
-.tab-button {
-  padding: 12px 0;
-  border: none;
-  background: transparent;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--muted);
-  cursor: pointer;
-  position: relative;
-  transition: color 0.3s ease;
-  white-space: nowrap;
-
-  @media (max-width: $bp-mobile) {
-    font-size: 0.85rem;
-  }
-
-  &:hover {
-    color: var(--text);
-  }
-
-  &.active {
-    color: var(--purple);
-
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--purple);
-    }
-  }
-}
-
-.tab-content {
+.curriculum-section {
   animation: fadeIn 0.3s ease;
 }
 
@@ -840,7 +937,7 @@
 
 .sticky-sidebar {
   position: sticky;
-  top: 100px;
+  top: 88px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -1004,12 +1101,6 @@
   height: 320px;
 }
 
-.skeleton-tabs {
-  width: 100%;
-  height: 40px;
-  margin-bottom: 32px;
-}
-
 .skeleton-modules {
   display: flex;
   flex-direction: column;
@@ -1116,38 +1207,54 @@
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOBILE RESPONSIVE - STICKY BOTTOM BAR
+// MOBILE RESPONSIVE
 // ─────────────────────────────────────────────────────────────────────────────
 
 @media (max-width: $bp-tablet) {
-  .sticky-sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    flex-direction: row;
-    background: var(--card);
-    border-top: 1px solid var(--border);
-    padding: 16px 24px;
-    z-index: 100;
-    gap: 12px;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
-  }
-
-  .enroll-popup,
-  .includes-card {
-    display: none !important;
-  }
-
-  .sidebar-card {
-    padding: 0;
-    border: none;
-    background: transparent;
-  }
-
   .body-inner {
-    padding-bottom: 120px;
+    padding-bottom: 24px;
+  }
+
+  .module-header {
+    padding: 14px 12px;
+  }
+
+  .module-right .free-preview-badge {
+    display: none;
+  }
+}
+
+.enrolled-card {
+  text-align: center;
+
+  .enrolled-badge {
+    display: inline-block;
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--green);
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+
+  .enrolled-msg,
+  p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0 0 20px;
+  }
+}
+
+.enroll-card.enrolled-card {
+  .enrolled-badge {
+    background: rgba(255, 255, 255, 0.15);
+    color: #a8e6a8;
+  }
+
+  .enrolled-msg {
+    color: rgba(255, 255, 255, 0.85);
   }
 }
 

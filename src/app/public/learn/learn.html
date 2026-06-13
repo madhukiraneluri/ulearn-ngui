@@ -20,7 +20,7 @@
               class="module-toggle"
               (click)="toggleModule(module.id)"
             >
-              <span class="module-name">{{ module.title }}</span>
+              <span class="module-name">{{ formatModuleTitle(module.order, module.title) }}</span>
               <span class="chevron" [class.open]="expandedModule() === module.id">▾</span>
             </button>
 
@@ -45,7 +45,7 @@
                         ○
                       }
                     </span>
-                    <span class="lesson-title">{{ lesson.title }}</span>
+                    <span class="lesson-title">{{ formatLessonTitle(lesson.title) }}</span>
                   </button>
                 }
               </div>
@@ -68,7 +68,7 @@
     <!-- Main content -->
     <main class="learn-content">
       <header class="lesson-header">
-        <h1>{{ currentLesson()!.title }}</h1>
+        <h1>{{ formatLessonTitle(currentLesson()!.title) }}</h1>
         <div class="lesson-meta">
           <span>{{ formatDuration(currentLesson()!.durationMinutes) }}</span>
           @if (currentLesson()!.isFree) {
@@ -132,7 +132,7 @@
       <nav class="lesson-nav">
         @if (previousLesson()) {
           <button type="button" class="btn-nav btn-prev" (click)="goPrevious()">
-            ← {{ previousLesson()!.title }}
+            ← {{ formatLessonTitle(previousLesson()!.title) }}
           </button>
         } @else {
           <span></span>
@@ -140,7 +140,7 @@
 
         @if (nextLesson()) {
           <button type="button" class="btn-nav btn-next" (click)="goNext()">
-            {{ nextLesson()!.title }} →
+            {{ formatLessonTitle(nextLesson()!.title) }} →
           </button>
         } @else {
           <button type="button" class="btn-nav btn-next btn-complete" (click)="markComplete()">

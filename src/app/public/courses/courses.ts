@@ -12,7 +12,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { CourseService } from '../../shared/services/course.service';
+import { AuthService } from '../../core/services/auth.service';
 import { CourseListItem, CourseCategory } from '../../models';
+import { formatClassHours } from '../../shared/utils/course-format.util';
 
 interface FilterState {
   categories: CourseCategory[];
@@ -34,9 +36,11 @@ export class Courses implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly courseService = inject(CourseService);
+  private readonly auth = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
 
   readonly allCourses = signal<CourseListItem[]>([]);
+  readonly enrolledCourseIds = signal<Set<string>>(new Set());
   readonly isLoading = signal(true);
 
   readonly filters = signal<FilterState>({
@@ -108,10 +112,19 @@ export class Courses implements OnInit, OnDestroy {
     }
 
     const sort = this.sortBy();
-    if (sort === 'rating') list.sort((a, b) => b.rating - a.rating);
-    if (sort === 'popular') list.sort((a, b) => b.totalStudents - a.totalStudents);
-    if (sort === 'price_asc') list.sort((a, b) => a.price - b.price);
-    if (sort === 'price_desc') list.sort((a, b) => b.price - a.price);
+    const enrolled = this.enrolledCourseIds();
+
+    list.sort((a, b) => {
+      const aEnrolled = enrolled.has(a.id);
+      const bEnrolled = enrolled.has(b.id);
+      if (aEnrolled !== bEnrolled) return aEnrolled ? -1 : 1;
+
+      if (sort === 'rating') return b.rating - a.rating;
+      if (sort === 'popular') return b.totalStudents - a.totalStudents;
+      if (sort === 'price_asc') return a.price - b.price;
+      if (sort === 'price_desc') return b.price - a.price;
+      return 0;
+    });
 
     return list;
   });
@@ -133,6 +146,8 @@ export class Courses implements OnInit, OnDestroy {
       this.allCourses.set(courses);
       this.isLoading.set(false);
     });
+
+    void this.loadEnrolledCourses();
 
     // URL → filter state (read URL params and apply to filters)
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -163,6 +178,21 @@ export class Courses implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private async loadEnrolledCourses(): Promise<void> {
+    const user = this.auth.currentUser();
+    if (!user) {
+      this.enrolledCourseIds.set(new Set());
+      return;
+    }
+
+    const ids = await this.courseService.getUserEnrolledCourseIds(user.id);
+    this.enrolledCourseIds.set(ids);
+  }
+
+  isEnrolled(courseId: string): boolean {
+    return this.enrolledCourseIds().has(courseId);
   }
 
   // ── Filter → URL sync ─────────────────────────────────────────────────────────
@@ -292,6 +322,16 @@ export class Courses implements OnInit, OnDestroy {
     }
     return `${course.durationMonths} months`;
   }
+
+  formatClassHours(course: CourseListItem): string {
+    return formatClassHours({
+      classCount: course.classCount,
+      hoursPerClass: course.hoursPerClass,
+      totalLessons: course.totalLessons
+    });
+  }
+
+  formatPrice(price: number): string {
     return '₹' + price.toLocaleString('en-IN');
   }
 

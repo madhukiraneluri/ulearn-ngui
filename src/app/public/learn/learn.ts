@@ -25,6 +25,7 @@ import { BlockQuote } from '../../shared/components/blocks/block-quote/block-quo
 import { BlockDivider } from '../../shared/components/blocks/block-divider/block-divider';
 import { BlockGallery } from '../../shared/components/blocks/block-gallery/block-gallery';
 import { BlockVideo } from '../../shared/components/blocks/block-video/block-video';
+import { formatModuleTitle, formatLessonTitle } from '../../shared/utils/course-format.util';
 
 interface SidebarLesson extends CurriculumLesson {
   moduleId: string;
@@ -255,7 +256,19 @@ export class Learn implements OnInit, OnDestroy {
     this.markingComplete.set(false);
 
     if (ok) {
-      this.completedLessonIds.update((set) => new Set([...set, lesson.id]));
+      const course = this.course();
+      if (course) {
+        const flat = this.learnService.flattenLessons(course);
+        const progress = await this.learnService.getLessonProgress(
+          user.id,
+          flat.map((l) => l.id)
+        );
+        this.completedLessonIds.set(
+          new Set(progress.filter((p) => p.completed).map((p) => p.lessonId))
+        );
+      } else {
+        this.completedLessonIds.update((set) => new Set([...set, lesson.id]));
+      }
       this.toast.success('Lesson marked complete');
     } else {
       this.toast.error('Could not save progress');
@@ -281,5 +294,13 @@ export class Learn implements OnInit, OnDestroy {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  formatModuleTitle(order: number, title: string): string {
+    return formatModuleTitle(order, title);
+  }
+
+  formatLessonTitle(title: string): string {
+    return formatLessonTitle(title);
   }
 }

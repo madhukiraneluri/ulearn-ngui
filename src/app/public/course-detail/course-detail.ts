@@ -3,8 +3,8 @@ import {
   ChangeDetectionStrategy,
   OnInit,
   OnDestroy,
+  HostListener,
   signal,
-  computed,
   inject
 } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -17,6 +17,13 @@ import { CourseService } from '../../shared/services/course.service';
 import { PaymentService } from '../../shared/services/payment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
+import {
+  formatClassHours,
+  formatModuleClasses,
+  formatModuleTitle,
+  formatLessonTitle,
+  resolveClassCount
+} from '../../shared/utils/course-format.util';
 
 @Component({
   selector: 'app-course-detail',
@@ -38,7 +45,6 @@ export class CourseDetail implements OnInit, OnDestroy {
   // Signals
   course = signal<Course | null>(null);
   isLoading = signal(true);
-  activeTab = signal<'curriculum' | 'about' | 'mentors'>('curriculum');
   expandedModule = signal<string | null>(null);
   lockMessage = signal<{
     message: string;
@@ -51,6 +57,7 @@ export class CourseDetail implements OnInit, OnDestroy {
   isEnrolled = signal(false);
 
   ngOnInit(): void {
+    this.paymentService.unlockPageScroll();
     const slug = this.route.snapshot.paramMap.get('slug');
     const enrollAfterLogin = this.route.snapshot.queryParamMap.get('enroll') === 'true';
 
@@ -102,8 +109,31 @@ export class CourseDetail implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.paymentService.unlockPageScroll();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    void this.refreshEnrollmentStatus();
+  }
+
+  private async refreshEnrollmentStatus(): Promise<void> {
+    const course = this.course();
+    const user = this.auth.currentUser();
+    if (!course || !user || !this.auth.isLoggedIn()) return;
+
+    const enrolled = await this.courseService.isUserEnrolled(course.id, user.id);
+    this.isEnrolled.set(enrolled);
+  }
+
+  continueLearning(): void {
+    const course = this.course();
+    const firstLesson = course?.curriculum[0]?.lessons[0];
+    if (course && firstLesson) {
+      this.router.navigate(['/learn', course.slug, firstLesson.id]);
+    }
   }
 
   canAccessModule(module: CurriculumModule): boolean {
@@ -150,13 +180,7 @@ export class CourseDetail implements OnInit, OnDestroy {
     if (!course) return;
 
     if (this.auth.isLoggedIn() && this.isEnrolled()) {
-      const course = this.course();
-      const firstLesson = course?.curriculum[0]?.lessons[0];
-      if (course && firstLesson) {
-        this.router.navigate(['/learn', course.slug, firstLesson.id]);
-      } else {
-        this.router.navigate(['/my-courses']);
-      }
+      this.continueLearning();
       return;
     }
 
@@ -170,13 +194,15 @@ export class CourseDetail implements OnInit, OnDestroy {
     this.paymentService.setPendingEnrollment({
       courseId: course.id,
       slug: course.slug,
-      price: course.price
+      price: course.price,
+      title: course.title
     });
 
     void this.paymentService.startCheckout({
       courseId: course.id,
       slug: course.slug,
-      price: course.price
+      price: course.price,
+      title: course.title
     });
   }
 
@@ -190,7 +216,7 @@ export class CourseDetail implements OnInit, OnDestroy {
         return;
       }
       this.lockMessage.set({
-        message: 'Enroll to access this live class',
+        message: 'Enroll to access this class',
         action: 'enroll',
         actionLabel: 'Pay & Enroll'
       });
@@ -207,13 +233,45 @@ export class CourseDetail implements OnInit, OnDestroy {
   formatCourseSchedule(): string {
     const c = this.course();
     if (!c) return '';
-    if (c.courseFormat === '45-day' && c.durationDays && c.liveClassCount) {
-      return `${c.durationDays} days · ${c.liveClassCount} live classes`;
+    if (c.courseFormat === '45-day' && c.durationDays) {
+      return `${c.durationDays} days`;
     }
-    if (c.courseFormat === '3-month' && c.weeklyHours && c.liveClassCount) {
-      return `3 months · ${c.weeklyHours} hrs/week · ${c.liveClassCount} live classes`;
+    if (c.courseFormat === '3-month' && c.weeklyHours) {
+      return `3 months · ${c.weeklyHours} hrs/week`;
     }
-    return `${c.durationMonths} months · ${c.totalLessons} lessons`;
+    return `${c.durationMonths} months`;
+  }
+
+  formatClassHours(): string {
+    const c = this.course();
+    if (!c) return '';
+    return formatClassHours({
+      classCount: resolveClassCount(c),
+      hoursPerClass: c.hoursPerClass,
+      totalLessons: c.totalLessons
+    });
+  }
+
+  formatModuleClasses(module: CurriculumModule): string {
+    const c = this.course();
+    return formatModuleClasses(
+      module.lessons.length,
+      this.getTotalLessonDuration(module),
+      c?.hoursPerClass
+    );
+  }
+
+  formatModuleTitle(module: CurriculumModule): string {
+    return formatModuleTitle(module.order, module.title);
+  }
+
+  formatLessonTitle(lesson: CurriculumModule['lessons'][number]): string {
+    return formatLessonTitle(lesson.title);
+  }
+
+  resolveClassCount(): number {
+    const c = this.course();
+    return c ? resolveClassCount(c) : 0;
   }
 
   handleSecondaryButtonClick(): void {

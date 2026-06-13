@@ -1,5 +1,4 @@
 <div class="my-courses-container">
-  <!-- Header -->
   <section class="header-section">
     <div class="header-content">
       <h1>My Courses</h1>
@@ -7,43 +6,41 @@
     </div>
   </section>
 
-  <!-- Filter Tabs -->
   <section class="filter-section">
     <div class="filter-tabs">
-      <button 
-        class="filter-tab" 
+      <button
+        class="filter-tab"
         [class.active]="filterBy() === 'all'"
         (click)="setFilter('all')"
       >
         All Courses
         <span class="count">({{ myCourses().length }})</span>
       </button>
-      <button 
-        class="filter-tab" 
+      <button
+        class="filter-tab"
         [class.active]="filterBy() === 'in-progress'"
         (click)="setFilter('in-progress')"
       >
         In Progress
-        <span class="count">({{ myCourses().filter(c => c.progress > 0 && c.progress < 100).length }})</span>
+        <span class="count">({{ inProgressCount() }})</span>
       </button>
-      <button 
-        class="filter-tab" 
+      <button
+        class="filter-tab"
         [class.active]="filterBy() === 'completed'"
         (click)="setFilter('completed')"
       >
         Completed
-        <span class="count">({{ myCourses().filter(c => c.progress === 100).length }})</span>
+        <span class="count">({{ completedCount() }})</span>
       </button>
     </div>
   </section>
 
-  <!-- Courses Grid -->
   @if (isLoading()) {
     <div class="loading-state">
       <div class="spinner"></div>
       <p>Loading your courses...</p>
     </div>
-  } @else if (getFilteredCourses().length === 0) {
+  } @else if (filteredCourses().length === 0) {
     <div class="empty-state">
       <div class="empty-icon">📚</div>
       <h2>No courses found</h2>
@@ -54,57 +51,49 @@
     </div>
   } @else {
     <section class="courses-grid">
-      @for (course of getFilteredCourses(); track course.id) {
+      @for (course of filteredCourses(); track course.enrollmentId) {
         <div class="course-card">
-          <!-- Course Header -->
           <div class="course-header">
             <span class="category-badge" [style.background]="getCategoryColor(course.category)">
-              {{ course.category }}
+              {{ getCategoryLabel(course.category) }}
             </span>
             <div class="course-title">{{ course.title }}</div>
           </div>
 
-          <!-- Course Meta -->
           <div class="course-meta">
             <div class="meta-item">
-              <span class="meta-label">Instructor</span>
-              <span class="meta-value">{{ course.instructor }}</span>
+              <span class="meta-label">Classes</span>
+              <span class="meta-value">{{ course.classCount ?? course.totalLessons }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Enrolled</span>
-              <span class="meta-value">{{ course.enrolledDate | date: 'MMM dd, yyyy' }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">Last Accessed</span>
-              <span class="meta-value">{{ course.lastAccessed | date: 'MMM dd, yyyy' }}</span>
+              <span class="meta-value">{{ course.enrolledAt | date: 'MMM dd, yyyy' }}</span>
             </div>
           </div>
 
-          <!-- Progress Bar -->
           <div class="progress-section">
             <div class="progress-header">
               <span class="progress-label">Progress</span>
               <span class="progress-percent">{{ course.progress }}%</span>
             </div>
             <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="course.progress" [style.background]="getProgressColor(course.progress)"></div>
+              <div
+                class="progress-fill"
+                [style.width.%]="course.progress"
+                [style.background]="getProgressColor(course.progress)"
+              ></div>
             </div>
           </div>
 
-          <!-- Action Button -->
-          <button class="btn-continue" (click)="continueCourse(course.id)">
+          <button class="btn-continue" (click)="continueCourse(course)">
             @if (course.progress === 100) {
-              <span>View Certificate</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                <polyline points="13 2 13 9 20 9"/>
-              </svg>
+              <span>Review Course</span>
             } @else {
               <span>Continue Learning</span>
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
             }
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </button>
         </div>
       }
@@ -112,10 +101,10 @@
   }
 </div>
 
-@if (myCourses().length === 0) {
+@if (!isLoading() && myCourses().length === 0) {
   <div class="cta-section">
     <h2>Ready to learn something new?</h2>
-    <p>Explore thousands of courses from expert instructors</p>
+    <p>Explore mentor-led courses from industry experts</p>
     <button class="btn-primary" routerLink="/courses">
       Start Learning Today
     </button>

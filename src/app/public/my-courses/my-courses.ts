@@ -1,17 +1,10 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-
-interface CourseProgress {
-  id: string;
-  title: string;
-  category: string;
-  progress: number;
-  instructor: string;
-  enrolledDate: string;
-  lastAccessed: string;
-}
+import { CourseService } from '../../shared/services/course.service';
+import { PaymentService } from '../../shared/services/payment.service';
+import { UserEnrolledCourse, CourseCategory } from '../../models';
 
 @Component({
   selector: 'app-my-courses',
@@ -21,82 +14,69 @@ interface CourseProgress {
   styleUrl: './my-courses.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MyCourses implements OnInit {
+export class MyCourses implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly courseService = inject(CourseService);
+  private readonly paymentService = inject(PaymentService);
 
-  readonly myCourses = signal<CourseProgress[]>([]);
-  readonly isLoading = signal(false);
+  readonly myCourses = signal<UserEnrolledCourse[]>([]);
+  readonly isLoading = signal(true);
   readonly filterBy = signal<'all' | 'in-progress' | 'completed'>('all');
 
+  readonly filteredCourses = computed(() => {
+    const courses = this.myCourses();
+    switch (this.filterBy()) {
+      case 'in-progress':
+        return courses.filter((c) => c.progress > 0 && c.progress < 100);
+      case 'completed':
+        return courses.filter((c) => c.progress === 100);
+      default:
+        return courses;
+    }
+  });
+
+  readonly inProgressCount = computed(() =>
+    this.myCourses().filter((c) => c.progress > 0 && c.progress < 100).length
+  );
+
+  readonly completedCount = computed(() =>
+    this.myCourses().filter((c) => c.progress === 100).length
+  );
+
   ngOnInit(): void {
-    this.loadCourses();
+    this.paymentService.unlockPageScroll();
+    void this.loadCourses();
   }
 
-  private loadCourses(): void {
+  ngOnDestroy(): void {
+    this.paymentService.unlockPageScroll();
+  }
+
+  private async loadCourses(): Promise<void> {
     this.isLoading.set(true);
-    // Mock data - in production, this would fetch from API
-    setTimeout(() => {
-      this.myCourses.set([
-        {
-          id: '1',
-          title: 'Web Development Fundamentals',
-          category: 'Technical',
-          progress: 65,
-          instructor: 'John Doe',
-          enrolledDate: '2024-01-15',
-          lastAccessed: '2024-06-02'
-        },
-        {
-          id: '2',
-          title: 'Advanced JavaScript',
-          category: 'Technical',
-          progress: 100,
-          instructor: 'Jane Smith',
-          enrolledDate: '2023-11-20',
-          lastAccessed: '2024-05-28'
-        },
-        {
-          id: '3',
-          title: 'UI/UX Design Principles',
-          category: 'Creative',
-          progress: 45,
-          instructor: 'Mike Johnson',
-          enrolledDate: '2024-02-10',
-          lastAccessed: '2024-06-01'
-        },
-        {
-          id: '4',
-          title: 'Business Analytics',
-          category: 'Business',
-          progress: 20,
-          instructor: 'Sarah Williams',
-          enrolledDate: '2024-04-05',
-          lastAccessed: '2024-05-30'
-        }
-      ]);
+    const user = this.auth.currentUser();
+    if (!user) {
+      this.myCourses.set([]);
       this.isLoading.set(false);
-    }, 800);
+      return;
+    }
+
+    const courses = await this.courseService.getUserEnrolledCourses(user.id);
+    this.myCourses.set(courses);
+    this.isLoading.set(false);
   }
 
   setFilter(filter: 'all' | 'in-progress' | 'completed'): void {
     this.filterBy.set(filter);
   }
 
-  getFilteredCourses(): CourseProgress[] {
-    const courses = this.myCourses();
-    switch (this.filterBy()) {
-      case 'in-progress':
-        return courses.filter(c => c.progress > 0 && c.progress < 100);
-      case 'completed':
-        return courses.filter(c => c.progress === 100);
-      default:
-        return courses;
+  continueCourse(course: UserEnrolledCourse): void {
+    if (course.firstLessonId) {
+      this.router.navigate(['/learn', course.slug, course.firstLessonId]);
+    } else {
+      this.router.navigate(['/courses', course.slug]);
     }
-  }
-
-  continueCourse(courseId: string): void {
-    this.router.navigate(['/courses', courseId]);
   }
 
   getProgressColor(progress: number): string {
@@ -106,13 +86,16 @@ export class MyCourses implements OnInit {
     return '#FF9800';
   }
 
-  getCategoryColor(category: string): string {
-    const colors: Record<string, string> = {
-      'Technical': '#667eea',
-      'Creative': '#FF6B6B',
-      'Business': '#4ECDC4',
-      'default': '#95a3b3'
+  getCategoryColor(category: CourseCategory): string {
+    const colors: Record<CourseCategory, string> = {
+      technical: '#8B6FBE',
+      creative: '#F4845F',
+      business: '#4CAF50',
     };
-    return colors[category] || colors['default'];
+    return colors[category];
+  }
+
+  getCategoryLabel(category: CourseCategory): string {
+    return category.charAt(0).toUpperCase() + category.slice(1);
   }
 }

@@ -8,6 +8,11 @@
   position: sticky;
   top: 68px;
   z-index: 100;
+
+  @media (max-width: $bp-mobile) {
+    padding: 16px;
+    top: 60px;
+  }
 }
 
 .page-header-inner {
@@ -73,10 +78,16 @@
     color: var(--text);
     outline: none;
     width: 100%;
+    min-width: 0;
 
     &::placeholder {
       color: var(--muted);
     }
+  }
+
+  @media (max-width: $bp-mobile) {
+    min-width: 0;
+    flex: 1;
   }
 }
 
@@ -383,13 +394,30 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(249, 199, 79, 0.2);
-  color: #7a5800;
-  border: 1px solid rgba(249, 199, 79, 0.4);
+  background: #5d4037;
+  color: #fff;
+  border: 1px solid #3e2723;
   border-radius: 20px;
   font-size: 0.68rem;
   font-weight: 800;
-  padding: 3px 10px;
+  padding: 4px 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.02em;
+}
+
+.enrolled-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #1b5e20;
+  color: #fff;
+  border: 1px solid #0d3d12;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.02em;
 }
 
 .price-wrap {

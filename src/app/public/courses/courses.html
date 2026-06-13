@@ -188,6 +188,9 @@
                 @if (course.isResearchCourse) {
                   <span class="research-badge">🔬 Research</span>
                 }
+                @if (isEnrolled(course.id)) {
+                  <span class="enrolled-badge">✓ Enrolled</span>
+                }
               </div>
               <div class="course-body">
                 <span
@@ -200,7 +203,7 @@
                 <div class="course-title">{{ course.title }}</div>
                 <div class="course-meta">
                   <span>📅 {{ formatCourseLabel(course) }}</span>
-                  <span>🎓 {{ course.liveClassCount ?? course.totalLessons }} live classes</span>
+                  <span>🎓 {{ formatClassHours(course) }}</span>
                   <span>⭐ {{ course.rating }}</span>
                   <span>👥 {{ course.totalStudents | number }}</span>
                 </div>

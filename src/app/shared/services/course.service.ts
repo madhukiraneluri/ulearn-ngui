@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { from, Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { CourseListItem, Course, Mentor, CourseFormat } from '../../models';
+import { CourseListItem, Course, Mentor, CourseFormat, UserEnrolledCourse } from '../../models';
 import { supabase } from '../../core/supabase.client';
 
 @Injectable({ providedIn: 'root' })
@@ -19,10 +19,10 @@ export class CourseService {
   }
 
   private readonly courseListFields =
-    'id, slug, title, category, status, price, original_price, duration_months, duration_days, weekly_hours, live_class_count, course_format, total_lessons, rating, total_students, is_research_course, thumbnail_url';
+    'id, slug, title, category, status, price, original_price, duration_months, duration_days, weekly_hours, live_class_count, hours_per_class, course_format, total_lessons, rating, total_students, is_research_course, thumbnail_url';
 
   private readonly courseDetailFields =
-    'id, slug, title, description, category, status, price, original_price, duration_months, duration_days, weekly_hours, live_class_count, course_format, total_lessons, rating, total_students, is_research_course, thumbnail_url, created_at';
+    'id, slug, title, description, category, status, price, original_price, duration_months, duration_days, weekly_hours, live_class_count, hours_per_class, course_format, total_lessons, rating, total_students, is_research_course, thumbnail_url, created_at';
 
   private mapFormat(raw: string | null): CourseFormat | undefined {
     if (raw === '45-day' || raw === '3-month') return raw;
@@ -33,7 +33,8 @@ export class CourseService {
     return {
       durationDays: r['duration_days'] != null ? Number(r['duration_days']) : undefined,
       weeklyHours: r['weekly_hours'] != null ? Number(r['weekly_hours']) : undefined,
-      liveClassCount: r['live_class_count'] != null ? Number(r['live_class_count']) : undefined,
+      classCount: r['live_class_count'] != null ? Number(r['live_class_count']) : undefined,
+      hoursPerClass: r['hours_per_class'] != null ? Number(r['hours_per_class']) : undefined,
       courseFormat: this.mapFormat(r['course_format'] as string | null)
     };
   }
@@ -189,6 +190,129 @@ export class CourseService {
       totalStudents: Number(r['total_students']),
       isResearchCourse: Boolean(r['is_research_course'])
     };
+  }
+
+  async enrollUser(courseId: string, userId: string): Promise<boolean> {
+    if (await this.isUserEnrolled(courseId, userId)) return true;
+
+    const { error } = await supabase.from('enrollments').insert({
+      user_id: userId,
+      course_id: courseId
+    });
+
+    if (error) {
+      console.error('enrollUser error:', error);
+      return false;
+    }
+    return true;
+  }
+
+  async getUserEnrolledCourses(userId: string): Promise<UserEnrolledCourse[]> {
+    const { data: enrollments, error } = await supabase
+      .from('enrollments')
+      .select(
+        `
+        id, enrolled_at, course_id,
+        courses (
+          id, slug, title, category, thumbnail_url, total_lessons, live_class_count, hours_per_class
+        )
+      `
+      )
+      .eq('user_id', userId)
+      .order('enrolled_at', { ascending: false });
+
+    if (error || !enrollments?.length) {
+      if (error) console.error('getUserEnrolledCourses error:', error);
+      return [];
+    }
+
+    const courseIds = enrollments.map((e) => e.course_id as string);
+
+    const { data: modules, error: modErr } = await supabase
+      .from('course_curriculum')
+      .select('course_id, course_lessons(id, order)')
+      .in('course_id', courseIds);
+
+    if (modErr) console.error('getUserEnrolledCourses modules error:', modErr);
+
+    const lessonIdsByCourse: Record<string, string[]> = {};
+    const allLessonIds: string[] = [];
+
+    for (const mod of modules ?? []) {
+      const courseId = mod.course_id as string;
+      const lessons = (mod.course_lessons as Array<{ id: string; order: number }>) ?? [];
+      lessons.sort((a, b) => a.order - b.order);
+      for (const lesson of lessons) {
+        lessonIdsByCourse[courseId] = lessonIdsByCourse[courseId] ?? [];
+        lessonIdsByCourse[courseId].push(lesson.id);
+        allLessonIds.push(lesson.id);
+      }
+    }
+
+    let completedSet = new Set<string>();
+    if (allLessonIds.length > 0) {
+      const { data: progress } = await supabase
+        .from('lesson_progress')
+        .select('lesson_id')
+        .eq('user_id', userId)
+        .eq('completed', true)
+        .in('lesson_id', allLessonIds);
+
+      completedSet = new Set((progress ?? []).map((p) => p.lesson_id as string));
+    }
+
+    const results: UserEnrolledCourse[] = [];
+
+    for (const row of enrollments) {
+      const courseJoin = row.courses;
+      const courseRaw = (Array.isArray(courseJoin) ? courseJoin[0] : courseJoin) as
+        | Record<string, unknown>
+        | null;
+      if (!courseRaw) continue;
+
+      const courseId = String(row.course_id);
+      const lessonIds = lessonIdsByCourse[courseId] ?? [];
+      const completed = lessonIds.filter((id) => completedSet.has(id)).length;
+      const total = lessonIds.length || Number(courseRaw['total_lessons'] ?? 0);
+      const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      results.push({
+        enrollmentId: String(row.id),
+        courseId,
+        slug: String(courseRaw['slug']),
+        title: String(courseRaw['title']),
+        category: this.mapCategory(courseRaw['category'] as string | null),
+        thumbnailUrl: (courseRaw['thumbnail_url'] as string) || undefined,
+        totalLessons: total,
+        classCount:
+          courseRaw['live_class_count'] != null
+            ? Number(courseRaw['live_class_count'])
+            : total,
+        hoursPerClass:
+          courseRaw['hours_per_class'] != null
+            ? Number(courseRaw['hours_per_class'])
+            : undefined,
+        progress: progressPct,
+        enrolledAt: row.enrolled_at as string,
+        firstLessonId: lessonIds[0]
+      });
+    }
+
+    return results;
+  }
+
+  async getUserEnrolledCourseIds(userId: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('getUserEnrolledCourseIds error:', error);
+      return new Set();
+    }
+
+    return new Set((data ?? []).map((r) => String(r['course_id'])));
   }
 
   async isUserEnrolled(courseId: string, userId: string): Promise<boolean> {

@@ -58,7 +58,7 @@ export class Home implements OnInit, OnDestroy {
   ];
 
   readonly aboutPoints = [
-    { text: 'Live sessions with industry professionals', color: 'var(--green)'  },
+    { text: 'Expert-led sessions with industry professionals', color: 'var(--green)'  },
     { text: 'Hands-on projects and portfolio building',  color: 'var(--purple)' },
     { text: 'Dedicated placement assistance',            color: 'var(--orange)' },
     { text: 'Flexible learning — learn at your own pace',color: 'var(--blue)'   },

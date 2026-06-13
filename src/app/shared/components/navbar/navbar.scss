@@ -17,6 +17,11 @@
   justify-content: space-between;
   padding: 0 24px;
   height: 68px;
+
+  @media (max-width: $bp-mobile) {
+    padding: 0 12px;
+    height: 60px;
+  }
 }
 
 .logo-wrap {
@@ -32,6 +37,10 @@
   height: 50px;
   width: auto;
   object-fit: contain;
+
+  @media (max-width: $bp-mobile) {
+    height: 40px;
+  }
 }
 
 // ── Desktop Nav ───────────────────────────────────────────────────────────────
@@ -332,6 +341,7 @@
 
 .drawer-logo {
   height: 38px;
+  width: auto;
   object-fit: contain;
 }
 

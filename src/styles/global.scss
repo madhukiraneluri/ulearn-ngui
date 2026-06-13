@@ -9,11 +9,16 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-y: auto;
+}
+
 body {
   font-family: $font-base;
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
+  overflow-y: auto;
   line-height: 1.6;
 }
 
