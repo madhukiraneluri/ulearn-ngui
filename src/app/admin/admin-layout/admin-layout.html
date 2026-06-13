@@ -1,0 +1,48 @@
+<div class="admin-shell">
+  <aside class="admin-sidebar" [class.open]="sidebarOpen()">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🎓</span>
+      <div>
+        <strong>ULearn</strong>
+        <span>Admin Panel</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (item of navItems; track item.path) {
+        <a
+          class="nav-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          (click)="sidebarOpen.set(false)"
+        >
+          <span class="nav-icon">{{ item.icon }}</span>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="nav-link" routerLink="/" (click)="sidebarOpen.set(false)">← Back to site</a>
+      <button type="button" class="btn-logout" (click)="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  @if (sidebarOpen()) {
+    <div class="sidebar-overlay" (click)="sidebarOpen.set(false)"></div>
+  }
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button type="button" class="menu-btn" (click)="toggleSidebar()" aria-label="Menu">☰</button>
+      <div class="topbar-user">
+        <span>{{ auth.currentUser()?.email }}</span>
+        <span class="admin-badge">Admin</span>
+      </div>
+    </header>
+
+    <div class="admin-content">
+      <router-outlet />
+    </div>
+  </div>
+</div>

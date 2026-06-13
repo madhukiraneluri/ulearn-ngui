@@ -193,21 +193,39 @@ export interface ResearchPaper {
   createdAt: string;
 }
 
-// ─── ALBUMS ──────────────────────────────────────────────────────────────────
+// ─── BLOGS ───────────────────────────────────────────────────────────────────
 
-export interface AlbumImage {
+export type BlogStatus = 'draft' | 'published';
+
+export interface BlogImage {
   id: string;
   url: string;
   caption?: string;
   order: number;
 }
 
-export interface Album {
+export interface Blog {
   id: string;
+  slug: string;
   title: string;
-  description?: string;
+  summary?: string;
+  content: string;
   coverImageUrl?: string;
-  images: AlbumImage[];
+  images: BlogImage[];
+  eventDate?: string;
+  status: BlogStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogListItem {
+  id: string;
+  slug: string;
+  title: string;
+  summary?: string;
+  coverImageUrl?: string;
+  /** Cover image or first gallery image for cards */
+  thumbnailUrl?: string;
   eventDate?: string;
   createdAt: string;
 }

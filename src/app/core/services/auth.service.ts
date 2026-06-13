@@ -138,6 +138,7 @@ export class AuthService {
           {
             id: authData.user.id,
             full_name: fullName,
+            email: email.trim().toLowerCase(),
             phone: phoneNumber,
             profile_completed: false
           }
@@ -158,7 +159,11 @@ export class AuthService {
     }
   }
 
-  async signIn(email: string, password: string): Promise<boolean> {
+  async signIn(
+    email: string,
+    password: string,
+    options?: { silent?: boolean }
+  ): Promise<boolean> {
     try {
       this.isLoadingSignal.set(true);
 
@@ -185,7 +190,9 @@ export class AuthService {
         });
         this.isAuthenticatedSignal.set(true);
         await this.loadProfile(data.user.id);
-        this.toast.success('Welcome back!');
+        if (!options?.silent) {
+          this.toast.success('Welcome back!');
+        }
         return true;
       }
 
@@ -198,7 +205,7 @@ export class AuthService {
     }
   }
 
-  async signOut(): Promise<boolean> {
+  async signOut(redirectTo = '/auth/login'): Promise<boolean> {
     if (this.isSigningOut) return false;
     this.isSigningOut = true;
 
@@ -213,12 +220,12 @@ export class AuthService {
       void supabase.auth.signOut({ scope: 'global' }).catch(() => { });
 
       this.toast.success('Logged out successfully');
-      await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
+      await this.router.navigateByUrl(redirectTo, { replaceUrl: true });
       return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Sign out failed';
       this.toast.error(message);
-      await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
+      await this.router.navigateByUrl(redirectTo, { replaceUrl: true });
       return false;
     } finally {
       this.isLoadingSignal.set(false);
@@ -259,7 +266,13 @@ export class AuthService {
       }
 
       if (data) {
-        this.profileSignal.set(data);
+        const authEmail = this.currentUserSignal()?.email?.trim().toLowerCase();
+        let profile = data as UserProfile;
+        if (authEmail && !profile.email) {
+          await supabase.from('profiles').update({ email: authEmail }).eq('id', userId);
+          profile = { ...profile, email: authEmail };
+        }
+        this.profileSignal.set(profile);
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -376,7 +389,8 @@ export class AuthService {
 
   isAdmin(): boolean {
     const user = this.currentUser();
-    const metaRole = (user?.user_metadata as any)?.role;
-    return metaRole === 'ADMIN';
+    const metaRole = user?.user_metadata?.['role'];
+    const profileRole = (this.profileSignal() as UserProfile & { role?: string })?.role;
+    return metaRole === 'ADMIN' || profileRole === 'ADMIN';
   }
 }

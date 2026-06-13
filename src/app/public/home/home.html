@@ -263,6 +263,57 @@
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     SECTION — BLOGS
+════════════════════════════════════════════════════════════════ -->
+@if (featuredBlogs().length > 0) {
+  <section class="blogs-section">
+    <div class="section-inner">
+
+      <div class="section-header">
+        <div class="section-badge" style="background:rgba(139,111,190,.12);color:var(--purple)">
+          📰 From ULearn
+        </div>
+        <div class="section-title">Explore our blogs</div>
+        <div class="section-sub">
+          Partnerships, campus events, and stories from the ULearn community
+        </div>
+      </div>
+
+      <div class="blog-home-grid">
+        @for (blog of featuredBlogs(); track blog.id) {
+          <article class="blog-home-card" (click)="goToBlog(blog.slug)">
+            <div class="blog-home-media">
+              @if (blog.thumbnailUrl) {
+                <img [src]="blog.thumbnailUrl" [alt]="blog.title" loading="lazy" />
+              } @else {
+                <div class="blog-home-placeholder">📰</div>
+              }
+            </div>
+            <div class="blog-home-body">
+              @if (blog.eventDate) {
+                <time class="blog-home-date">{{ formatBlogDate(blog.eventDate) }}</time>
+              }
+              <h3>{{ blog.title }}</h3>
+              @if (blog.summary) {
+                <p>{{ blog.summary }}</p>
+              }
+              <span class="blog-home-link">Read more →</span>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="view-all-wrap">
+        <button class="btn-outline" (click)="goToAllBlogs()">
+          View all blogs →
+        </button>
+      </div>
+
+    </div>
+  </section>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════
      SECTION 6 — RESEARCH PAPERS PREVIEW
 ════════════════════════════════════════════════════════════════ -->
 <section class="papers-section">

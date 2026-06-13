@@ -91,7 +91,14 @@
   }
 
   &.completed .lesson-icon { color: var(--green); }
-  &.locked { opacity: 0.5; cursor: not-allowed; }
+  &.locked {
+    opacity: 0.85;
+    cursor: pointer;
+
+    .lesson-title {
+      color: var(--muted);
+    }
+  }
 
   .lesson-icon {
     flex-shrink: 0;
@@ -99,7 +106,24 @@
     font-size: 0.75rem;
   }
 
-  .lesson-title { line-height: 1.4; }
+  .lesson-title {
+    flex: 1;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .lesson-lock {
+    flex-shrink: 0;
+    margin-left: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(139, 111, 190, 0.12);
+    }
+  }
 }
 
 .sidebar-progress {
@@ -145,6 +169,48 @@
     font-weight: 800;
     color: var(--text);
   }
+}
+
+.enroll-prompt {
+  margin-bottom: 24px;
+  padding: 16px 18px;
+  background: rgba(139, 111, 190, 0.1);
+  border: 1px solid rgba(139, 111, 190, 0.25);
+  border-radius: 12px;
+
+  p {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+}
+
+.enroll-prompt-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-enroll {
+  padding: 10px 18px;
+  background: var(--purple);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.btn-dismiss {
+  padding: 10px 18px;
+  background: #fff;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
 }
 
 .lesson-meta {

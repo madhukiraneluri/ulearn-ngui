@@ -1,1 +1,245 @@
-<p>curriculum-builder works!</p>
+<div class="curriculum-admin">
+  <div class="page-header">
+    <div>
+      <h1>Curriculum builder</h1>
+      <p>Manage modules and lessons for each course</p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (courses().length === 0) {
+    <div class="empty">
+      <p>No courses yet. Create a course first.</p>
+      <a routerLink="/admin/courses" class="btn-primary">Go to courses</a>
+    </div>
+  } @else {
+    <div class="course-selector">
+      <label for="course-select">Course</label>
+      <select
+        id="course-select"
+        [value]="selectedCourseId() ?? ''"
+        (change)="onCourseChange($event)"
+      >
+        @for (course of courses(); track course.id) {
+          <option [value]="course.id">{{ course.title }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="toolbar">
+      <span class="course-label">{{ selectedCourseTitle() }}</span>
+      <div class="toolbar-actions">
+        <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk add modules &amp; lessons</button>
+        <button type="button" class="btn-primary" (click)="openCreateModule()">+ Add module</button>
+      </div>
+    </div>
+
+    @if (modules().length === 0) {
+      <div class="empty modules-empty">
+        <p>No modules yet for this course.</p>
+        <button type="button" class="btn-primary" (click)="openCreateModule()">Add first module</button>
+      </div>
+    } @else {
+      <div class="modules-list">
+        @for (mod of modules(); track mod.id; let mi = $index) {
+          <div class="module-card">
+            <div class="module-header">
+              <button type="button" class="module-toggle" (click)="toggleModule(mod.id)">
+                <span class="chevron" [class.open]="isExpanded(mod.id)">▾</span>
+                <span class="module-order">Module {{ mod.order }}</span>
+                <strong class="module-title">{{ mod.title }}</strong>
+              </button>
+              <div class="module-actions">
+                <button type="button" class="btn-sm" [disabled]="mi === 0" (click)="moveModule(mod, 'up')">↑</button>
+                <button
+                  type="button"
+                  class="btn-sm"
+                  [disabled]="mi === modules().length - 1"
+                  (click)="moveModule(mod, 'down')"
+                >↓</button>
+                <button type="button" class="btn-sm" (click)="openEditModule(mod)">Edit</button>
+                <button type="button" class="btn-sm danger" (click)="deleteModule(mod)">Delete</button>
+              </div>
+            </div>
+
+            @if (mod.description) {
+              <p class="module-desc">{{ mod.description }}</p>
+            }
+
+            @if (isExpanded(mod.id)) {
+              <div class="lessons-section">
+                @if (mod.lessons.length === 0) {
+                  <p class="no-lessons">No lessons in this module.</p>
+                } @else {
+                  <ul class="lessons-list">
+                    @for (lesson of mod.lessons; track lesson.id; let li = $index) {
+                      <li class="lesson-row">
+                        <div class="lesson-info">
+                          <span class="lesson-order">{{ lesson.order }}.</span>
+                          <span class="lesson-title">{{ lesson.title }}</span>
+                          <span class="lesson-duration">{{ formatDuration(lesson.durationMinutes) }}</span>
+                          @if (lesson.isFree) {
+                            <span class="free-badge">Free</span>
+                          }
+                        </div>
+                        <div class="lesson-actions">
+                          <a
+                            class="btn-sm link"
+                            [routerLink]="lessonContentLink(lesson.id)"
+                            [queryParams]="lessonContentQuery()"
+                          >Edit content</a>
+                          <button type="button" class="btn-sm" [disabled]="li === 0" (click)="moveLesson(mod.id, lesson, 'up')">↑</button>
+                          <button
+                            type="button"
+                            class="btn-sm"
+                            [disabled]="li === mod.lessons.length - 1"
+                            (click)="moveLesson(mod.id, lesson, 'down')"
+                          >↓</button>
+                          <button type="button" class="btn-sm" (click)="openEditLesson(lesson, mod.id)">Edit</button>
+                          <button type="button" class="btn-sm danger" (click)="deleteLesson(lesson, mod.id)">Delete</button>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                }
+                <button type="button" class="btn-secondary add-lesson" (click)="openCreateLesson(mod.id)">
+                  + Add lesson
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>
+          @if (formMode() === 'module') {
+            {{ editingModuleId() ? 'Edit module' : 'New module' }}
+          } @else {
+            {{ editingLessonId() ? 'Edit lesson' : 'New lesson' }}
+          }
+        </h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="saveForm()" class="entity-form">
+        <div class="form-group">
+          <label>{{ formMode() === 'lesson' ? 'Topic title' : 'Title' }}</label>
+          <input
+            type="text"
+            formControlName="title"
+            [attr.placeholder]="formMode() === 'lesson' ? 'e.g. What is Machine Learning?' : ''"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea formControlName="description" rows="3"></textarea>
+        </div>
+
+        @if (formMode() === 'lesson') {
+          <div class="form-row">
+            <div class="form-group">
+              <label>Duration (minutes)</label>
+              <input type="number" formControlName="durationMinutes" min="0" />
+            </div>
+            <label class="checkbox-row">
+              <input type="checkbox" formControlName="isFree" />
+              Free preview lesson
+            </label>
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving() || form.invalid">
+            {{ isSaving() ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (showBulkModal()) {
+    <div class="modal-overlay" (click)="closeBulkModal()"></div>
+    <div class="modal modal-bulk" role="dialog" aria-labelledby="bulk-title">
+      <div class="modal-header">
+        <h2 id="bulk-title">Bulk add modules &amp; lessons</h2>
+        <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
+      </div>
+
+      <div class="bulk-body">
+        <p class="bulk-intro">
+          One line per module. Replace <code>Module__Title</code> and <code>Lesson__Title</code> with your
+          real names, then import. Content is added separately via <strong>Edit content</strong> on each lesson.
+        </p>
+
+        <div class="format-box">
+          <p class="format-label">Format</p>
+          <code class="format-example">{{ bulkFormatExample }}</code>
+          <ul class="format-rules">
+            @for (line of bulkFormatHelp; track line) {
+              <li>{{ line }}</li>
+            }
+          </ul>
+        </div>
+
+        <div class="bulk-actions-row">
+          <button type="button" class="btn-secondary" (click)="downloadSample()">Download sample</button>
+          <button type="button" class="btn-secondary" (click)="loadSampleIntoEditor()">Load filled sample</button>
+          <label class="file-picker">
+            <input type="file" accept=".txt,text/plain" (change)="onBulkFileSelected($event)" />
+            <span class="btn-secondary">Upload .txt</span>
+          </label>
+        </div>
+
+        <div class="import-options">
+          <div class="form-group">
+            <label>Import mode</label>
+            <select [value]="bulkImportMode()" (change)="onImportModeChange($event)">
+              <option value="replace">Replace — delete existing, then import</option>
+              <option value="append">Append — add after existing modules</option>
+            </select>
+          </div>
+        </div>
+
+        <textarea
+          class="bulk-text-editor"
+          [value]="bulkText()"
+          (input)="onBulkTextPaste($event)"
+          rows="8"
+          spellcheck="false"
+        ></textarea>
+
+        <div class="bulk-actions-row end">
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="!bulkText().trim() || bulkImporting()"
+            (click)="runBulkImport()"
+          >
+            {{ bulkImporting() ? 'Importing…' : 'Import modules & lessons' }}
+          </button>
+        </div>
+
+        @if (bulkResults(); as results) {
+          <h3 class="bulk-section-title">Import results</h3>
+          <ul class="bulk-results">
+            @for (r of results; track r.path + r.title) {
+              <li [class.ok]="r.success" [class.fail]="!r.success">
+                <span class="result-path">{{ r.path }}</span>
+                <span class="result-msg">{{ r.message }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -17,6 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export interface UserProfile {
   id: string;
   full_name: string | null;
+  email: string | null;
   phone: string | null;
   college_name: string | null;
   degree: string | null;
@@ -30,6 +31,7 @@ export interface UserProfile {
   avatar_url: string | null;
   skills: string[] | null;
   profile_completed: boolean;
+  role?: string;
   created_at: string;
   updated_at: string;
 }

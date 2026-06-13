@@ -1,0 +1,48 @@
+<div class="blogs-page">
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="page-header-left">
+        <h1>Blogs</h1>
+        <p>News, partnerships, and highlights from the ULearn community</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-body">
+    @if (isLoading()) {
+      <p class="state-message">Loading blogs…</p>
+    } @else if (blogs().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">📝</span>
+        <h2>No posts yet</h2>
+        <p>Check back soon for updates and event highlights.</p>
+      </div>
+    } @else {
+      <div class="blog-grid">
+        @for (blog of blogs(); track blog.id) {
+          <a class="blog-card" [routerLink]="['/blogs', blog.slug]">
+            <div class="card-media">
+              @if (blog.thumbnailUrl) {
+                <img [src]="blog.thumbnailUrl" [alt]="blog.title" loading="lazy" />
+              } @else {
+                <div class="media-placeholder">
+                  <span>📰</span>
+                </div>
+              }
+            </div>
+            <div class="card-body">
+              @if (blog.eventDate) {
+                <time class="card-date">{{ formatDate(blog.eventDate) }}</time>
+              }
+              <h2>{{ blog.title }}</h2>
+              @if (blog.summary) {
+                <p class="card-summary">{{ blog.summary }}</p>
+              }
+              <span class="read-more">Read article →</span>
+            </div>
+          </a>
+        }
+      </div>
+    }
+  </div>
+</div>

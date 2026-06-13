@@ -1,1 +1,175 @@
-<p>students works!</p>
+<div class="students-admin">
+  <div class="page-header">
+    <div>
+      <h1>Students</h1>
+      <p>View enrollments, progress, and grant manual access</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openEnrollModal()">Manual enroll</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading students…</p>
+  } @else {
+    <div class="summary-row">
+      <div class="summary-card">
+        <span class="summary-value">{{ students().length }}</span>
+        <span class="summary-label">Students</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value">{{ totalEnrollments() }}</span>
+        <span class="summary-label">Total enrollments</span>
+      </div>
+    </div>
+
+    @if (recentEnrollments().length > 0) {
+      <section class="recent-section">
+        <h2>Recent enrollments</h2>
+        <div class="recent-list">
+          @for (r of recentEnrollments(); track r.id) {
+            <div class="recent-item">
+              <div>
+                <strong>{{ r.studentName }}</strong>
+                <span class="muted"> enrolled in </span>
+                <strong>{{ r.courseTitle }}</strong>
+              </div>
+              <div class="recent-meta">
+                <span>{{ formatDate(r.enrolledAt) }}</span>
+                <span class="progress-pill">{{ r.progressPercent }}%</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <div class="toolbar">
+      <input
+        type="search"
+        class="search-input"
+        placeholder="Search by name, email, phone, or user ID…"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </div>
+
+    @if (filteredStudents().length === 0) {
+      <div class="empty">
+        <p>No students found.</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="students-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Joined</th>
+              <th>Enrollments</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (student of filteredStudents(); track student.id) {
+              <tr [class.expanded]="isExpanded(student.id)">
+                <td>
+                  <strong>{{ student.name }}</strong>
+                </td>
+                <td>{{ student.email || '—' }}</td>
+                <td>{{ student.phone || '—' }}</td>
+                <td>{{ formatDate(student.joinedAt) }}</td>
+                <td>{{ student.enrollmentCount }}</td>
+                <td class="actions">
+                  <button type="button" class="btn-sm" (click)="toggleExpand(student.id)">
+                    {{ isExpanded(student.id) ? 'Hide' : 'View' }}
+                  </button>
+                  <button type="button" class="btn-sm link" (click)="openEnrollModal(student.id)">
+                    Enroll
+                  </button>
+                </td>
+              </tr>
+              @if (isExpanded(student.id)) {
+                <tr class="detail-row">
+                  <td colspan="6">
+                    @if (student.enrollments.length === 0) {
+                      <p class="no-enrollments">No enrollments yet.</p>
+                    } @else {
+                      <ul class="enrollment-list">
+                        @for (enr of student.enrollments; track enr.id) {
+                          <li>
+                            <div class="enr-info">
+                              <strong>{{ enr.courseTitle }}</strong>
+                              <span class="muted">Enrolled {{ formatDate(enr.enrolledAt) }}</span>
+                            </div>
+                            <div class="enr-progress">
+                              <div class="progress-bar">
+                                <div class="progress-fill" [style.width.%]="enr.progressPercent"></div>
+                              </div>
+                              <span>{{ enr.progressPercent }}%</span>
+                            </div>
+                            <button
+                              type="button"
+                              class="btn-sm danger"
+                              (click)="removeEnrollment(enr.id, student.name, enr.courseTitle)"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (showEnrollModal()) {
+    <div class="modal-overlay" (click)="closeEnrollModal()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>Manual enroll</h2>
+        <button type="button" class="close-btn" (click)="closeEnrollModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-hint">Grant course access without payment (scholarship / comp access).</p>
+
+        <div class="form-group">
+          <label>Student</label>
+          <select [ngModel]="enrollUserId()" (ngModelChange)="enrollUserId.set($event)">
+            <option value="">Select student…</option>
+            @for (s of students(); track s.id) {
+              <option [value]="s.id">{{ s.name }}{{ s.phone ? ' · ' + s.phone : '' }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Course</label>
+          <select [ngModel]="enrollCourseId()" (ngModelChange)="enrollCourseId.set($event)">
+            @for (c of courses(); track c.id) {
+              <option [value]="c.id">{{ c.title }} ({{ c.status }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeEnrollModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="isSaving() || !enrollUserId() || !enrollCourseId()"
+            (click)="submitManualEnroll()"
+          >
+            {{ isSaving() ? 'Enrolling…' : 'Enroll student' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

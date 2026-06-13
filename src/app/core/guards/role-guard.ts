@@ -15,7 +15,7 @@ export const roleGuard: CanActivateFn = async (route) => {
   const requiredRole = route.data?.['role'] as UserRole | undefined;
 
   if (requiredRole === 'ADMIN' && !auth.isAdmin()) {
-    return router.createUrlTree(['/']);
+    return router.createUrlTree(['/auth/admin']);
   }
 
   return true;

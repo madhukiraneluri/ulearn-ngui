@@ -1,0 +1,163 @@
+<div class="enrollments-admin">
+  <div class="page-header">
+    <div>
+      <h1>Enrollments</h1>
+      <p>See who enrolled in each course and bulk enroll by email</p>
+    </div>
+    @if (selectedCourseId()) {
+      <button type="button" class="btn-primary" (click)="openBulkModal()">Bulk enroll</button>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (courses().length === 0) {
+    <div class="empty">
+      <p>No courses yet. Create a course first.</p>
+    </div>
+  } @else {
+    <div class="course-selector">
+      <label for="course-select">Course</label>
+      <select
+        id="course-select"
+        [value]="selectedCourseId() ?? ''"
+        (change)="onCourseChange($event)"
+      >
+        @for (course of courses(); track course.id) {
+          <option [value]="course.id">{{ course.title }} ({{ course.status }})</option>
+        }
+      </select>
+    </div>
+
+    @if (summary(); as s) {
+      <div class="summary-bar">
+        <span><strong>{{ s.totalEnrolled }}</strong> enrolled in <strong>{{ s.courseTitle }}</strong></span>
+      </div>
+
+      @if (s.enrollments.length === 0) {
+        <div class="empty">
+          <p>No enrollments for this course yet.</p>
+          <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk enroll by email</button>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="enrollments-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Enrolled</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of s.enrollments; track row.enrollmentId) {
+                <tr>
+                  <td><strong>{{ row.name }}</strong></td>
+                  <td>{{ row.email || '—' }}</td>
+                  <td>{{ row.phone || '—' }}</td>
+                  <td>{{ formatDate(row.enrolledAt) }}</td>
+                  <td>
+                    <div class="progress-cell">
+                      <div class="progress-bar">
+                        <div class="progress-fill" [style.width.%]="row.progressPercent"></div>
+                      </div>
+                      <span>{{ row.progressPercent }}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn-sm danger"
+                      (click)="removeEnrollment(row.enrollmentId, row.name)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+
+  @if (showBulkModal()) {
+    <div class="modal-overlay" (click)="closeBulkModal()"></div>
+    <div class="modal modal-bulk" role="dialog">
+      <div class="modal-header">
+        <h2>Bulk enroll — {{ selectedCourseTitle() }}</h2>
+        <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
+      </div>
+
+      <div class="bulk-body">
+        <p class="bulk-intro">
+          Upload an Excel file with one <strong>email</strong> per row. Users must already have a ULearn
+          account. Emails without an account are listed below as failed.
+        </p>
+
+        <div class="format-box">
+          <p class="format-label">Excel format</p>
+          <code class="format-example">email</code>
+          <code class="format-example sample">student&#64;example.com</code>
+          <ul class="format-rules">
+            @for (line of bulkHelp; track line) {
+              <li>{{ line }}</li>
+            }
+          </ul>
+        </div>
+
+        <div class="bulk-actions-row">
+          <button type="button" class="btn-secondary" (click)="downloadSample()">Download sample Excel</button>
+          <label class="file-picker">
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              (change)="onBulkFileSelected($event)"
+            />
+            <span class="btn-secondary">{{ bulkFile() ? bulkFile()!.name : 'Choose Excel file' }}</span>
+          </label>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="!bulkFile() || bulkImporting()"
+            (click)="runBulkImport()"
+          >
+            {{ bulkImporting() ? 'Enrolling…' : 'Import & enroll' }}
+          </button>
+        </div>
+
+        @if (bulkResults(); as results) {
+          <h3 class="bulk-section-title">Import results</h3>
+          <ul class="bulk-results">
+            @for (r of results; track r.rowNumber + r.email) {
+              <li [class.ok]="r.success" [class.fail]="!r.success">
+                <span class="result-row">Row {{ r.rowNumber }}</span>
+                <strong>{{ r.email }}</strong>
+                <span class="result-msg">{{ r.message }}</span>
+              </li>
+            }
+          </ul>
+
+          @if (failedBulkResults().length > 0) {
+            <div class="failed-block">
+              <h3 class="bulk-section-title fail-title">Could not enroll ({{ failedBulkResults().length }})</h3>
+              <p class="fail-hint">These emails have no ULearn account or failed for another reason:</p>
+              <ul class="failed-list">
+                @for (r of failedBulkResults(); track r.email + r.rowNumber) {
+                  <li>
+                    <strong>{{ r.email }}</strong>
+                    <span>{{ r.message }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

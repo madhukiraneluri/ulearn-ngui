@@ -36,16 +36,26 @@
                     [class.locked]="isLessonLocked(sidebarLesson)"
                     (click)="navigateToLesson(sidebarLesson)"
                   >
-                    <span class="lesson-icon">
-                      @if (isLessonLocked(sidebarLesson)) {
-                        🔒
-                      } @else if (isLessonCompleted(lesson.id)) {
-                        ✓
-                      } @else {
-                        ○
-                      }
-                    </span>
+                    @if (!isLessonLocked(sidebarLesson)) {
+                      <span class="lesson-icon">
+                        @if (isLessonCompleted(lesson.id)) {
+                          ✓
+                        } @else {
+                          ○
+                        }
+                      </span>
+                    }
                     <span class="lesson-title">{{ formatLessonTitle(lesson.title) }}</span>
+                    @if (isLessonLocked(sidebarLesson)) {
+                      <span
+                        class="lesson-lock"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Locked — enroll to access"
+                        (click)="onLockedLockClick($event, sidebarLesson)"
+                        (keydown.enter)="onLockedLockClick($event, sidebarLesson)"
+                      >🔒</span>
+                    }
                   </button>
                 }
               </div>
@@ -54,15 +64,17 @@
         }
       </div>
 
-      <div class="sidebar-progress">
-        <div class="progress-label">
-          <span>Progress</span>
-          <span>{{ progressPercent() }}%</span>
+      @if (canTrackProgress()) {
+        <div class="sidebar-progress">
+          <div class="progress-label">
+            <span>Progress</span>
+            <span>{{ progressPercent() }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+          </div>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="progressPercent()"></div>
-        </div>
-      </div>
+      }
     </aside>
 
     <!-- Main content -->
@@ -77,24 +89,36 @@
         </div>
       </header>
 
+      @if (showEnrollPrompt()) {
+        <div class="enroll-prompt">
+          <p>Enroll to unlock this lesson and the full course.</p>
+          <div class="enroll-prompt-actions">
+            <button type="button" class="btn-enroll" (click)="enrollInCourse()">Enroll now</button>
+            <button type="button" class="btn-dismiss" (click)="dismissEnrollPrompt()">Dismiss</button>
+          </div>
+        </div>
+      }
+
       @if (currentLesson()!.videoUrl) {
         <div class="video-container">
           <video controls [src]="currentLesson()!.videoUrl" preload="metadata">
             Your browser does not support video playback.
           </video>
         </div>
-        <button
-          type="button"
-          class="btn-mark-complete"
-          [disabled]="markingComplete() || isCurrentLessonComplete()"
-          (click)="markComplete()"
-        >
-          @if (isCurrentLessonComplete()) {
-            ✓ Completed
-          } @else {
-            Mark lesson complete
-          }
-        </button>
+        @if (canTrackProgress()) {
+          <button
+            type="button"
+            class="btn-mark-complete"
+            [disabled]="markingComplete() || isCurrentLessonComplete()"
+            (click)="markComplete()"
+          >
+            @if (isCurrentLessonComplete()) {
+              ✓ Completed
+            } @else {
+              Mark lesson complete
+            }
+          </button>
+        }
       }
 
       <div class="content-blocks">
@@ -114,7 +138,7 @@
         }
       </div>
 
-      @if (!currentLesson()!.videoUrl) {
+      @if (!currentLesson()!.videoUrl && canTrackProgress()) {
         <button
           type="button"
           class="btn-mark-complete"
@@ -142,10 +166,12 @@
           <button type="button" class="btn-nav btn-next" (click)="goNext()">
             {{ formatLessonTitle(nextLesson()!.title) }} →
           </button>
-        } @else {
+        } @else if (canTrackProgress()) {
           <button type="button" class="btn-nav btn-next btn-complete" (click)="markComplete()">
             Course Complete ✓
           </button>
+        } @else {
+          <span></span>
         }
       </nav>
     </main>

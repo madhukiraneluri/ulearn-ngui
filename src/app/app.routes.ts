@@ -40,9 +40,19 @@ export const routes: Routes = [
       import('./public/about/about').then(m => m.About)
   },
   {
-    path: 'albums',
+    path: 'blogs',
     loadComponent: () =>
-      import('./public/albums/albums').then(m => m.Albums)
+      import('./public/blogs/blogs').then(m => m.Blogs)
+  },
+  {
+    path: 'blogs/:slug',
+    loadComponent: () =>
+      import('./public/blogs/blog-detail').then(m => m.BlogDetail)
+  },
+  {
+    path: 'albums',
+    redirectTo: 'blogs',
+    pathMatch: 'full'
   },
   {
     path: 'refer',

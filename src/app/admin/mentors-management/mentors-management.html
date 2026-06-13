@@ -1,1 +1,168 @@
-<p>mentors-management works!</p>
+<div class="mentors-admin">
+  <div class="page-header">
+    <div>
+      <h1>Mentors</h1>
+      <p>Assign mentors to courses for the public course detail page</p>
+    </div>
+    @if (selectedCourseId()) {
+      <button type="button" class="btn-primary" (click)="openCreate()">Add mentor</button>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (courses().length === 0) {
+    <div class="empty">
+      <p>No courses yet. Create a course first.</p>
+    </div>
+  } @else {
+    <div class="course-selector">
+      <label for="course-select">Course</label>
+      <select
+        id="course-select"
+        [value]="selectedCourseId() ?? ''"
+        (change)="onCourseChange($event)"
+      >
+        @for (course of courses(); track course.id) {
+          <option [value]="course.id">{{ course.title }} ({{ course.status }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="summary-bar">
+      <span>
+        <strong>{{ mentors().length }}</strong> mentor(s) for
+        <strong>{{ selectedCourseTitle() }}</strong>
+      </span>
+    </div>
+
+    @if (mentors().length === 0) {
+      <div class="empty">
+        <p>No mentors assigned to this course yet.</p>
+        <button type="button" class="btn-secondary" (click)="openCreate()">Add first mentor</button>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="mentors-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Company</th>
+              <th>Bio</th>
+              <th>Links</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mentor of mentors(); track mentor.id) {
+              <tr>
+                <td>
+                  <div class="name-cell">
+                    @if (mentor.avatarUrl) {
+                      <img [src]="mentor.avatarUrl" [alt]="mentor.name" class="avatar" />
+                    } @else {
+                      <span class="avatar-placeholder">{{ mentor.name.charAt(0) }}</span>
+                    }
+                    <strong>{{ mentor.name }}</strong>
+                  </div>
+                </td>
+                <td>{{ mentor.role }}</td>
+                <td>{{ mentor.company }}</td>
+                <td class="bio-cell">{{ truncate(mentor.bio) }}</td>
+                <td>
+                  @if (mentor.linkedInUrl) {
+                    <a [href]="mentor.linkedInUrl" target="_blank" rel="noopener noreferrer" class="link-out">
+                      LinkedIn
+                    </a>
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
+                <td class="actions">
+                  <button type="button" class="btn-sm" (click)="openEdit(mentor)">Edit</button>
+                  <button type="button" class="btn-sm danger" (click)="deleteMentor(mentor)">Delete</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>{{ editingId() ? 'Edit mentor' : 'Add mentor' }}</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="mentor-form">
+        <div class="form-row">
+          <label for="courseId">Course *</label>
+          <select id="courseId" formControlName="courseId">
+            @for (course of courses(); track course.id) {
+              <option [value]="course.id">{{ course.title }}</option>
+            }
+          </select>
+          @if (form.get('courseId')?.invalid && form.get('courseId')?.touched) {
+            <span class="field-error">Course is required</span>
+          }
+        </div>
+
+        <div class="form-row">
+          <label for="name">Name *</label>
+          <input id="name" type="text" formControlName="name" placeholder="Full name" />
+          @if (form.get('name')?.invalid && form.get('name')?.touched) {
+            <span class="field-error">Name is required</span>
+          }
+        </div>
+
+        <div class="form-row two-col">
+          <div>
+            <label for="role">Role *</label>
+            <input id="role" type="text" formControlName="role" placeholder="e.g. Lead Instructor" />
+            @if (form.get('role')?.invalid && form.get('role')?.touched) {
+              <span class="field-error">Role is required</span>
+            }
+          </div>
+          <div>
+            <label for="company">Company *</label>
+            <input id="company" type="text" formControlName="company" placeholder="Organization" />
+            @if (form.get('company')?.invalid && form.get('company')?.touched) {
+              <span class="field-error">Company is required</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="bio">Bio *</label>
+          <textarea id="bio" formControlName="bio" rows="4" placeholder="Short biography"></textarea>
+          @if (form.get('bio')?.invalid && form.get('bio')?.touched) {
+            <span class="field-error">Bio is required</span>
+          }
+        </div>
+
+        <div class="form-row two-col">
+          <div>
+            <label for="avatarUrl">Avatar URL</label>
+            <input id="avatarUrl" type="url" formControlName="avatarUrl" placeholder="https://…" />
+          </div>
+          <div>
+            <label for="linkedInUrl">LinkedIn URL</label>
+            <input id="linkedInUrl" type="url" formControlName="linkedInUrl" placeholder="https://linkedin.com/in/…" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : editingId() ? 'Update mentor' : 'Add mentor' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

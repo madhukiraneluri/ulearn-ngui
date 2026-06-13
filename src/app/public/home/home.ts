@@ -9,7 +9,8 @@ import { takeUntil } from 'rxjs/operators';
 import { CourseService } from '../../shared/services/course.service';
 import { PaperService } from '../../shared/services/paper.service';
 import { InternshipService } from '../../shared/services/internship.service';
-import { CourseListItem, ResearchPaper, Internship } from '../../models';
+import { BlogService } from '../../shared/services/blog.service';
+import { CourseListItem, ResearchPaper, Internship, BlogListItem } from '../../models';
 
 @Component({
   selector: 'app-home',
@@ -24,12 +25,14 @@ export class Home implements OnInit, OnDestroy {
   private readonly courseService      = inject(CourseService);
   private readonly paperService       = inject(PaperService);
   private readonly internshipService  = inject(InternshipService);
+  private readonly blogService        = inject(BlogService);
   private readonly destroy$           = new Subject<void>();
 
   // ── Data ──────────────────────────────────────────────────────────────────
   readonly featuredCourses      = signal<CourseListItem[]>([]);
   readonly featuredPapers       = signal<ResearchPaper[]>([]);
   readonly internships          = signal<Internship[]>([]);
+  readonly featuredBlogs        = signal<BlogListItem[]>([]);
 
   // ── Hero rotating words ───────────────────────────────────────────────────
   readonly rotatingWords = [
@@ -111,6 +114,10 @@ export class Home implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(i => this.internships.set(i.slice(0, 2)));
 
+    this.blogService.getFeaturedBlogs(3)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(b => this.featuredBlogs.set(b));
+
     this.intervalId = setInterval(() => {
       this.activeWordIndex.update(i => (i + 1) % this.rotatingWords.length);
     }, 2000);
@@ -128,6 +135,8 @@ export class Home implements OnInit, OnDestroy {
   goToResearch(): void { this.router.navigate(['/courses'], { queryParams: { research: 'true' } }); }
   goToAllCourses(): void { this.router.navigate(['/courses']); }
   goToAllPapers(): void { this.router.navigate(['/research-papers']); }
+  goToAllBlogs(): void { this.router.navigate(['/blogs']); }
+  goToBlog(slug: string): void { this.router.navigate(['/blogs', slug]); }
   goToRefer(): void { this.router.navigate(['/refer']); }
   goToCourse(slug: string): void { this.router.navigate(['/courses', slug]); }
   goToInternship(type: string): void { this.router.navigate(['/internships', type]); }
@@ -202,5 +211,14 @@ export class Home implements OnInit, OnDestroy {
 
   formatStipend(amount: number): string {
     return '₹' + amount.toLocaleString('en-IN') + '/mo';
+  }
+
+  formatBlogDate(date?: string): string {
+    if (!date) return '';
+    return new Date(date + 'T00:00:00').toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
   }
 }

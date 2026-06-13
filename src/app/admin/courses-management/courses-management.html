@@ -1,1 +1,290 @@
-<p>courses-management works!</p>
+<div class="courses-admin">
+  <div class="page-header">
+    <div>
+      <h1>Courses</h1>
+      <p>Create, edit, and publish courses</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk add courses</button>
+      <button type="button" class="btn-primary" (click)="openCreate()">+ New course</button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading courses…</p>
+  } @else if (courses().length === 0) {
+    <div class="empty">
+      <p>No courses yet.</p>
+      <button type="button" class="btn-primary" (click)="openCreate()">Create your first course</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="courses-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Classes</th>
+            <th>Students</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (course of courses(); track course.id) {
+            <tr>
+              <td>
+                <strong>{{ course.title }}</strong>
+                <span class="slug">{{ course.slug }}</span>
+              </td>
+              <td>
+                <span class="status-badge" [class]="statusClass(course.status)">
+                  {{ course.status }}
+                </span>
+              </td>
+              <td>{{ course.category }}</td>
+              <td>{{ formatPrice(course.price) }}</td>
+              <td>{{ course.liveClassCount ?? course.totalLessons }}</td>
+              <td>{{ course.totalStudents }}</td>
+              <td class="actions">
+                <a
+                  class="btn-sm link"
+                  [routerLink]="['/admin/curriculum']"
+                  [queryParams]="{ courseId: course.id }"
+                >Curriculum</a>
+                <a
+                  class="btn-sm link"
+                  [routerLink]="['/admin/enrollments']"
+                  [queryParams]="{ courseId: course.id }"
+                >Enrollments</a>
+                <button type="button" class="btn-sm" (click)="openEdit(course)">Edit</button>
+                <button type="button" class="btn-sm danger" (click)="deleteCourse(course)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>{{ editingId() ? 'Edit course' : 'New course' }}</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="course-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" formControlName="title" />
+          </div>
+          <div class="form-group">
+            <label>Slug</label>
+            <input type="text" formControlName="slug" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea formControlName="description" rows="3"></textarea>
+        </div>
+
+        <div class="form-row three">
+          <div class="form-group">
+            <label>Category</label>
+            <select formControlName="category">
+              @for (c of categories; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select formControlName="status">
+              @for (s of statuses; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Format</label>
+            <select formControlName="courseFormat">
+              <option value="">—</option>
+              @for (f of formats; track f) {
+                @if (f) {
+                  <option [value]="f">{{ f }}</option>
+                }
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Price (₹)</label>
+            <input type="number" formControlName="price" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Original price (₹)</label>
+            <input type="number" formControlName="originalPrice" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Rating</label>
+            <input type="number" formControlName="rating" min="0" max="5" step="0.1" />
+          </div>
+        </div>
+
+        <div class="form-row four">
+          <div class="form-group">
+            <label>Duration (months)</label>
+            <input type="number" formControlName="durationMonths" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Duration (days)</label>
+            <input type="number" formControlName="durationDays" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Class count</label>
+            <input type="number" formControlName="classCount" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Hrs per class</label>
+            <input type="number" formControlName="hoursPerClass" min="0" step="0.5" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Total lessons</label>
+            <input type="number" formControlName="totalLessons" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Weekly hours</label>
+            <input type="number" formControlName="weeklyHours" min="0" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Course thumbnail</label>
+          <div class="thumbnail-upload">
+            @if (thumbnailPreview()) {
+              <img [src]="thumbnailPreview()!" alt="Thumbnail preview" class="thumbnail-preview" />
+            }
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              (change)="onThumbnailSelected($event)"
+            />
+            @if (isUploadingThumbnail()) {
+              <span class="upload-hint">Uploading thumbnail…</span>
+            } @else {
+              <span class="upload-hint">Upload JPG or PNG. Saved to Supabase when you save the course.</span>
+            }
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="isResearchCourse" />
+          Research course
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving() || isUploadingThumbnail() || form.invalid">
+            {{ isSaving() ? 'Saving…' : (editingId() ? 'Update course' : 'Create course') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (showBulkModal()) {
+    <div class="modal-overlay" (click)="closeBulkModal()"></div>
+    <div class="modal modal-bulk" role="dialog" aria-labelledby="bulk-modal-title">
+      <div class="modal-header">
+        <h2 id="bulk-modal-title">Bulk add courses</h2>
+        <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
+      </div>
+
+      <div class="bulk-body">
+        <p class="bulk-intro">
+          Upload an Excel file (.xlsx) with one course per row. Download the sample template below — it
+          includes column headers and an example row for <strong>Intro to Machine Learning</strong>
+          (<code>intro-to-ml</code>). Only <strong>title</strong> is required; empty cells use the defaults
+          shown in the table.
+        </p>
+
+        <div class="bulk-actions-row">
+          <button type="button" class="btn-secondary" (click)="downloadBulkSample()">
+            Download sample Excel
+          </button>
+          <label class="file-picker">
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              (change)="onBulkFileSelected($event)"
+            />
+            <span class="btn-secondary">{{ bulkFile() ? bulkFile()!.name : 'Choose Excel file' }}</span>
+          </label>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="!bulkFile() || bulkImporting()"
+            (click)="runBulkImport()"
+          >
+            {{ bulkImporting() ? 'Importing…' : 'Import courses' }}
+          </button>
+        </div>
+
+        <h3 class="bulk-section-title">Column reference</h3>
+        <div class="bulk-columns-wrap">
+          <table class="bulk-columns-table">
+            <thead>
+              <tr>
+                <th>Column</th>
+                <th>Required</th>
+                <th>Default if empty</th>
+                <th>Example</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (col of bulkColumns; track col.key) {
+                <tr>
+                  <td><code>{{ col.header }}</code></td>
+                  <td>
+                    @if (col.required) {
+                      <span class="req-yes">Yes</span>
+                    } @else {
+                      <span class="req-no">No</span>
+                    }
+                  </td>
+                  <td>{{ col.defaultValue }}</td>
+                  <td><span class="example-cell">{{ col.example }}</span></td>
+                  <td>{{ col.description }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (bulkResults(); as results) {
+          <h3 class="bulk-section-title">Import results</h3>
+          <ul class="bulk-results">
+            @for (r of results; track r.rowNumber + r.title) {
+              <li [class.ok]="r.success" [class.fail]="!r.success">
+                <span class="result-row">Row {{ r.rowNumber }}</span>
+                <strong>{{ r.title }}</strong>
+                <span class="result-msg">{{ r.message }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -40,7 +40,7 @@ export class Footer {
   readonly companyLinks = [
     { label: 'About Us', path: '/about' },
     { label: 'Research Papers', path: '/research-papers' },
-    { label: 'Albums', path: '/albums' },
+    { label: 'Blogs', path: '/blogs' },
     { label: 'Refer & Earn', path: '/refer' },
   ];
 

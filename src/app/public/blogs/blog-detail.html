@@ -1,0 +1,65 @@
+<div class="blog-detail-page">
+  @if (isLoading()) {
+    <p class="state-message">Loading article…</p>
+  } @else if (!blog()) {
+    <div class="not-found">
+      <h1>Article not found</h1>
+      <p>This blog post may have been removed or is not yet published.</p>
+      <a routerLink="/blogs" class="back-link">← Back to blogs</a>
+    </div>
+  } @else if (blog(); as b) {
+    <header class="article-header">
+      <div class="article-header-inner">
+        <a routerLink="/blogs" class="back-link">← All blogs</a>
+        @if (b.eventDate) {
+          <time class="article-date">{{ formatDate(b.eventDate) }}</time>
+        }
+        <h1>{{ b.title }}</h1>
+        @if (b.summary) {
+          <p class="article-summary">{{ b.summary }}</p>
+        }
+      </div>
+      @if (coverUrl(b); as cover) {
+        <div class="cover-wrap">
+          <img [src]="cover" [alt]="b.title" class="cover-image" />
+        </div>
+      }
+    </header>
+
+    <article class="article-body">
+      <div class="article-content">
+        @for (para of contentParagraphs(b.content); track $index) {
+          <p>{{ para }}</p>
+        }
+      </div>
+
+      @if (b.images.length > 0) {
+        <section class="gallery-section">
+          <h2>Photo gallery</h2>
+          <div class="gallery-grid">
+            @for (img of b.images; track img.id) {
+              <button type="button" class="gallery-item" (click)="openLightbox(img)">
+                <img [src]="img.url" [alt]="img.caption || b.title" loading="lazy" />
+                @if (img.caption) {
+                  <span class="gallery-caption">{{ img.caption }}</span>
+                }
+              </button>
+            }
+          </div>
+        </section>
+      }
+    </article>
+  }
+
+  @if (lightboxImage(); as img) {
+    <div class="lightbox-overlay" (click)="closeLightbox()" role="dialog" aria-modal="true">
+      <button type="button" class="lightbox-close" (click)="closeLightbox()">✕</button>
+      <figure class="lightbox-content" (click)="$event.stopPropagation()">
+        <img [src]="img.url" [alt]="img.caption || 'Blog image'" />
+        @if (img.caption) {
+          <figcaption>{{ img.caption }}</figcaption>
+        }
+      </figure>
+    </div>
+  }
+</div>

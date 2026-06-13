@@ -1,1 +1,87 @@
-<p>dashboard works!</p>
+<div class="dashboard-page">
+  <div class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Overview of your ULearn platform</p>
+    </div>
+    <a routerLink="/admin/courses" class="btn-primary">Manage courses</a>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading">Loading stats…</div>
+  } @else if (stats(); as s) {
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-icon">👥</span>
+        <div>
+          <div class="stat-value">{{ s.totalStudents }}</div>
+          <div class="stat-label">Total students</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">📚</span>
+        <div>
+          <div class="stat-value">{{ s.totalCourses }}</div>
+          <div class="stat-label">Courses</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">💰</span>
+        <div>
+          <div class="stat-value">{{ formatRevenue(s.totalRevenue) }}</div>
+          <div class="stat-label">Enrollment revenue</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">📈</span>
+        <div>
+          <div class="stat-value">{{ s.totalEnrollmentsThisMonth }}</div>
+          <div class="stat-label">Enrollments this month</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🆕</span>
+        <div>
+          <div class="stat-value">{{ s.newStudentsThisWeek }}</div>
+          <div class="stat-label">New students (7 days)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <h2>Quick actions</h2>
+      <div class="action-grid">
+        <a routerLink="/admin/courses" class="action-card">
+          <span>➕</span>
+          <strong>Create or edit courses</strong>
+          <p>Manage pricing, status, and course details</p>
+        </a>
+        <a routerLink="/admin/students" class="action-card">
+          <span>👥</span>
+          <strong>Students & enrollments</strong>
+          <p>View progress and grant manual access</p>
+        </a>
+        <a routerLink="/admin/enrollments" class="action-card">
+          <span>📝</span>
+          <strong>Enrollments by course</strong>
+          <p>Bulk enroll users by email per course</p>
+        </a>
+        <a routerLink="/admin/mentors" class="action-card">
+          <span>🧑‍🏫</span>
+          <strong>Course mentors</strong>
+          <p>Add and edit mentors shown on course pages</p>
+        </a>
+        <a routerLink="/admin/blogs" class="action-card">
+          <span>📝</span>
+          <strong>Manage blogs</strong>
+          <p>Publish news articles and upload event photos</p>
+        </a>
+        <a routerLink="/courses" class="action-card" target="_blank">
+          <span>🌐</span>
+          <strong>View public site</strong>
+          <p>See how courses appear to learners</p>
+        </a>
+      </div>
+    </div>
+  }
+</div>

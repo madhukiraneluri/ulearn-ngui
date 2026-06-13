@@ -1,0 +1,53 @@
+<div class="admin-login-page">
+  <div class="admin-login-card">
+    <div class="brand">
+      <span class="brand-icon">🎓</span>
+      <h1>ULearn Admin</h1>
+      <p>Authorized personnel only</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="admin-form">
+      <div class="form-group">
+        <label for="email">Admin email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="admin@ulearn.in"
+          autocomplete="username"
+          [class.error]="isFieldInvalid('email')"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Enter password"
+            autocomplete="current-password"
+            [class.error]="isFieldInvalid('password')"
+          />
+          <button type="button" class="toggle-pw" (click)="togglePasswordVisibility()">
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-admin" [disabled]="form.invalid || isLoading()">
+        @if (isLoading()) {
+          Signing in…
+        } @else {
+          Sign in to Admin
+        }
+      </button>
+    </form>
+
+    <p class="hint">
+      Student or mentor?
+      <a routerLink="/auth/login">Use the regular login</a>
+    </p>
+  </div>
+</div>

@@ -1,0 +1,383 @@
+<div class="content-editor">
+  <div class="editor-header">
+    <a class="back-link" [routerLink]="backLink()" [queryParams]="backQuery()">← Back to curriculum</a>
+    <h1>{{ lessonTitle() || 'Lesson content' }}</h1>
+    <p>Edit content blocks — changes save per block</p>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading lesson content…</p>
+  } @else {
+    <div class="editor-layout">
+      <!-- Block list -->
+      <aside class="block-list-panel">
+        <div class="panel-header">
+          <h2>Blocks</h2>
+          <div class="panel-actions">
+            <button type="button" class="btn-secondary btn-sm" (click)="openBulkModal()">Bulk add content</button>
+            <button type="button" class="btn-primary btn-sm" (click)="showAddPicker.set(!showAddPicker())">
+              + Add
+            </button>
+          </div>
+        </div>
+
+        @if (showAddPicker()) {
+          <div class="type-picker">
+            @for (type of blockTypes; track type) {
+              <button type="button" class="type-btn" (click)="addBlock(type)">
+                {{ blockLabel(type) }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (blocks().length === 0) {
+          <p class="empty-hint">No blocks yet. Add one above.</p>
+        } @else {
+          <ul class="block-list">
+            @for (block of blocks(); track block.id; let i = $index) {
+              <li
+                class="block-item"
+                [class.active]="selectedBlockId() === block.id"
+                (click)="selectBlock(block.id)"
+              >
+                <span class="block-type">{{ blockLabel(block.type) }}</span>
+                <div class="block-item-actions">
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    [disabled]="i === 0"
+                    (click)="moveBlock(block, 'up'); $event.stopPropagation()"
+                  >↑</button>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    [disabled]="i === blocks().length - 1"
+                    (click)="moveBlock(block, 'down'); $event.stopPropagation()"
+                  >↓</button>
+                  <button
+                    type="button"
+                    class="icon-btn danger"
+                    (click)="deleteBlock(block); $event.stopPropagation()"
+                  >✕</button>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </aside>
+
+      <!-- Edit form -->
+      <section class="edit-panel">
+        @if (selectedBlock(); as block) {
+          <h2>Edit: {{ blockLabel(block.type) }}</h2>
+
+          @switch (block.type) {
+            @case ('heading') {
+              <div class="form-group">
+                <label>Text</label>
+                <input type="text" [ngModel]="editContent()['text']" (ngModelChange)="updateField('text', $event)" />
+              </div>
+              <div class="form-group">
+                <label>Level</label>
+                <select [ngModel]="editContent()['level']" (ngModelChange)="updateField('level', $event)">
+                  <option value="h1">H1</option>
+                  <option value="h2">H2</option>
+                  <option value="h3">H3</option>
+                </select>
+              </div>
+            }
+            @case ('text') {
+              <div class="form-group">
+                <label>HTML</label>
+                <textarea
+                  rows="10"
+                  [ngModel]="editContent()['html']"
+                  (ngModelChange)="updateField('html', $event)"
+                ></textarea>
+              </div>
+            }
+            @case ('image') {
+              <div class="form-group">
+                <label>Image URL</label>
+                <input type="url" [ngModel]="editContent()['imageUrl']" (ngModelChange)="updateField('imageUrl', $event)" />
+              </div>
+              <div class="form-group">
+                <label>Caption</label>
+                <input type="text" [ngModel]="editContent()['caption']" (ngModelChange)="updateField('caption', $event)" />
+              </div>
+              <div class="form-group">
+                <label>Alignment</label>
+                <select [ngModel]="editContent()['alignment']" (ngModelChange)="updateField('alignment', $event)">
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+            }
+            @case ('callout') {
+              <div class="form-group">
+                <label>Icon</label>
+                <input type="text" [ngModel]="editContent()['icon']" (ngModelChange)="updateField('icon', $event)" />
+              </div>
+              <div class="form-group">
+                <label>Text</label>
+                <textarea rows="4" [ngModel]="editContent()['text']" (ngModelChange)="updateField('text', $event)"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Color</label>
+                <select [ngModel]="editContent()['color']" (ngModelChange)="updateField('color', $event)">
+                  <option value="yellow">Yellow</option>
+                  <option value="blue">Blue</option>
+                  <option value="green">Green</option>
+                  <option value="red">Red</option>
+                </select>
+              </div>
+            }
+            @case ('code') {
+              <div class="form-group">
+                <label>Language</label>
+                <input type="text" [ngModel]="editContent()['language']" (ngModelChange)="updateField('language', $event)" />
+              </div>
+              <div class="form-group">
+                <label>Code</label>
+                <textarea rows="12" [ngModel]="editContent()['code']" (ngModelChange)="updateField('code', $event)"></textarea>
+              </div>
+            }
+            @case ('quote') {
+              <div class="form-group">
+                <label>Quote text</label>
+                <textarea rows="4" [ngModel]="editContent()['text']" (ngModelChange)="updateField('text', $event)"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Author</label>
+                <input type="text" [ngModel]="editContent()['author']" (ngModelChange)="updateField('author', $event)" />
+              </div>
+            }
+            @case ('video') {
+              <div class="form-group">
+                <label>Video URL</label>
+                <input type="url" [ngModel]="editContent()['videoUrl']" (ngModelChange)="updateField('videoUrl', $event)" />
+              </div>
+            }
+            @case ('gallery') {
+              <div class="form-group">
+                <label>Columns</label>
+                <select [ngModel]="editContent()['columns']" (ngModelChange)="updateField('columns', $event)">
+                  <option [ngValue]="2">2</option>
+                  <option [ngValue]="3">3</option>
+                  <option [ngValue]="4">4</option>
+                </select>
+              </div>
+              <div class="gallery-rows">
+                <label>Images</label>
+                @for (row of galleryImages(); track $index; let gi = $index) {
+                  <div class="gallery-row">
+                    <input
+                      type="url"
+                      placeholder="Image URL"
+                      [ngModel]="row.imageUrl"
+                      (ngModelChange)="updateGalleryRow(gi, 'imageUrl', $event)"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Caption"
+                      [ngModel]="row.caption"
+                      (ngModelChange)="updateGalleryRow(gi, 'caption', $event)"
+                    />
+                    <button type="button" class="icon-btn danger" (click)="removeGalleryRow(gi)">✕</button>
+                  </div>
+                }
+                <button type="button" class="btn-secondary btn-sm" (click)="addGalleryRow()">+ Add image</button>
+              </div>
+            }
+            @case ('two_column') {
+              <div class="form-group">
+                <label>Left column HTML</label>
+                <textarea
+                  rows="6"
+                  [ngModel]="$any(editContent()['left'])?.html"
+                  (ngModelChange)="updateNestedField('left', 'html', $event)"
+                ></textarea>
+              </div>
+              <div class="form-group">
+                <label>Right column HTML</label>
+                <textarea
+                  rows="6"
+                  [ngModel]="$any(editContent()['right'])?.html"
+                  (ngModelChange)="updateNestedField('right', 'html', $event)"
+                ></textarea>
+              </div>
+            }
+            @case ('divider') {
+              <p class="empty-hint">Divider has no editable fields.</p>
+            }
+          }
+
+          <div class="save-row">
+            <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="saveSelectedBlock()">
+              {{ isSaving() ? 'Saving…' : 'Save block' }}
+            </button>
+          </div>
+        } @else {
+          <p class="empty-hint">Select a block to edit, or add a new one.</p>
+        }
+      </section>
+
+      <!-- Preview -->
+      <section class="preview-panel">
+        <h2>Preview</h2>
+        @if (selectedBlock(); as block) {
+          <div class="preview-content">
+            @switch (block.type) {
+              @case ('heading') { <app-block-heading [content]="previewContent()" /> }
+              @case ('text') { <app-block-text [content]="previewContent()" /> }
+              @case ('image') { <app-block-image [content]="previewContent()" /> }
+              @case ('two_column') { <app-block-two-column [content]="previewContent()" /> }
+              @case ('callout') { <app-block-callout [content]="previewContent()" /> }
+              @case ('code') { <app-block-code [content]="previewContent()" /> }
+              @case ('quote') { <app-block-quote [content]="previewContent()" /> }
+              @case ('divider') { <app-block-divider /> }
+              @case ('gallery') { <app-block-gallery [content]="previewContent()" /> }
+              @case ('video') { <app-block-video [content]="previewContent()" /> }
+            }
+          </div>
+        } @else {
+          <p class="empty-hint">Preview appears here when a block is selected.</p>
+        }
+      </section>
+    </div>
+  }
+
+  @if (showBulkModal()) {
+    <div class="modal-overlay" (click)="closeBulkModal()"></div>
+    <div class="modal modal-bulk" role="dialog">
+      <div class="modal-header">
+        <h2>Bulk add content</h2>
+        <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
+      </div>
+
+      <div class="bulk-body">
+        <p class="bulk-intro">
+          Copy the chatbot prompt below. Replace <code>**LESSON_TITLE**</code> and
+          <code>**CONTENT_THEME**</code> with your lesson topic, paste the returned JSON, preview, then import.
+        </p>
+
+        <div class="form-group">
+          <label>Content theme (use in prompt — replace <code>**CONTENT_THEME**</code>)</label>
+          <input
+            type="text"
+            [ngModel]="bulkContentTheme()"
+            (ngModelChange)="onContentThemeChange($event)"
+            placeholder="**CONTENT_THEME** e.g. Introduction to supervised learning"
+          />
+        </div>
+
+        <div class="prompt-section">
+          <label>Chatbot prompt</label>
+          <textarea class="prompt-box" readonly [value]="chatbotPrompt()" rows="12"></textarea>
+          <button type="button" class="btn-secondary" (click)="copyChatbotPrompt()">
+            {{ promptCopied() ? 'Copied!' : 'Copy prompt' }}
+          </button>
+        </div>
+
+        <div class="bulk-actions-row">
+          <button type="button" class="btn-secondary" (click)="downloadSampleJson()">Download sample JSON</button>
+          <button type="button" class="btn-secondary" (click)="loadSampleIntoEditor()">Load sample</button>
+          <label class="file-picker">
+            <input type="file" accept=".json,application/json" (change)="onBulkFileSelected($event)" />
+            <span class="btn-secondary">Upload .json</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>Import mode</label>
+          <select [ngModel]="bulkImportMode()" (ngModelChange)="onImportModeChange($event)">
+            <option value="replace">Replace — delete existing blocks</option>
+            <option value="append">Append — add after existing blocks</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Paste JSON from chatbot</label>
+          <textarea
+            class="json-editor"
+            [ngModel]="bulkJsonText()"
+            (ngModelChange)="onBulkJsonChange($event)"
+            rows="10"
+            spellcheck="false"
+            placeholder='{ "contentBlocks": [ { "order": 1, "type": "heading", "content": { ... } } ] }'
+          ></textarea>
+          @if (bulkParseError()) {
+            <p class="parse-error">{{ bulkParseError() }}</p>
+          }
+        </div>
+
+        <div class="bulk-preview-section">
+          <h3>Preview</h3>
+          @if (bulkPreviewBlocks().length === 0) {
+            <p class="empty-hint">Paste valid JSON to see a preview here.</p>
+          } @else {
+            <div class="bulk-preview-list">
+              @for (block of bulkPreviewBlocks(); track block.order + block.type) {
+                <div class="bulk-preview-item">
+                  <span class="preview-label">{{ blockLabel(block.type) }}</span>
+                  @switch (block.type) {
+                    @case ('heading') { <app-block-heading [content]="block.content" /> }
+                    @case ('text') { <app-block-text [content]="block.content" /> }
+                    @case ('image') { <app-block-image [content]="block.content" /> }
+                    @case ('two_column') { <app-block-two-column [content]="block.content" /> }
+                    @case ('callout') { <app-block-callout [content]="block.content" /> }
+                    @case ('code') { <app-block-code [content]="block.content" /> }
+                    @case ('quote') { <app-block-quote [content]="block.content" /> }
+                    @case ('divider') { <app-block-divider /> }
+                    @case ('gallery') { <app-block-gallery [content]="block.content" /> }
+                    @case ('video') { <app-block-video [content]="block.content" /> }
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="bulk-actions-row end">
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="bulkPreviewBlocks().length === 0 || bulkImporting()"
+            (click)="runBulkImport()"
+          >
+            {{ bulkImporting() ? 'Importing…' : 'Import content blocks' }}
+          </button>
+        </div>
+
+        @if (bulkResults(); as results) {
+          <ul class="bulk-results">
+            @for (r of results; track r.path) {
+              <li [class.ok]="r.success" [class.fail]="!r.success">
+                <span>{{ r.path }}</span> — {{ r.message }}
+              </li>
+            }
+          </ul>
+        }
+
+        <details class="schema-details">
+          <summary>Block type reference</summary>
+          <table class="schema-table">
+            <thead>
+              <tr><th>Type</th><th>content shape</th></tr>
+            </thead>
+            <tbody>
+              @for (row of blockTypeReference; track row.type) {
+                <tr>
+                  <td><code>{{ row.type }}</code></td>
+                  <td><code>{{ row.shape }}</code></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </div>
+  }
+</div>

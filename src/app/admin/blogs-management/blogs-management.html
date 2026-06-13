@@ -1,0 +1,173 @@
+<div class="blogs-admin">
+  <div class="page-header">
+    <div>
+      <h1>Blogs</h1>
+      <p>Create and manage news articles with text content and photo galleries</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">New blog</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (blogs().length === 0) {
+    <div class="empty">
+      <p>No blogs yet. Create your first article.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Create blog</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="blogs-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Event date</th>
+            <th>Summary</th>
+            <th>Images</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (blog of blogs(); track blog.id) {
+            <tr>
+              <td>
+                <strong>{{ blog.title }}</strong>
+                <div class="slug">{{ blog.slug }}</div>
+              </td>
+              <td>
+                <span class="status-badge" [class.published]="blog.status === 'published'">
+                  {{ blog.status }}
+                </span>
+              </td>
+              <td>{{ formatDate(blog.eventDate) }}</td>
+              <td class="summary-cell">{{ truncate(blog.summary ?? blog.content, 100) }}</td>
+              <td>{{ blog.images.length }}</td>
+              <td class="actions">
+                <button type="button" class="btn-sm" (click)="openEdit(blog)">Edit</button>
+                <button type="button" class="btn-sm danger" (click)="deleteBlog(blog)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal modal-wide" role="dialog">
+      <div class="modal-header">
+        <h2>{{ editingId() ? 'Edit blog' : 'New blog' }}</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="blog-form">
+        <div class="form-row two-col">
+          <div>
+            <label for="title">Title *</label>
+            <input id="title" type="text" formControlName="title" placeholder="Article title" />
+            @if (form.get('title')?.invalid && form.get('title')?.touched) {
+              <span class="field-error">Title is required</span>
+            }
+          </div>
+          <div>
+            <label for="slug">Slug *</label>
+            <input id="slug" type="text" formControlName="slug" placeholder="url-friendly-slug" />
+            @if (form.get('slug')?.invalid && form.get('slug')?.touched) {
+              <span class="field-error">Slug is required</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div>
+            <label for="eventDate">Event date</label>
+            <input id="eventDate" type="date" formControlName="eventDate" />
+          </div>
+          <div>
+            <label for="status">Status *</label>
+            <select id="status" formControlName="status">
+              @for (s of statuses; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="summary">Summary</label>
+          <textarea id="summary" formControlName="summary" rows="2" placeholder="Short teaser shown on the list page"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="content">Content *</label>
+          <textarea id="content" formControlName="content" rows="10" placeholder="Full article body (paragraphs separated by blank lines)"></textarea>
+          @if (form.get('content')?.invalid && form.get('content')?.touched) {
+            <span class="field-error">Content is required</span>
+          }
+        </div>
+
+        <div class="form-row">
+          <label>Cover image</label>
+          <div class="cover-upload">
+            @if (coverPreview()) {
+              <img [src]="coverPreview()!" alt="Cover preview" class="cover-preview" />
+            }
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onCoverSelected($event)" />
+            @if (isUploadingCover()) {
+              <span class="upload-hint">Uploading cover…</span>
+            } @else {
+              <p class="upload-hint">Use JPG or PNG. HEIC iPhone photos are not supported — export as JPG first.</p>
+            }
+          </div>
+        </div>
+
+        @if (editingId()) {
+          <section class="gallery-section">
+            <div class="gallery-header">
+              <h3>Gallery images</h3>
+              <label class="btn-secondary file-btn">
+                {{ isUploadingGallery() ? 'Uploading…' : 'Upload images' }}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  [disabled]="isUploadingGallery()"
+                  (change)="onGallerySelected($event)"
+                />
+              </label>
+            </div>
+
+            @if (galleryImages().length === 0) {
+              <p class="gallery-empty">No gallery images yet. Upload photos from the signing ceremony or event.</p>
+            } @else {
+              <div class="gallery-list">
+                @for (img of galleryImages(); track img.id) {
+                  <div class="gallery-row">
+                    <img [src]="img.url" alt="Gallery thumbnail" class="gallery-thumb" />
+                    <input
+                      type="text"
+                      [value]="img.caption ?? ''"
+                      placeholder="Caption (optional)"
+                      (change)="updateImageCaption(img, $event)"
+                    />
+                    <button type="button" class="btn-sm danger" (click)="deleteGalleryImage(img)">Remove</button>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        } @else {
+          <p class="gallery-hint">Save the blog first, then you can upload gallery images.</p>
+        }
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving() || isUploadingCover()">
+            {{ isSaving() ? 'Saving…' : editingId() ? 'Update blog' : 'Create blog' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

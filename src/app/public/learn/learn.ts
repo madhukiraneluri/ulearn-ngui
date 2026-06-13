@@ -12,6 +12,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Course, CurriculumLesson, LessonWithBlocks } from '../../models';
 import { LearnService } from '../../shared/services/learn.service';
 import { CourseService } from '../../shared/services/course.service';
+import { PaymentService } from '../../shared/services/payment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
 import { Subject, takeUntil } from 'rxjs';
@@ -59,6 +60,7 @@ export class Learn implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly learnService = inject(LearnService);
   private readonly courseService = inject(CourseService);
+  private readonly paymentService = inject(PaymentService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
@@ -69,6 +71,7 @@ export class Learn implements OnInit, OnDestroy {
   isEnrolled = signal(false);
   completedLessonIds = signal<Set<string>>(new Set());
   markingComplete = signal(false);
+  showEnrollPrompt = signal(false);
 
   flatLessons = computed(() => {
     const c = this.course();
@@ -105,6 +108,8 @@ export class Learn implements OnInit, OnDestroy {
     const id = this.currentLesson()?.id;
     return id ? this.completedLessonIds().has(id) : false;
   });
+
+  canTrackProgress = computed(() => this.isEnrolled());
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -224,24 +229,63 @@ export class Learn implements OnInit, OnDestroy {
   }
 
   navigateToLesson(lesson: SidebarLesson): void {
-    const slug = this.course()?.slug;
-    if (!slug) return;
-
     if (this.isLessonLocked(lesson)) {
-      if (!this.auth.isLoggedIn()) {
-        this.router.navigate(['/auth/login'], {
-          queryParams: { returnUrl: `/learn/${slug}/${lesson.id}` }
-        });
-      } else {
-        this.router.navigate(['/courses', slug]);
-      }
+      this.handleLockedLessonClick(lesson);
       return;
     }
 
+    const slug = this.course()?.slug;
+    if (!slug) return;
+
+    this.showEnrollPrompt.set(false);
     this.router.navigate(['/learn', slug, lesson.id]);
   }
 
+  handleLockedLessonClick(lesson: SidebarLesson): void {
+    const slug = this.course()?.slug;
+    if (!slug) return;
+
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: `/learn/${slug}/${lesson.id}` }
+      });
+      return;
+    }
+
+    this.showEnrollPrompt.set(true);
+  }
+
+  onLockedLockClick(event: Event, lesson: SidebarLesson): void {
+    event.stopPropagation();
+    this.handleLockedLessonClick(lesson);
+  }
+
+  dismissEnrollPrompt(): void {
+    this.showEnrollPrompt.set(false);
+  }
+
+  enrollInCourse(): void {
+    const course = this.course();
+    if (!course) return;
+
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: `/courses/${course.slug}` }
+      });
+      return;
+    }
+
+    void this.paymentService.startCheckout({
+      courseId: course.id,
+      slug: course.slug,
+      price: course.price,
+      title: course.title
+    });
+  }
+
   async markComplete(): Promise<void> {
+    if (!this.isEnrolled()) return;
+
     const lesson = this.currentLesson();
     const user = this.auth.currentUser();
     if (!lesson || !user) {
@@ -278,15 +322,23 @@ export class Learn implements OnInit, OnDestroy {
   goPrevious(): void {
     const prev = this.previousLesson();
     const slug = this.course()?.slug;
-    if (prev && slug) this.router.navigate(['/learn', slug, prev.id]);
+    if (!prev || !slug) return;
+    if (this.isLessonLocked(prev as SidebarLesson)) {
+      this.handleLockedLessonClick(prev as SidebarLesson);
+      return;
+    }
+    this.router.navigate(['/learn', slug, prev.id]);
   }
 
   goNext(): void {
     const next = this.nextLesson();
     const slug = this.course()?.slug;
-    if (next && slug) {
-      this.router.navigate(['/learn', slug, next.id]);
+    if (!next || !slug) return;
+    if (this.isLessonLocked(next as SidebarLesson)) {
+      this.handleLockedLessonClick(next as SidebarLesson);
+      return;
     }
+    this.router.navigate(['/learn', slug, next.id]);
   }
 
   formatDuration(minutes: number): string {
