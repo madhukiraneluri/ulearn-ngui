@@ -172,6 +172,21 @@ export interface Internship {
   createdAt: string;
 }
 
+export type InternshipApplicationStatus =
+  | 'applied'
+  | 'reviewing'
+  | 'accepted'
+  | 'rejected';
+
+export interface InternshipApplication {
+  id: string;
+  internshipId: string;
+  userId: string;
+  status: InternshipApplicationStatus;
+  appliedAt: string;
+  updatedAt: string;
+}
+
 // ─── RESEARCH PAPERS ─────────────────────────────────────────────────────────
 
 export type PaperStatus = 'published' | 'under_review' | 'preprint';
@@ -191,6 +206,21 @@ export interface ResearchPaper {
   citations: number;
   thumbnailUrl?: string;
   createdAt: string;
+}
+
+// ─── STUDENT STORIES ─────────────────────────────────────────────────────────
+
+export interface StudentStory {
+  id: string;
+  studentName: string;
+  photoUrl?: string;
+  collegeName: string;
+  currentRole?: string;
+  impression: string;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── BLOGS ───────────────────────────────────────────────────────────────────

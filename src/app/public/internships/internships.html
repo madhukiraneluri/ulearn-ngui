@@ -219,11 +219,22 @@
                 <span class="status-dot" [class.open]="intern.status === 'open'">
                   {{ intern.status === 'open' ? 'Open' : 'Closed' }}
                 </span>
-                <button class="apply-btn"
-                  [disabled]="intern.status === 'closed'"
-                  [class.disabled]="intern.status === 'closed'">
-                  Apply Now
-                </button>
+                @if (hasApplied(intern.id)) {
+                  <button class="apply-btn applied" disabled>Applied</button>
+                } @else {
+                  <button
+                    class="apply-btn"
+                    [disabled]="intern.status === 'closed' || isApplying(intern.id)"
+                    [class.disabled]="intern.status === 'closed'"
+                    (click)="handleApplyClick(intern.id)"
+                  >
+                    @if (isApplying(intern.id)) {
+                      Applying…
+                    } @else {
+                      Apply Now
+                    }
+                  </button>
+                }
               </div>
 
             </div>

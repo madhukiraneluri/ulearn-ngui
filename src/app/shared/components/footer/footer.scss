@@ -13,7 +13,7 @@
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1.2fr;
   gap: 40px;
   margin-bottom: 40px;
 
@@ -72,6 +72,37 @@
     background: var(--purple);
     border-color: var(--purple);
     color: #fff;
+  }
+}
+
+.linktree-footer {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--purple);
+  }
+}
+
+.footer-phone {
+  font-weight: 800 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.footer-email {
+  .email-label {
+    display: inline-block;
+    min-width: 52px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.4);
+    margin-right: 6px;
   }
 }
 

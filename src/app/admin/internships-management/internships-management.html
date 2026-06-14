@@ -1,18 +1,18 @@
 <div class="content-admin">
   <div class="page-header">
     <div>
-      <h1>Research papers</h1>
-      <p>Manage published research and preprints shown on the public site</p>
+      <h1>Internships</h1>
+      <p>Manage short- and long-term internship listings</p>
     </div>
-    <button type="button" class="btn-primary" (click)="openCreate()">New paper</button>
+    <button type="button" class="btn-primary" (click)="openCreate()">New internship</button>
   </div>
 
   @if (isLoading()) {
     <p class="loading">Loading…</p>
-  } @else if (papers().length === 0) {
+  } @else if (internships().length === 0) {
     <div class="empty">
-      <p>No papers yet.</p>
-      <button type="button" class="btn-secondary" (click)="openCreate()">Create paper</button>
+      <p>No internships yet.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Create internship</button>
     </div>
   } @else {
     <div class="table-wrap">
@@ -20,25 +20,25 @@
         <thead>
           <tr>
             <th>Title</th>
-            <th>Category</th>
-            <th>Venue</th>
-            <th>Year</th>
+            <th>Type</th>
+            <th>Domain</th>
+            <th>Stipend</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          @for (row of papers(); track row.id) {
+          @for (row of internships(); track row.id) {
             <tr>
               <td>
                 <strong>{{ row.title }}</strong>
-                <div class="sub">{{ row.authors.join(' · ') }}</div>
+                <div class="sub">{{ row.durationLabel }} · {{ row.mode }}</div>
               </td>
-              <td>{{ row.category }}</td>
-              <td>{{ row.venue }}</td>
-              <td>{{ row.year }}</td>
+              <td>{{ row.type }}</td>
+              <td>{{ row.domain }}</td>
+              <td>{{ formatStipend(row.stipendPerMonth) }}</td>
               <td>
-                <span class="status-badge" [class.published]="row.status === 'published'">{{ row.status }}</span>
+                <span class="status-badge" [class.open]="row.status === 'open'">{{ row.status }}</span>
               </td>
               <td class="actions">
                 <button type="button" class="btn-sm" (click)="openEdit(row)">Edit</button>
@@ -53,34 +53,38 @@
 
   @if (showForm()) {
     <div class="modal-overlay" (click)="closeForm()"></div>
-    <div class="modal modal-wide" role="dialog">
+    <div class="modal" role="dialog">
       <div class="modal-header">
-        <h2>{{ editingId() ? 'Edit paper' : 'New paper' }}</h2>
+        <h2>{{ editingId() ? 'Edit internship' : 'New internship' }}</h2>
         <button type="button" class="close-btn" (click)="closeForm()">✕</button>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="save()" class="admin-form">
-        <div class="form-row">
-          <label>Title *</label>
-          <input type="text" formControlName="title" />
-        </div>
-
-        <div class="form-row">
-          <label>Authors * (comma-separated)</label>
-          <input type="text" formControlName="authorsCsv" placeholder="Dr. Name, Co-author" />
-        </div>
-
-        <div class="form-row">
-          <label>Abstract *</label>
-          <textarea formControlName="abstract" rows="4"></textarea>
+        <div class="form-row two-col">
+          <div>
+            <label>Title *</label>
+            <input type="text" formControlName="title" />
+          </div>
+          <div>
+            <label>Domain *</label>
+            <input type="text" formControlName="domain" placeholder="Technical, Design, AI/ML…" />
+          </div>
         </div>
 
         <div class="form-row three-col">
           <div>
-            <label>Category *</label>
-            <select formControlName="category">
-              @for (c of categories; track c) {
-                <option [value]="c">{{ c }}</option>
+            <label>Type *</label>
+            <select formControlName="type">
+              @for (t of types; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Mode *</label>
+            <select formControlName="mode">
+              @for (m of modes; track m) {
+                <option [value]="m">{{ m }}</option>
               }
             </select>
           </div>
@@ -92,33 +96,33 @@
               }
             </select>
           </div>
-          <div>
-            <label>Year *</label>
-            <input type="number" formControlName="year" min="1990" />
-          </div>
         </div>
 
         <div class="form-row two-col">
           <div>
-            <label>Venue *</label>
-            <input type="text" formControlName="venue" placeholder="IEEE ICASSP 2024" />
+            <label>Duration label *</label>
+            <input type="text" formControlName="durationLabel" placeholder="6 Weeks" />
           </div>
           <div>
-            <label>Citations</label>
-            <input type="number" formControlName="citations" min="0" />
+            <label>Stipend / month (₹) *</label>
+            <input type="number" formControlName="stipendPerMonth" min="0" />
           </div>
         </div>
 
-        <div class="form-row two-col">
-          <div>
-            <label>PDF URL</label>
-            <input type="url" formControlName="pdfUrl" placeholder="https://…" />
-          </div>
-          <div>
-            <label>DOI URL</label>
-            <input type="url" formControlName="doiUrl" placeholder="https://doi.org/…" />
-          </div>
+        <div class="form-row">
+          <label>Description *</label>
+          <textarea formControlName="description" rows="3"></textarea>
         </div>
+
+        <div class="form-row">
+          <label>Skills (comma-separated)</label>
+          <input type="text" formControlName="skillsCsv" placeholder="React, TypeScript, Git" />
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="hasPpo" />
+          Pre-placement offer (PPO) available
+        </label>
 
         <div class="form-row">
           <label>Thumbnail</label>

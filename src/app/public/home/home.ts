@@ -1,6 +1,6 @@
 import {
   Component, ChangeDetectionStrategy, signal,
-  computed, inject, OnInit, OnDestroy
+  inject, OnInit, OnDestroy
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -10,7 +10,14 @@ import { CourseService } from '../../shared/services/course.service';
 import { PaperService } from '../../shared/services/paper.service';
 import { InternshipService } from '../../shared/services/internship.service';
 import { BlogService } from '../../shared/services/blog.service';
-import { CourseListItem, ResearchPaper, Internship, BlogListItem } from '../../models';
+import { StudentStoryService } from '../../shared/services/student-story.service';
+import { CourseListItem, ResearchPaper, Internship, BlogListItem, StudentStory } from '../../models';
+import {
+  LEARNER_COLLEGES_ROW1,
+  LEARNER_COLLEGES_ROW2,
+  PARTNERED_COLLEGES
+} from '../../shared/constants/college-partners.data';
+import { driveThumbnailUrl } from '../../shared/utils/drive-image.util';
 
 @Component({
   selector: 'app-home',
@@ -26,6 +33,7 @@ export class Home implements OnInit, OnDestroy {
   private readonly paperService       = inject(PaperService);
   private readonly internshipService  = inject(InternshipService);
   private readonly blogService        = inject(BlogService);
+  private readonly studentStoryService = inject(StudentStoryService);
   private readonly destroy$           = new Subject<void>();
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -33,6 +41,15 @@ export class Home implements OnInit, OnDestroy {
   readonly featuredPapers       = signal<ResearchPaper[]>([]);
   readonly internships          = signal<Internship[]>([]);
   readonly featuredBlogs        = signal<BlogListItem[]>([]);
+  readonly studentStories       = signal<StudentStory[]>([]);
+
+  readonly partneredColleges    = PARTNERED_COLLEGES;
+  readonly learnerCollegesRow1  = LEARNER_COLLEGES_ROW1;
+  readonly learnerCollegesRow2  = LEARNER_COLLEGES_ROW2;
+
+  private readonly avatarColors = [
+    'var(--purple)', 'var(--green)', 'var(--orange)', 'var(--blue)', 'var(--red)'
+  ];
 
   // ── Hero rotating words ───────────────────────────────────────────────────
   readonly rotatingWords = [
@@ -81,25 +98,6 @@ export class Home implements OnInit, OnDestroy {
     { value: '250',   label: 'Publications',      color: 'var(--blue)'   },
   ];
 
-  // ── Testimonials ──────────────────────────────────────────────────────────
-  readonly testimonials = [
-    {
-      quote: 'The mentors here genuinely care. I went from zero web dev knowledge to landing a ₹6 LPA role in 6 months. ULearn changed my life.',
-      name: 'Rahul Menon', role: 'Frontend Dev @ Zoho',
-      avatar: 'R', color: 'var(--purple)',
-    },
-    {
-      quote: 'The AI/ML research programme helped me co-author a paper. I never imagined that was possible as a college student. The mentors are incredible.',
-      name: 'Priya Nair', role: 'ML Intern @ TCS Research',
-      avatar: 'P', color: 'var(--green)',
-    },
-    {
-      quote: 'I enrolled in the UI/UX course while in college and got placed before graduating. The portfolio projects made all the difference.',
-      name: 'Arun Krishna', role: 'Product Designer @ Freshworks',
-      avatar: 'A', color: 'var(--orange)',
-    },
-  ];
-
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit(): void {
     this.courseService.getFeaturedCourses()
@@ -118,6 +116,10 @@ export class Home implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(b => this.featuredBlogs.set(b));
 
+    this.studentStoryService.getPublishedStories()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(stories => this.studentStories.set(stories));
+
     this.intervalId = setInterval(() => {
       this.activeWordIndex.update(i => (i + 1) % this.rotatingWords.length);
     }, 2000);
@@ -127,6 +129,31 @@ export class Home implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     if (this.intervalId) clearInterval(this.intervalId);
+  }
+
+  truncateImpression(text: string, max = 100): string {
+    return text.length > max ? text.substring(0, max).trimEnd() + '…' : text;
+  }
+
+  collegeLogoSrc(driveUrl: string): string {
+    return driveThumbnailUrl(driveUrl, 200);
+  }
+
+  onLogoError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.visibility = 'hidden';
+  }
+
+  getInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  getAvatarColor(index: number): string {
+    return this.avatarColors[index % this.avatarColors.length];
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────

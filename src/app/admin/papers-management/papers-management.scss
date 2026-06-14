@@ -1,0 +1,6 @@
+@use '../../../styles/variables' as *;
+@use '../internships-management/internships-management.scss';
+
+.modal-wide {
+  width: min(800px, calc(100vw - 32px));
+}

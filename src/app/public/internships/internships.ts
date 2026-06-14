@@ -6,6 +6,9 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { InternshipService } from '../../shared/services/internship.service';
+import { InternshipApplicationService } from '../../shared/services/internship-application.service';
+import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast';
 import { Internship, InternshipType, InternshipMode } from '../../models';
 
 interface FilterState {
@@ -28,10 +31,15 @@ export class Internships implements OnInit, OnDestroy {
   private readonly router             = inject(Router);
   private readonly route              = inject(ActivatedRoute);
   private readonly internshipService  = inject(InternshipService);
+  private readonly applicationService = inject(InternshipApplicationService);
+  readonly auth                       = inject(AuthService);
+  private readonly toast              = inject(ToastService);
   private readonly destroy$           = new Subject<void>();
 
   readonly allInternships = signal<Internship[]>([]);
   readonly isLoading      = signal(true);
+  readonly appliedIds     = signal<Set<string>>(new Set());
+  readonly applyingId     = signal<string | null>(null);
 
   readonly filters = signal<FilterState>({
     types: [], modes: [], domains: [],
@@ -117,9 +125,23 @@ export class Internships implements OnInit, OnDestroy {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit(): void {
+    const applyAfterLogin = this.route.snapshot.queryParamMap.get('apply');
+
     this.internshipService.getInternships().subscribe(data => {
       this.allInternships.set(data);
       this.isLoading.set(false);
+
+      if (this.auth.isLoggedIn()) {
+        const user = this.auth.currentUser();
+        if (user) {
+          void this.loadAppliedIds(user.id, applyAfterLogin);
+        }
+      } else if (applyAfterLogin) {
+        const type = this.route.snapshot.params['type'] ?? 'short';
+        this.router.navigate(['/auth/login'], {
+          queryParams: { returnUrl: `/internships/${type}?apply=${applyAfterLogin}` }
+        });
+      }
     });
 
     this.route.params
@@ -277,5 +299,53 @@ export class Internships implements OnInit, OnDestroy {
 
   formatStipend(amount: number): string {
     return '₹' + amount.toLocaleString('en-IN') + '/mo';
+  }
+
+  hasApplied(internshipId: string): boolean {
+    return this.appliedIds().has(internshipId);
+  }
+
+  isApplying(internshipId: string): boolean {
+    return this.applyingId() === internshipId;
+  }
+
+  private async loadAppliedIds(userId: string, applyAfterLogin?: string | null): Promise<void> {
+    this.applicationService.getUserAppliedInternshipIds(userId).subscribe({
+      next: (ids) => {
+        this.appliedIds.set(ids);
+        if (applyAfterLogin && !ids.has(applyAfterLogin)) {
+          void this.handleApplyClick(applyAfterLogin);
+        }
+      }
+    });
+  }
+
+  async handleApplyClick(internshipId: string): Promise<void> {
+    const intern = this.allInternships().find((i) => i.id === internshipId);
+    if (!intern || intern.status === 'closed') return;
+
+    if (this.hasApplied(internshipId)) return;
+
+    if (!this.auth.isLoggedIn()) {
+      const type = this.route.snapshot.params['type'] ?? 'short';
+      this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: `/internships/${type}?apply=${internshipId}` }
+      });
+      return;
+    }
+
+    const user = this.auth.currentUser();
+    if (!user) return;
+
+    this.applyingId.set(internshipId);
+    const ok = await this.applicationService.applyForInternship(internshipId, user.id);
+    this.applyingId.set(null);
+
+    if (ok) {
+      this.appliedIds.update((set) => new Set([...set, internshipId]));
+      this.toast.success('Application submitted!');
+    } else {
+      this.toast.error('Could not submit application. Please try again.');
+    }
   }
 }

@@ -223,6 +223,124 @@ h1 {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SECTION 2b — COLLEGE PARTNERS & LEARNERS
+// ═══════════════════════════════════════════════════════════════
+.college-logos-section {
+  padding: 48px $section-pad-x 56px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.college-logos-block + .college-logos-block {
+  margin-top: 40px;
+}
+
+.college-logos-heading {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 18px;
+}
+
+.college-marquee-track {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+
+  & + & {
+    margin-top: 12px;
+  }
+}
+
+.college-marquee {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+
+  &:hover {
+    animation-play-state: paused;
+  }
+
+  &--forward {
+    animation: college-marquee-forward 50s linear infinite;
+  }
+
+  &--reverse {
+    animation: college-marquee-reverse 50s linear infinite;
+  }
+}
+
+.partner-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  max-width: 340px;
+
+  img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: #fff;
+  }
+}
+
+.partner-chip-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.learner-logo-marquee {
+  gap: 20px;
+}
+
+.learner-logo-chip {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+@keyframes college-marquee-forward {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes college-marquee-reverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SECTION 3 — RESEARCH
 // ═══════════════════════════════════════════════════════════════
 .research-section {
@@ -682,11 +800,138 @@ h1 {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SECTION 7 — TESTIMONIALS
+// SECTION 7 — STUDENT STORIES MARQUEE
 // ═══════════════════════════════════════════════════════════════
 .testimonials-section {
   padding: $section-pad-y $section-pad-x;
   background: #fff;
+}
+
+.story-marquee-empty {
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 32px 0;
+}
+
+.story-marquee-track {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.story-marquee {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  padding: 4px 0 8px;
+  animation: story-marquee 55s linear infinite;
+
+  &:hover {
+    animation-play-state: paused;
+  }
+}
+
+.story-card {
+  flex-shrink: 0;
+  width: 300px;
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 20px 18px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  text-align: center;
+
+  .stars {
+    color: var(--yellow);
+    font-size: 0.72rem;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  blockquote {
+    margin: 0 0 14px;
+    font-size: 0.82rem;
+    color: var(--text);
+    line-height: 1.55;
+    font-weight: 600;
+    font-style: italic;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 3.9em;
+  }
+}
+
+.story-author {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.story-photo,
+.story-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.story-photo {
+  object-fit: cover;
+  border: 2px solid rgba(139, 111, 190, 0.2);
+}
+
+.story-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.story-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.author-name {
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.college-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(139, 111, 190, 0.12);
+  color: var(--purple);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.author-role {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+@keyframes story-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -738,6 +983,7 @@ h1 {
   .hero-stats { gap: 16px; }
 
   .about-section,
+  .college-logos-section,
   .research-section,
   .courses-section,
   .internships-section,

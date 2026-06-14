@@ -32,9 +32,28 @@ export const adminRoutes: Routes = [
           import('./mentors-management/mentors-management').then(m => m.MentorsManagement)
       },
       {
+        path: 'internships',
+        loadComponent: () =>
+          import('./internships-management/internships-management').then(m => m.InternshipsManagement)
+      },
+      {
+        path: 'internship-applications',
+        loadComponent: () =>
+          import('./internship-applications-management/internship-applications-management').then(
+            m => m.InternshipApplicationsManagement
+          )
+      },
+      {
         path: 'papers',
         loadComponent: () =>
           import('./papers-management/papers-management').then(m => m.PapersManagement)
+      },
+      {
+        path: 'student-stories',
+        loadComponent: () =>
+          import('./student-stories-management/student-stories-management').then(
+            m => m.StudentStoriesManagement
+          )
       },
       {
         path: 'blogs',

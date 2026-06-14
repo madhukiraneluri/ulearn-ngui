@@ -13,28 +13,28 @@ import {
   Validators
 } from '@angular/forms';
 import {
-  AdminPaperInput,
-  AdminPaperRow,
-  AdminPapersService
-} from '../services/admin-papers.service';
-import { PaperCategory, PaperStatus } from '../../models';
+  AdminInternshipInput,
+  AdminInternshipRow,
+  AdminInternshipsService
+} from '../services/admin-internships.service';
+import { InternshipMode, InternshipType } from '../../models';
 import { ToastService } from '../../core/services/toast';
 import { prepareBlogImage } from '../services/blog-image.util';
 
 @Component({
-  selector: 'app-papers-management',
+  selector: 'app-internships-management',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './papers-management.html',
-  styleUrl: './papers-management.scss'
+  templateUrl: './internships-management.html',
+  styleUrl: './internships-management.scss'
 })
-export class PapersManagement implements OnInit {
+export class InternshipsManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly papersService = inject(AdminPapersService);
+  private readonly internshipsService = inject(AdminInternshipsService);
   private readonly toast = inject(ToastService);
 
-  readonly papers = signal<AdminPaperRow[]>([]);
+  readonly internships = signal<AdminInternshipRow[]>([]);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly isUploadingThumbnail = signal(false);
@@ -45,33 +45,34 @@ export class PapersManagement implements OnInit {
   form!: FormGroup;
   private pendingThumbnailFile: File | null = null;
 
-  readonly categories: PaperCategory[] = ['ai', 'nlp', 'cv', 'health', 'business'];
-  readonly statuses: PaperStatus[] = ['published', 'under_review', 'preprint'];
+  readonly types: InternshipType[] = ['short', 'long'];
+  readonly modes: InternshipMode[] = ['remote', 'hybrid', 'onsite'];
+  readonly statuses: ('open' | 'closed')[] = ['open', 'closed'];
 
   ngOnInit(): void {
     this.buildForm();
-    void this.loadPapers();
+    void this.loadInternships();
   }
 
   private buildForm(): void {
     this.form = this.fb.group({
       title: ['', Validators.required],
-      authorsCsv: ['', Validators.required],
-      abstract: ['', Validators.required],
-      category: ['ai' as PaperCategory, Validators.required],
-      status: ['published' as PaperStatus, Validators.required],
-      venue: ['', Validators.required],
-      year: [new Date().getFullYear(), [Validators.required, Validators.min(1990)]],
-      citations: [0, [Validators.required, Validators.min(0)]],
-      pdfUrl: [''],
-      doiUrl: [''],
+      type: ['short' as InternshipType, Validators.required],
+      mode: ['remote' as InternshipMode, Validators.required],
+      domain: ['', Validators.required],
+      description: ['', Validators.required],
+      durationLabel: ['', Validators.required],
+      stipendPerMonth: [0, [Validators.required, Validators.min(0)]],
+      hasPpo: [false],
+      skillsCsv: [''],
+      status: ['open', Validators.required],
       thumbnailUrl: ['']
     });
   }
 
-  private async loadPapers(): Promise<void> {
+  private async loadInternships(): Promise<void> {
     this.isLoading.set(true);
-    this.papers.set(await this.papersService.listAll());
+    this.internships.set(await this.internshipsService.listAll());
     this.isLoading.set(false);
   }
 
@@ -81,35 +82,35 @@ export class PapersManagement implements OnInit {
     this.thumbnailPreview.set(null);
     this.form.reset({
       title: '',
-      authorsCsv: '',
-      abstract: '',
-      category: 'ai',
-      status: 'published',
-      venue: '',
-      year: new Date().getFullYear(),
-      citations: 0,
-      pdfUrl: '',
-      doiUrl: '',
+      type: 'short',
+      mode: 'remote',
+      domain: '',
+      description: '',
+      durationLabel: '',
+      stipendPerMonth: 0,
+      hasPpo: false,
+      skillsCsv: '',
+      status: 'open',
       thumbnailUrl: ''
     });
     this.showForm.set(true);
   }
 
-  openEdit(row: AdminPaperRow): void {
+  openEdit(row: AdminInternshipRow): void {
     this.editingId.set(row.id);
     this.pendingThumbnailFile = null;
     this.thumbnailPreview.set(row.thumbnailUrl);
     this.form.reset({
       title: row.title,
-      authorsCsv: row.authors.join(', '),
-      abstract: row.abstract,
-      category: row.category,
+      type: row.type,
+      mode: row.mode,
+      domain: row.domain,
+      description: row.description,
+      durationLabel: row.durationLabel,
+      stipendPerMonth: row.stipendPerMonth,
+      hasPpo: row.hasPpo,
+      skillsCsv: row.skills.join(', '),
       status: row.status,
-      venue: row.venue,
-      year: row.year,
-      citations: row.citations,
-      pdfUrl: row.pdfUrl ?? '',
-      doiUrl: row.doiUrl ?? '',
       thumbnailUrl: row.thumbnailUrl ?? ''
     });
     this.showForm.set(true);
@@ -150,48 +151,43 @@ export class PapersManagement implements OnInit {
     }
 
     const raw = this.form.getRawValue();
-    const input: AdminPaperInput = {
+    const input: AdminInternshipInput = {
       title: String(raw.title).trim(),
-      authors: this.parseCsv(String(raw.authorsCsv ?? '')),
-      abstract: String(raw.abstract).trim(),
-      category: raw.category as PaperCategory,
-      status: raw.status as PaperStatus,
-      venue: String(raw.venue).trim(),
-      year: Number(raw.year),
-      citations: Number(raw.citations),
-      pdfUrl: String(raw.pdfUrl ?? '').trim() || undefined,
-      doiUrl: String(raw.doiUrl ?? '').trim() || undefined,
+      type: raw.type as InternshipType,
+      mode: raw.mode as InternshipMode,
+      domain: String(raw.domain).trim(),
+      description: String(raw.description).trim(),
+      durationLabel: String(raw.durationLabel).trim(),
+      stipendPerMonth: Number(raw.stipendPerMonth),
+      hasPpo: Boolean(raw.hasPpo),
+      skills: this.parseCsv(String(raw.skillsCsv ?? '')),
+      status: raw.status as 'open' | 'closed',
       thumbnailUrl: String(raw.thumbnailUrl ?? '').trim() || undefined
     };
-
-    if (input.authors.length === 0) {
-      this.toast.error('Add at least one author');
-      return;
-    }
 
     this.isSaving.set(true);
     try {
       let id = this.editingId();
       if (id) {
-        await this.papersService.update(id, input);
-        this.toast.success('Paper updated');
+        await this.internshipsService.update(id, input);
+        this.toast.success('Internship updated');
       } else {
-        const created = await this.papersService.create(input);
-        if (!created) throw new Error('Could not create paper');
+        const created = await this.internshipsService.create(input);
+        if (!created) throw new Error('Could not create internship');
         id = created.id;
-        this.toast.success('Paper created');
+        this.toast.success('Internship created');
       }
 
       if (id && this.pendingThumbnailFile) {
         this.isUploadingThumbnail.set(true);
-        const url = await this.papersService.uploadThumbnail(id, this.pendingThumbnailFile);
-        await this.papersService.update(id, { ...input, thumbnailUrl: url });
+        const url = await this.internshipsService.uploadThumbnail(id, this.pendingThumbnailFile);
+        await this.internshipsService.update(id, { ...input, thumbnailUrl: url });
         this.pendingThumbnailFile = null;
         this.isUploadingThumbnail.set(false);
       }
 
       this.closeForm();
-      await this.loadPapers();
+      await this.loadInternships();
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -200,16 +196,20 @@ export class PapersManagement implements OnInit {
     }
   }
 
-  async deleteRow(row: AdminPaperRow): Promise<void> {
+  async deleteRow(row: AdminInternshipRow): Promise<void> {
     if (!confirm(`Delete "${row.title}"?`)) return;
-    const ok = await this.papersService.delete(row.id);
+    const ok = await this.internshipsService.delete(row.id);
     if (ok) {
-      this.toast.success('Paper deleted');
+      this.toast.success('Internship deleted');
       if (this.editingId() === row.id) this.closeForm();
-      await this.loadPapers();
+      await this.loadInternships();
     } else {
       this.toast.error('Could not delete');
     }
+  }
+
+  formatStipend(amount: number): string {
+    return '₹' + amount.toLocaleString('en-IN');
   }
 
   private parseCsv(value: string): string[] {

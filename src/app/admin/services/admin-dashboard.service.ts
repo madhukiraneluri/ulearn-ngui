@@ -13,7 +13,9 @@ export class AdminDashboardService {
       { count: totalStudents },
       { count: totalCourses },
       { data: enrollments },
-      { count: newStudentsWeek }
+      { count: newStudentsWeek },
+      { count: totalPapersPublished },
+      { count: activeInternships }
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('courses').select('*', { count: 'exact', head: true }),
@@ -21,7 +23,15 @@ export class AdminDashboardService {
       supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .gte('created_at', weekStart)
+        .gte('created_at', weekStart),
+      supabase
+        .from('research_papers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published'),
+      supabase
+        .from('internships')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'open')
     ]);
 
     const enrollmentRows = enrollments ?? [];
@@ -43,8 +53,8 @@ export class AdminDashboardService {
       totalCourses: totalCourses ?? 0,
       totalRevenue,
       totalEnrollmentsThisMonth: thisMonth,
-      totalPapersPublished: 0,
-      activeInternships: 0,
+      totalPapersPublished: totalPapersPublished ?? 0,
+      activeInternships: activeInternships ?? 0,
       pendingReferrals: 0,
       newStudentsThisWeek: newStudentsWeek ?? 0
     };

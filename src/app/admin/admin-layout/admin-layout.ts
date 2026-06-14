@@ -35,7 +35,11 @@ export class AdminLayout {
     { label: 'Enrollments', path: '/admin/enrollments', icon: '📝' },
     { label: 'Students', path: '/admin/students', icon: '👥' },
     { label: 'Mentors', path: '/admin/mentors', icon: '🧑‍🏫' },
-    { label: 'Blogs', path: '/admin/blogs', icon: '📝' }
+    { label: 'Blogs', path: '/admin/blogs', icon: '📝' },
+    { label: 'Internships', path: '/admin/internships', icon: '💼' },
+    { label: 'Applications', path: '/admin/internship-applications', icon: '📨' },
+    { label: 'Papers', path: '/admin/papers', icon: '📄' },
+    { label: 'Student Stories', path: '/admin/student-stories', icon: '⭐' }
   ];
 
   toggleSidebar(): void {

@@ -307,51 +307,7 @@ section {
   gap: 24px;
 }
 
-.testi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-
-// ─── Testimonial Card ─────────────────────────────────────────────────────
-.testi-card {
-  background: var(--bg);
-  border-radius: 18px;
-  padding: 28px;
-  border: 1px solid var(--border);
-  transition: transform 0.2s;
-
-  &:hover { transform: translateY(-4px); }
-
-  .stars { color: var(--yellow); font-size: 0.9rem; margin-bottom: 12px; }
-
-  p {
-    font-size: 0.86rem;
-    color: var(--text);
-    line-height: 1.7;
-    font-weight: 600;
-    margin-bottom: 16px;
-    font-style: italic;
-  }
-
-  .testi-author { display: flex; align-items: center; gap: 12px; }
-
-  .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    font-weight: 800;
-    color: #fff;
-    flex-shrink: 0;
-  }
-
-  .author-name { font-weight: 800; font-size: 0.88rem; }
-  .author-role { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
-}
+// ─── Testimonial Card (legacy — carousel lives in home.scss) ────────────────
 
 // ─── Internship Card ──────────────────────────────────────────────────────
 .intern-card {
@@ -452,8 +408,7 @@ section {
 
   .courses-grid,
   .papers-grid,
-  .intern-grid,
-  .testi-grid { grid-template-columns: 1fr; }
+  .intern-grid { grid-template-columns: 1fr; }
 
   .refer {
     flex-direction: column;

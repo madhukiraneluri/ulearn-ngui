@@ -86,6 +86,97 @@
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2b — COLLEGE PARTNERS & LEARNERS
+════════════════════════════════════════════════════════════════ -->
+<section class="college-logos-section">
+  <div class="section-inner">
+
+    <div class="college-logos-block">
+      <p class="college-logos-heading">We are partnered with</p>
+      <div class="college-marquee-track">
+        <div class="college-marquee college-marquee--forward">
+          @for (college of partneredColleges; track college.name) {
+            <div class="partner-chip">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]="college.name + ' logo'"
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+              <span class="partner-chip-name">{{ college.name }}</span>
+            </div>
+          }
+          @for (college of partneredColleges; track college.name + '-dup') {
+            <div class="partner-chip" aria-hidden="true">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]=""
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+              <span class="partner-chip-name">{{ college.name }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="college-logos-block">
+      <p class="college-logos-heading">Our learners are from</p>
+      <div class="college-marquee-track">
+        <div class="college-marquee college-marquee--forward learner-logo-marquee">
+          @for (college of learnerCollegesRow1; track college.name) {
+            <div class="learner-logo-chip" [attr.title]="college.name">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]="college.name + ' logo'"
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+            </div>
+          }
+          @for (college of learnerCollegesRow1; track college.name + '-dup') {
+            <div class="learner-logo-chip" aria-hidden="true">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]=""
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+            </div>
+          }
+        </div>
+      </div>
+      <div class="college-marquee-track">
+        <div class="college-marquee college-marquee--reverse learner-logo-marquee">
+          @for (college of learnerCollegesRow2; track college.name) {
+            <div class="learner-logo-chip" [attr.title]="college.name">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]="college.name + ' logo'"
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+            </div>
+          }
+          @for (college of learnerCollegesRow2; track college.name + '-dup') {
+            <div class="learner-logo-chip" aria-hidden="true">
+              <img
+                [src]="collegeLogoSrc(college.logoUrl)"
+                [alt]=""
+                loading="lazy"
+                (error)="onLogoError($event)"
+              />
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
      SECTION 3 — AI/ML RESEARCH HIGHLIGHT
 ════════════════════════════════════════════════════════════════ -->
 <section class="research-section">
@@ -384,21 +475,58 @@
       </div>
     </div>
 
-    <div class="testi-grid">
-      @for (t of testimonials; track t.name) {
-        <div class="testi-card">
-          <div class="stars">★★★★★</div>
-          <p>"{{ t.quote }}"</p>
-          <div class="testi-author">
-            <div class="avatar" [style.background]="t.color">{{ t.avatar }}</div>
-            <div>
-              <div class="author-name">{{ t.name }}</div>
-              <div class="author-role">{{ t.role }}</div>
-            </div>
-          </div>
+    @if (studentStories().length === 0) {
+      <p class="story-marquee-empty">Student stories coming soon.</p>
+    } @else {
+      <div class="story-marquee-track">
+        <div class="story-marquee">
+          @for (story of studentStories(); track story.id; let i = $index) {
+            <article class="story-card">
+              <div class="stars">★★★★★</div>
+              <blockquote>"{{ truncateImpression(story.impression) }}"</blockquote>
+              <div class="story-author">
+                @if (story.photoUrl) {
+                  <img [src]="story.photoUrl" [alt]="story.studentName" class="story-photo" />
+                } @else {
+                  <div class="story-avatar" [style.background]="getAvatarColor(i)">
+                    {{ getInitials(story.studentName) }}
+                  </div>
+                }
+                <div class="story-meta">
+                  <div class="author-name">{{ story.studentName }}</div>
+                  <span class="college-badge">{{ story.collegeName }}</span>
+                  @if (story.currentRole) {
+                    <div class="author-role">{{ story.currentRole }}</div>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+          @for (story of studentStories(); track story.id + '-dup'; let i = $index) {
+            <article class="story-card" aria-hidden="true">
+              <div class="stars">★★★★★</div>
+              <blockquote>"{{ truncateImpression(story.impression) }}"</blockquote>
+              <div class="story-author">
+                @if (story.photoUrl) {
+                  <img [src]="story.photoUrl" [alt]="story.studentName" class="story-photo" />
+                } @else {
+                  <div class="story-avatar" [style.background]="getAvatarColor(i)">
+                    {{ getInitials(story.studentName) }}
+                  </div>
+                }
+                <div class="story-meta">
+                  <div class="author-name">{{ story.studentName }}</div>
+                  <span class="college-badge">{{ story.collegeName }}</span>
+                  @if (story.currentRole) {
+                    <div class="author-role">{{ story.currentRole }}</div>
+                  }
+                </div>
+              </div>
+            </article>
+          }
         </div>
-      }
-    </div>
+      </div>
+    }
 
   </div>
 </section>

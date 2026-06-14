@@ -1,0 +1,123 @@
+<div class="content-admin">
+  <div class="page-header">
+    <div>
+      <h1>Student Stories</h1>
+      <p>Manage testimonials shown on the home page carousel</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">New story</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (stories().length === 0) {
+    <div class="empty">
+      <p>No student stories yet.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Create story</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>College</th>
+            <th>Role</th>
+            <th>Order</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of stories(); track row.id) {
+            <tr>
+              <td>
+                <strong>{{ row.studentName }}</strong>
+                <div class="sub">{{ row.impression | slice:0:60 }}…</div>
+              </td>
+              <td>{{ row.collegeName }}</td>
+              <td>{{ row.currentRole || '—' }}</td>
+              <td>{{ row.sortOrder }}</td>
+              <td>
+                <span class="status-badge" [class.published]="row.isPublished">
+                  {{ row.isPublished ? 'published' : 'draft' }}
+                </span>
+              </td>
+              <td class="actions">
+                <button type="button" class="btn-sm" (click)="openEdit(row)">Edit</button>
+                <button type="button" class="btn-sm danger" (click)="deleteRow(row)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>{{ editingId() ? 'Edit story' : 'New story' }}</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="admin-form">
+        <div class="form-row two-col">
+          <div>
+            <label>Student name *</label>
+            <input type="text" formControlName="studentName" />
+          </div>
+          <div>
+            <label>College name *</label>
+            <input type="text" formControlName="collegeName" placeholder="IIT Bombay, VIT…" />
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div>
+            <label>Current role (optional)</label>
+            <input type="text" formControlName="currentRole" placeholder="Frontend Developer @ Zoho" />
+          </div>
+          <div>
+            <label>Sort order *</label>
+            <input type="number" formControlName="sortOrder" min="0" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Impression *</label>
+          <textarea formControlName="impression" rows="4" placeholder="A few lines about their ULearn experience…"></textarea>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="isPublished" />
+          Published (visible on home page)
+        </label>
+
+        <div class="form-row">
+          <label>Student photo</label>
+          <div class="photo-upload">
+            @if (photoPreview()) {
+              <img [src]="photoPreview()!" alt="Photo preview" class="photo-preview" />
+            } @else {
+              <div class="photo-placeholder">No photo — initials shown on site</div>
+            }
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onPhotoSelected($event)" />
+            @if (isUploadingPhoto()) {
+              <span class="upload-hint">Uploading…</span>
+            } @else {
+              <span class="upload-hint">JPG or PNG — saved when you submit</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving() || isUploadingPhoto()">
+            {{ isSaving() ? 'Saving…' : editingId() ? 'Update' : 'Create' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

@@ -1,0 +1,67 @@
+<div class="contact-fab-root">
+  @if (open()) {
+    <div class="contact-panel panel-enter" role="dialog" aria-label="Contact ULearn">
+      <div class="panel-header">
+        <strong>Contact us</strong>
+        <button type="button" class="panel-close" (click)="close()" aria-label="Close">✕</button>
+      </div>
+
+      <a class="contact-item phone" [href]="'tel:' + phoneTel">
+        <span class="item-icon">📞</span>
+        <span>
+          <span class="item-label">Call us</span>
+          <span class="item-value">{{ phoneDisplay }}</span>
+        </span>
+      </a>
+
+      @for (email of emails; track email.address) {
+        <a class="contact-item" [href]="'mailto:' + email.address">
+          <span class="item-icon">✉️</span>
+          <span>
+            <span class="item-label">{{ email.label }}</span>
+            <span class="item-value">{{ email.address }}</span>
+          </span>
+        </a>
+      }
+
+      <div class="social-row">
+        @for (social of socials; track social.href) {
+          <a
+            class="social-chip"
+            [href]="social.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            [attr.aria-label]="social.label"
+          >
+            @switch (social.icon) {
+              @case ('instagram') { 📸 }
+              @case ('youtube') { ▶️ }
+              @case ('whatsapp') { 💬 }
+              @case ('linkedin') { 💼 }
+            }
+            {{ social.label }}
+          </a>
+        }
+      </div>
+
+      <a class="linktree-link" [href]="linktree" target="_blank" rel="noopener noreferrer">
+        All links on Linktree →
+      </a>
+    </div>
+  }
+
+  <div class="fab-wrap" [class.is-open]="open()">
+    <span class="fab-tooltip" role="tooltip">Contact us</span>
+    <span class="fab-pulse" aria-hidden="true"></span>
+    <span class="fab-pulse fab-pulse-delay" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="fab-btn"
+      (click)="toggle()"
+      [attr.aria-expanded]="open()"
+      aria-label="Contact us"
+    >
+      <span class="fab-icon" [class.is-open]="open()">💬</span>
+    </button>
+  </div>
+</div>

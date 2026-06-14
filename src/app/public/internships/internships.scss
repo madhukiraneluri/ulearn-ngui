@@ -410,6 +410,19 @@
     cursor: not-allowed;
     &:hover { opacity: 1; }
   }
+
+  &.applied {
+    background: var(--green);
+    color: #fff;
+    cursor: default;
+    opacity: 1;
+    &:hover { opacity: 1; }
+  }
+
+  &:disabled:not(.applied) {
+    opacity: 0.7;
+    cursor: wait;
+  }
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────

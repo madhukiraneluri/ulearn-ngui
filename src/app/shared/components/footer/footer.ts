@@ -1,5 +1,12 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import {
+  ULEARN_EMAILS,
+  ULEARN_LINKTREE,
+  ULEARN_PHONE_DISPLAY,
+  ULEARN_PHONE_TEL,
+  ULEARN_SOCIALS
+} from '../../constants/contact.constants';
 
 @Component({
   selector: 'app-footer',
@@ -13,6 +20,11 @@ export class Footer {
   private readonly router = inject(Router);
 
   readonly currentYear = new Date().getFullYear();
+  readonly contactEmails = ULEARN_EMAILS;
+  readonly socials = ULEARN_SOCIALS;
+  readonly phoneDisplay = ULEARN_PHONE_DISPLAY;
+  readonly phoneTel = ULEARN_PHONE_TEL;
+  readonly linktree = ULEARN_LINKTREE;
 
   readonly courseLinks = [
     {
