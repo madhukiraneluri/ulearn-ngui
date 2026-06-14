@@ -16,6 +16,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { LegalModalService } from '../../core/services/legal-modal.service';
+import { LegalPolicyId } from '../../shared/constants/legal';
 
 function passwordStrengthValidator(control: AbstractControl): ValidationErrors | null {
   const value = (control.value as string) ?? '';
@@ -51,6 +53,7 @@ export class SignupComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly legalModal = inject(LegalModalService);
 
   form!: FormGroup;
   showPassword = false;
@@ -174,5 +177,11 @@ export class SignupComponent implements OnInit {
     }
 
     return 'Invalid input';
+  }
+
+  openLegal(policyId: LegalPolicyId, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.legalModal.open(policyId);
   }
 }

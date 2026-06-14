@@ -1,0 +1,40 @@
+@if (isOpen() && document(); as doc) {
+  <div class="legal-modal-overlay" (click)="close()" aria-hidden="true"></div>
+  <div class="legal-modal" role="dialog" aria-modal="true" [attr.aria-label]="doc.title">
+    <header class="legal-modal-header">
+      <div class="legal-modal-title-wrap">
+        <h2>{{ doc.title }}</h2>
+        @if (doc.lastUpdated) {
+          <p class="legal-modal-updated">Last updated: {{ doc.lastUpdated }}</p>
+        }
+      </div>
+      <button type="button" class="legal-modal-close" (click)="close()" aria-label="Close">
+        ✕ Close
+      </button>
+    </header>
+
+    <div class="legal-modal-body">
+      @for (section of doc.sections; track $index) {
+        <article class="legal-modal-section">
+          @if (section.title) {
+            <h3>{{ section.title }}</h3>
+          }
+          @for (paragraph of section.paragraphs ?? []; track $index) {
+            <p>{{ paragraph }}</p>
+          }
+          @if (section.list?.length) {
+            <ul>
+              @for (item of section.list; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    </div>
+
+    <footer class="legal-modal-footer">
+      <button type="button" class="legal-modal-close-btn" (click)="close()">Close</button>
+    </footer>
+  </div>
+}

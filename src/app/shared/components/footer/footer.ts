@@ -7,6 +7,8 @@ import {
   ULEARN_PHONE_TEL,
   ULEARN_SOCIALS
 } from '../../constants/contact.constants';
+import { LegalModalService } from '../../../core/services/legal-modal.service';
+import { LegalPolicyId } from '../../constants/legal';
 
 @Component({
   selector: 'app-footer',
@@ -18,6 +20,7 @@ import {
 })
 export class Footer {
   private readonly router = inject(Router);
+  private readonly legalModal = inject(LegalModalService);
 
   readonly currentYear = new Date().getFullYear();
   readonly contactEmails = ULEARN_EMAILS;
@@ -56,13 +59,17 @@ export class Footer {
     { label: 'Refer & Earn', path: '/refer' },
   ];
 
-  readonly legalLinks = [
-    { label: 'Privacy Policy' },
-    { label: 'Terms of Use' },
-    { label: 'Refund Policy' },
+  readonly legalLinks: { label: string; policyId: LegalPolicyId }[] = [
+    { label: 'Privacy Policy', policyId: 'privacy' },
+    { label: 'Terms of Use', policyId: 'terms' },
+    { label: 'Refund Policy', policyId: 'refund' },
   ];
 
   navigate(path: string, query?: Record<string, string>): void {
     this.router.navigate([path], query ? { queryParams: query } : {});
+  }
+
+  openLegal(policyId: LegalPolicyId): void {
+    this.legalModal.open(policyId);
   }
 }

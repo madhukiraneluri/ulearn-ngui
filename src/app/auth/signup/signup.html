@@ -110,8 +110,7 @@
       <div class="form-group checkbox-group anim-item" style="--delay: 0.39s">
         <label class="checkbox-label">
           <input type="checkbox" formControlName="acceptTerms" />
-          <span>I agree to the <a href="#" class="inline-link">Terms of Service</a> and <a href="#"
-              class="inline-link">Privacy Policy</a></span>
+          <span>I agree to the <a href="#" class="inline-link" (click)="openLegal('terms', $event)">Terms of Service</a> and <a href="#" class="inline-link" (click)="openLegal('privacy', $event)">Privacy Policy</a></span>
         </label>
         @if (isFieldInvalid('acceptTerms')) {
         <span class="error-message">{{ getErrorMessage('acceptTerms') }}</span>

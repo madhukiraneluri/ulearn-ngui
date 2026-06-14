@@ -11,13 +11,14 @@ import { PaperService } from '../../shared/services/paper.service';
 import { InternshipService } from '../../shared/services/internship.service';
 import { BlogService } from '../../shared/services/blog.service';
 import { StudentStoryService } from '../../shared/services/student-story.service';
+import { SiteSettingsService } from '../../shared/services/site-settings.service';
 import { CourseListItem, ResearchPaper, Internship, BlogListItem, StudentStory } from '../../models';
 import {
   LEARNER_COLLEGES_ROW1,
   LEARNER_COLLEGES_ROW2,
   PARTNERED_COLLEGES
 } from '../../shared/constants/college-partners.data';
-import { driveThumbnailUrl } from '../../shared/utils/drive-image.util';
+import { resolvePublicImageUrl, DEFAULT_HOME_HERO_IMAGE } from '../../shared/utils/drive-image.util';
 
 @Component({
   selector: 'app-home',
@@ -34,6 +35,7 @@ export class Home implements OnInit, OnDestroy {
   private readonly internshipService  = inject(InternshipService);
   private readonly blogService        = inject(BlogService);
   private readonly studentStoryService = inject(StudentStoryService);
+  private readonly siteSettingsService = inject(SiteSettingsService);
   private readonly destroy$           = new Subject<void>();
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ export class Home implements OnInit, OnDestroy {
   readonly internships          = signal<Internship[]>([]);
   readonly featuredBlogs        = signal<BlogListItem[]>([]);
   readonly studentStories       = signal<StudentStory[]>([]);
+  readonly heroImageUrl         = signal(DEFAULT_HOME_HERO_IMAGE);
 
   readonly partneredColleges    = PARTNERED_COLLEGES;
   readonly learnerCollegesRow1  = LEARNER_COLLEGES_ROW1;
@@ -120,6 +123,12 @@ export class Home implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(stories => this.studentStories.set(stories));
 
+    this.siteSettingsService.getHomeHeroImageUrl()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(url => {
+        this.heroImageUrl.set(resolvePublicImageUrl(url));
+      });
+
     this.intervalId = setInterval(() => {
       this.activeWordIndex.update(i => (i + 1) % this.rotatingWords.length);
     }, 2000);
@@ -135,8 +144,8 @@ export class Home implements OnInit, OnDestroy {
     return text.length > max ? text.substring(0, max).trimEnd() + '…' : text;
   }
 
-  collegeLogoSrc(driveUrl: string): string {
-    return driveThumbnailUrl(driveUrl, 200);
+  collegeLogoSrc(logoUrl: string): string {
+    return resolvePublicImageUrl(logoUrl, 256);
   }
 
   onLogoError(event: Event): void {

@@ -3,10 +3,10 @@
 .footer {
   background: var(--navy);
   color: #fff;
-  padding: 60px 24px 28px;
+  padding: 60px 32px 28px;
 
   @media (max-width: $bp-mobile) {
-    padding: 48px 16px 24px;
+    padding: 48px 20px 28px;
   }
 }
 
@@ -139,9 +139,12 @@
 .footer-bottom {
   border-top: 1px solid rgba(255,255,255,.08);
   padding-top: 24px;
+  padding-right: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
 
   p {
     font-size: 0.8rem;
@@ -151,11 +154,34 @@
 
   @media (max-width: $bp-mobile) {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     text-align: center;
   }
 }
 
-.footer-made {
-  color: rgba(255,255,255,.25) !important;
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  justify-content: flex-end;
+  padding-right: 12px;
+  max-width: 100%;
+
+  a {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,.45);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+
+    &:hover { color: var(--purple); }
+  }
+
+  @media (max-width: $bp-mobile) {
+    justify-content: center;
+    padding-right: 0;
+    gap: 10px 16px;
+  }
 }

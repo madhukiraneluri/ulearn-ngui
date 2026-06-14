@@ -1,7 +1,14 @@
-<div class="contact-fab-root">
+<div
+  #fabRoot
+  class="contact-fab-root"
+  [class.is-custom-pos]="hasCustomPosition()"
+  [class.is-dragging]="isDragging()"
+  [style.left.px]="position()?.left"
+  [style.top.px]="position()?.top"
+>
   @if (open()) {
     <div class="contact-panel panel-enter" role="dialog" aria-label="Contact ULearn">
-      <div class="panel-header">
+      <div class="panel-header" (pointerdown)="onDragStart($event)">
         <strong>Contact us</strong>
         <button type="button" class="panel-close" (click)="close()" aria-label="Close">✕</button>
       </div>
@@ -57,7 +64,8 @@
     <button
       type="button"
       class="fab-btn"
-      (click)="toggle()"
+      (pointerdown)="onDragStart($event)"
+      (click)="onFabClick($event)"
       [attr.aria-expanded]="open()"
       aria-label="Contact us"
     >

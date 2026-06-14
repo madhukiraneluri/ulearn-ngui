@@ -39,7 +39,8 @@ export class AdminLayout {
     { label: 'Internships', path: '/admin/internships', icon: '💼' },
     { label: 'Applications', path: '/admin/internship-applications', icon: '📨' },
     { label: 'Papers', path: '/admin/papers', icon: '📄' },
-    { label: 'Student Stories', path: '/admin/student-stories', icon: '⭐' }
+    { label: 'Student Stories', path: '/admin/student-stories', icon: '⭐' },
+    { label: 'Settings', path: '/admin/settings', icon: '⚙️' }
   ];
 
   toggleSidebar(): void {

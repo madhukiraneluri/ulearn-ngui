@@ -3,6 +3,9 @@ export interface CollegeLogoEntry {
   logoUrl: string;
 }
 
+/** Local partner logos bundled with the app. */
+export const ADITYA_DEGREE_COLLEGES_LOGO = 'assets/images/partners/aditya-degree-colleges.png';
+
 export const PARTNERED_COLLEGES: readonly CollegeLogoEntry[] = [
   {
     name: "Vignan's Institute of Engineering for Women (VIEW)",
@@ -13,16 +16,20 @@ export const PARTNERED_COLLEGES: readonly CollegeLogoEntry[] = [
     logoUrl: 'https://drive.google.com/file/d/1hsAmhJETi3hvCy-cZRHLB8E51IHz5FIF/view?usp=drive_link'
   },
   {
+    name: 'Vignan University',
+    logoUrl: 'https://drive.google.com/file/d/1IXRsKF2X52W3V-cyFiq19EeUdNcfY7jT/view?usp=drive_link'
+  },
+  {
+    name: 'Aditya Degree Colleges',
+    logoUrl: ADITYA_DEGREE_COLLEGES_LOGO
+  },
+  {
     name: 'Koneru Lakshmaiah Education Foundation (KLEF)',
     logoUrl: 'https://drive.google.com/file/d/1VvOuNPOtjSs37J8Z-i31Q1Zh2DCrI5sz/view?usp=drive_link'
   },
   {
     name: 'Koneru Lakshmaiah Hyderabad University',
     logoUrl: 'https://drive.google.com/file/d/1I-5FHo9_3YZMmVG62t1WD-LeYX_AAX3_/view?usp=drive_link'
-  },
-  {
-    name: 'Vignan University',
-    logoUrl: 'https://drive.google.com/file/d/1IXRsKF2X52W3V-cyFiq19EeUdNcfY7jT/view?usp=drive_link'
   },
   {
     name: 'Bapuji Institute of Engineering and Technology (BIET)',
@@ -139,7 +146,7 @@ export const LEARNER_COLLEGES: readonly CollegeLogoEntry[] = [
 ];
 
 /** First half — row scrolls left (clockwise). */
-export const LEARNER_COLLEGES_ROW1 = LEARNER_COLLEGES.slice(0, 16);
+export const LEARNER_COLLEGES_ROW1 = LEARNER_COLLEGES.slice(0, 17);
 
 /** Second half — row scrolls right (anti-clockwise). */
-export const LEARNER_COLLEGES_ROW2 = LEARNER_COLLEGES.slice(16);
+export const LEARNER_COLLEGES_ROW2 = LEARNER_COLLEGES.slice(17);

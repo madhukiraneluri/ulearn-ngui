@@ -86,7 +86,11 @@
 
     <div class="footer-bottom">
       <p>© {{ currentYear }} ULearn. All rights reserved.</p>
-      <p class="footer-made">Made with ❤️ in Andhra, India</p>
+      <div class="footer-legal">
+        @for (link of legalLinks; track link.label) {
+          <a (click)="openLegal(link.policyId)">{{ link.label }}</a>
+        }
+      </div>
     </div>
 
   </div>

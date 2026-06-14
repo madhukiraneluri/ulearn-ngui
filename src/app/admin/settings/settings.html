@@ -1,1 +1,56 @@
-<p>settings works!</p>
+<div class="settings-admin">
+  <div class="page-header">
+    <div>
+      <h1>Site settings</h1>
+      <p>Manage homepage content and global assets</p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else {
+    <section class="settings-card">
+      <h2>Home page hero image</h2>
+      <p class="hint">
+        Shown in the hero banner on the homepage. Paste a direct image URL or a Google Drive share link,
+        or upload a JPG/PNG file.
+      </p>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="settings-form">
+        <div class="preview-wrap">
+          @if (previewUrl()) {
+            <img [src]="previewUrl()!" alt="Hero preview" class="hero-preview" />
+          } @else {
+            <div class="hero-preview placeholder">No preview</div>
+          }
+        </div>
+
+        <label>Image URL or Google Drive link</label>
+        <input
+          type="url"
+          formControlName="heroImageUrl"
+          placeholder="https://… or https://drive.google.com/file/d/…/view"
+          (input)="onHeroUrlChange()"
+        />
+
+        <label>Or upload image</label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          (change)="onHeroFileSelected($event)"
+        />
+        @if (isUploading()) {
+          <span class="upload-hint">Processing image…</span>
+        } @else {
+          <span class="upload-hint">Upload saves to storage when you click Save</span>
+        }
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" [disabled]="isSaving() || isUploading()">
+            {{ isSaving() ? 'Saving…' : 'Save hero image' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+</div>

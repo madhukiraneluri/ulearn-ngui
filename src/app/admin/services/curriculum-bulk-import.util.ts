@@ -41,7 +41,7 @@ export const BULK_FORMAT_HELP = [
   'One module per line.',
   'Module: {Module:N, ModuleTitle, {Lesson:N, LessonTitle}, ...}',
   'Lesson: {Lesson:N, LessonTitle} — N is order within that module.',
-  'First lesson of Module 1 is marked free preview automatically.',
+  'All lessons in Module 1 are marked free preview automatically.',
   'All lessons default to 120 minutes duration.',
   'Do not use commas inside titles.'
 ];
@@ -95,7 +95,7 @@ export function parseCurriculumBulkText(raw: string): {
         order: lesOrder,
         title: lesTitle,
         durationMinutes: 120,
-        isFree: order === 1 && lesOrder === 1
+        isFree: order === 1
       });
     }
 

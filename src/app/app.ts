@@ -5,13 +5,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Navbar } from './shared/components/navbar/navbar';
 import { Footer } from './shared/components/footer/footer';
 import { ContactFab } from './shared/components/contact-fab/contact-fab';
+import { LegalModal } from './shared/components/legal-modal/legal-modal';
 import { ToastComponent } from './shared/components/toast/toast';
 import { PaymentService } from './shared/services/payment.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, Navbar, Footer, ContactFab, ToastComponent],
+  imports: [RouterOutlet, Navbar, Footer, ContactFab, LegalModal, ToastComponent],
   template: `
     @if (!isAdminShell()) {
       <app-navbar />
@@ -23,6 +24,7 @@ import { PaymentService } from './shared/services/payment.service';
       <app-footer />
       <app-contact-fab />
     }
+    <app-legal-modal />
     <app-toast />
   `,
   styles: [`
