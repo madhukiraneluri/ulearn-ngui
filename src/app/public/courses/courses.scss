@@ -635,3 +635,28 @@
     min-width: 160px;
   }
 }
+
+@media (max-width: $bp-mobile) {
+  .page-header {
+    top: 60px;
+  }
+
+  .page-header-right {
+    width: 100%;
+  }
+
+  .search-bar {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .sort-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .courses-layout {
+    padding: 12px;
+    gap: 16px;
+  }
+}

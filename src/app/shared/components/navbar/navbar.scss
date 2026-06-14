@@ -272,6 +272,9 @@
   border-radius: 8px;
   border: none;
   background: transparent;
+  order: 3;
+  margin-left: auto;
+  flex-shrink: 0;
 
   span {
     display: block;

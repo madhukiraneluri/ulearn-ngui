@@ -1012,4 +1012,12 @@ h1 {
     flex-direction: column;
     .btn-primary, .btn-outline { width: 100%; text-align: center; }
   }
+
+  .college-logos-section { padding: 32px 12px 40px; }
+  .partner-chip { max-width: min(280px, 85vw); }
+  .hero-stats { gap: 12px; }
+  .stat-num { font-size: 1.4rem; }
+  .story-card { width: min(260px, 80vw); }
+  .research-stats { gap: 12px; }
+  .about-visual { padding: 16px; }
 }

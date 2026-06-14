@@ -4,6 +4,10 @@
   min-height: 100vh;
   background: linear-gradient(135deg, $bg 0%, #eef2ff 100%);
   padding: 60px 24px 80px;
+
+  @media (max-width: $bp-mobile) {
+    padding: 32px 16px 48px;
+  }
 }
 
 .page-header {
@@ -365,6 +369,13 @@
   margin-top: 32px;
   display: flex;
   justify-content: flex-end;
+
+  @media (max-width: $bp-mobile) {
+    .btn-primary {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 }
 
 .btn-primary {

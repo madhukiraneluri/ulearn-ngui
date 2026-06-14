@@ -7,6 +7,11 @@
   justify-content: center;
   background: linear-gradient(135deg, #f0eafa, #e8f5e9);
   padding: 24px;
+
+  @media (max-width: $bp-mobile) {
+    padding: 16px 12px;
+    align-items: flex-start;
+  }
 }
 
 .auth-card {

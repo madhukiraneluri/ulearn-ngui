@@ -7,6 +7,11 @@
   position: sticky;
   top: 68px;
   z-index: 100;
+
+  @media (max-width: $bp-mobile) {
+    padding: 16px;
+    top: 60px;
+  }
 }
 
 .page-header-inner {
@@ -64,7 +69,13 @@
     color: var(--text);
     outline: none;
     width: 100%;
+    min-width: 0;
     &::placeholder { color: var(--muted); }
+  }
+
+  @media (max-width: $bp-mobile) {
+    min-width: 0;
+    flex: 1;
   }
 }
 
@@ -554,4 +565,27 @@
   .internships-layout { padding: 16px; }
   .page-header { padding: 16px; }
   .search-bar { min-width: 160px; }
+}
+
+@media (max-width: $bp-mobile) {
+  .page-header-right {
+    width: 100%;
+  }
+
+  .sort-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .internships-layout {
+    padding: 12px;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+
+    .apply-btn { width: 100%; text-align: center; }
+  }
 }

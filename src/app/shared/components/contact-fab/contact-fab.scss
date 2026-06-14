@@ -263,7 +263,7 @@
 @media (max-width: $bp-mobile) {
   .contact-fab-root {
     right: 14px;
-    bottom: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom, 0px));
   }
 
   .fab-btn {

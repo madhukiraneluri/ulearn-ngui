@@ -72,6 +72,7 @@ export class Learn implements OnInit, OnDestroy {
   completedLessonIds = signal<Set<string>>(new Set());
   markingComplete = signal(false);
   showEnrollPrompt = signal(false);
+  sidebarOpen = signal(false);
 
   flatLessons = computed(() => {
     const c = this.course();
@@ -228,6 +229,14 @@ export class Learn implements OnInit, OnDestroy {
     this.expandedModule.update((cur) => (cur === moduleId ? null : moduleId));
   }
 
+  toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen.set(false);
+  }
+
   navigateToLesson(lesson: SidebarLesson): void {
     if (this.isLessonLocked(lesson)) {
       this.handleLockedLessonClick(lesson);
@@ -238,6 +247,7 @@ export class Learn implements OnInit, OnDestroy {
     if (!slug) return;
 
     this.showEnrollPrompt.set(false);
+    this.closeSidebar();
     this.router.navigate(['/learn', slug, lesson.id]);
   }
 

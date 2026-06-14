@@ -4,6 +4,10 @@
   background: var(--navy);
   color: #fff;
   padding: 60px 24px 28px;
+
+  @media (max-width: $bp-mobile) {
+    padding: 48px 16px 24px;
+  }
 }
 
 .footer-inner {

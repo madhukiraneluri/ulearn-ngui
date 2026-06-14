@@ -6,7 +6,7 @@
 } @else if (course() && currentLesson()) {
   <div class="learn-layout">
     <!-- Sidebar -->
-    <aside class="learn-sidebar">
+    <aside class="learn-sidebar" [class.open]="sidebarOpen()">
       <div class="sidebar-header">
         <a class="back-link" [routerLink]="['/courses', course()!.slug]">← Back to course</a>
         <h2 class="course-title">{{ course()!.title }}</h2>
@@ -79,6 +79,15 @@
 
     <!-- Main content -->
     <main class="learn-content">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        (click)="toggleSidebar()"
+        [attr.aria-expanded]="sidebarOpen()"
+      >
+        {{ sidebarOpen() ? 'Hide course menu' : 'Show course menu' }}
+      </button>
+
       <header class="lesson-header">
         <h1>{{ formatLessonTitle(currentLesson()!.title) }}</h1>
         <div class="lesson-meta">

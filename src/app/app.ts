@@ -32,6 +32,11 @@ import { PaymentService } from './shared/services/payment.service';
     main.admin-main-shell {
       min-height: 100vh;
     }
+    @media (max-width: 480px) {
+      main {
+        min-height: calc(100vh - 60px - 420px);
+      }
+    }
   `]
 })
 export class App implements OnInit {

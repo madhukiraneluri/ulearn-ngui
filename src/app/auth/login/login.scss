@@ -9,6 +9,11 @@
   background: linear-gradient(135deg, #f7f8fc 0%, #eef2ff 55%, #f3effa 100%);
   position: relative;
   overflow: hidden;
+
+  @media (max-width: $bp-mobile) {
+    padding: 20px 12px;
+    align-items: flex-start;
+  }
 }
 
 .auth-card {
