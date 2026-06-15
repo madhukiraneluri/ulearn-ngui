@@ -15,8 +15,10 @@ import { takeUntil } from 'rxjs/operators';
 import { Course, CurriculumModule, Mentor } from '../../models';
 import { CourseService } from '../../shared/services/course.service';
 import { PaymentService } from '../../shared/services/payment.service';
+import { EnrollmentAccessService } from '../../shared/services/enrollment-access.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
+import { EnrollModal } from '../../shared/components/enroll-modal/enroll-modal';
 import {
   formatClassHours,
   formatModuleClasses,
@@ -29,7 +31,7 @@ import {
   selector: 'app-course-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, EnrollModal],
   templateUrl: './course-detail.html',
   styleUrl: './course-detail.scss'
 })
@@ -38,6 +40,7 @@ export class CourseDetail implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly courseService = inject(CourseService);
   private readonly paymentService = inject(PaymentService);
+  private readonly accessService = inject(EnrollmentAccessService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
@@ -50,8 +53,11 @@ export class CourseDetail implements OnInit, OnDestroy {
     message: string;
     action: 'login' | 'enroll';
     actionLabel: string;
+    moduleId: string;
   } | null>(null);
   sidebarPulsing = signal(false);
+  showEnrollModal = signal(false);
+  unlockedModuleIds = signal<Set<string>>(new Set());
 
   // Computed
   isEnrolled = signal(false);
@@ -79,14 +85,11 @@ export class CourseDetail implements OnInit, OnDestroy {
               if (this.auth.isLoggedIn()) {
                 const user = this.auth.currentUser();
                 if (user) {
-                  void this.courseService
-                    .isUserEnrolled(courseData.id, user.id)
-                    .then((v) => {
-                      this.isEnrolled.set(v);
-                      if (enrollAfterLogin && !v) {
-                        void this.handleEnrollClick();
-                      }
-                    });
+                  void this.loadEnrollmentState(courseData.id, user.id).then(() => {
+                    if (enrollAfterLogin && !this.isEnrolled()) {
+                      this.showEnrollModal.set(true);
+                    }
+                  });
                 }
               } else if (enrollAfterLogin) {
                 this.router.navigate(['/auth/login'], {
@@ -119,59 +122,67 @@ export class CourseDetail implements OnInit, OnDestroy {
     void this.refreshEnrollmentStatus();
   }
 
+  private async loadEnrollmentState(courseId: string, userId: string): Promise<void> {
+    const enrolled = await this.courseService.isUserEnrolled(courseId, userId);
+    this.isEnrolled.set(enrolled);
+    if (enrolled) {
+      const unlocked = await this.accessService.getUnlockedModuleIds(userId, courseId);
+      this.unlockedModuleIds.set(unlocked);
+    } else {
+      this.unlockedModuleIds.set(new Set());
+    }
+  }
+
   private async refreshEnrollmentStatus(): Promise<void> {
     const course = this.course();
     const user = this.auth.currentUser();
     if (!course || !user || !this.auth.isLoggedIn()) return;
-
-    const enrolled = await this.courseService.isUserEnrolled(course.id, user.id);
-    this.isEnrolled.set(enrolled);
+    await this.loadEnrollmentState(course.id, user.id);
   }
 
   continueLearning(): void {
     const course = this.course();
-    const firstLesson = course?.curriculum[0]?.lessons[0];
-    if (course && firstLesson) {
+    if (!course) return;
+
+    for (const mod of course.curriculum) {
+      if (this.unlockedModuleIds().has(mod.id) && mod.lessons[0]) {
+        this.router.navigate(['/learn', course.slug, mod.lessons[0].id]);
+        return;
+      }
+    }
+
+    const firstLesson = course.curriculum[0]?.lessons[0];
+    if (firstLesson) {
       this.router.navigate(['/learn', course.slug, firstLesson.id]);
     }
   }
 
-  canAccessModule(module: CurriculumModule): boolean {
-    return module.order === 1 || this.isEnrolled();
+  canAccessLessonContent(module: CurriculumModule): boolean {
+    if (!this.isEnrolled()) return false;
+    return this.unlockedModuleIds().has(module.id);
   }
 
   handleModuleClick(module: CurriculumModule): void {
-    if (this.canAccessModule(module)) {
-      this.expandedModule.update((current) =>
-        current === module.id ? null : module.id
-      );
-      this.lockMessage.set(null);
-    } else if (!this.auth.isLoggedIn()) {
-      this.lockMessage.set({
-        message: 'Log in to access this lesson',
-        action: 'login',
-        actionLabel: 'Log In'
-      });
-      this.triggerSidebarPulse();
-    } else {
-      this.lockMessage.set({
-        message: 'Enroll to unlock all modules',
-        action: 'enroll',
-        actionLabel: 'Pay & Enroll'
-      });
-      this.triggerSidebarPulse();
-    }
+    this.expandedModule.update((current) =>
+      current === module.id ? null : module.id
+    );
+    this.lockMessage.set(null);
   }
 
   handleLockAction(): void {
-    const action = this.lockMessage()?.action;
+    const lock = this.lockMessage();
+    const action = lock?.action;
     if (action === 'login') {
       const slug = this.course()?.slug;
       this.router.navigate(['/auth/login'], {
         queryParams: { returnUrl: `/courses/${slug}` }
       });
     } else if (action === 'enroll') {
-      this.handleEnrollClick();
+      if (this.isEnrolled()) {
+        this.lockMessage.set(null);
+      } else {
+        this.handleEnrollClick();
+      }
     }
   }
 
@@ -191,36 +202,39 @@ export class CourseDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.paymentService.setPendingEnrollment({
-      courseId: course.id,
-      slug: course.slug,
-      price: course.price,
-      title: course.title
-    });
+    this.showEnrollModal.set(true);
+  }
 
-    void this.paymentService.startCheckout({
-      courseId: course.id,
-      slug: course.slug,
-      price: course.price,
-      title: course.title
-    });
+  closeEnrollModal(): void {
+    this.showEnrollModal.set(false);
   }
 
   handleLessonClick(module: CurriculumModule, lesson: CurriculumModule['lessons'][number]): void {
-    if (!this.canAccessModule(module)) {
+    if (!this.isEnrolled()) {
       if (!this.auth.isLoggedIn()) {
         const slug = this.course()?.slug;
         this.router.navigate(['/auth/login'], {
-          queryParams: { returnUrl: `/learn/${slug}/${lesson.id}` }
+          queryParams: { returnUrl: `/courses/${slug}?enroll=true` }
         });
         return;
       }
       this.lockMessage.set({
-        message: 'Enroll to access this class',
+        message: 'Enroll to access course content',
         action: 'enroll',
-        actionLabel: 'Pay & Enroll'
+        actionLabel: 'Enroll Now',
+        moduleId: module.id
       });
       this.triggerSidebarPulse();
+      return;
+    }
+
+    if (!this.canAccessLessonContent(module)) {
+      this.lockMessage.set({
+        message: 'Content unlocks when your live class cohort begins — check back soon',
+        action: 'enroll',
+        actionLabel: 'Got it',
+        moduleId: module.id
+      });
       return;
     }
 
@@ -341,8 +355,8 @@ export class CourseDetail implements OnInit, OnDestroy {
     return firstModule.lessons.findIndex((lesson) => lesson.isFree);
   }
 
-  shouldShowLockOverlay(module: CurriculumModule): boolean {
-    return !this.canAccessModule(module);
+  isLessonContentLocked(module: CurriculumModule): boolean {
+    return !this.canAccessLessonContent(module);
   }
 
   isModuleExpanded(moduleId: string): boolean {

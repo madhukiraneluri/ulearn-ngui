@@ -572,27 +572,10 @@
   border-radius: 12px;
   border: 1px solid var(--border);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
 
   &:hover {
-    border-color: var(--purple);
-  }
-}
-
-.module-item {
-  &.module-locked {
-    .module-header.is-locked {
-      background: rgba(122, 122, 144, 0.06);
-      cursor: pointer;
-
-      &:hover {
-        background: rgba(139, 111, 190, 0.08);
-      }
-
-      .module-info h4 {
-        color: var(--muted);
-      }
-    }
+    border-color: rgba(139, 111, 190, 0.45);
   }
 }
 
@@ -628,19 +611,7 @@
   font-weight: 700;
   color: #fff;
   font-size: 0.9rem;
-
-  &.free {
-    background: var(--green);
-  }
-
-  &.locked {
-    background: var(--muted);
-
-    svg {
-      width: 20px;
-      height: 20px;
-    }
-  }
+  background: linear-gradient(135deg, var(--purple), #6c4fd4);
 }
 
 .module-info {
@@ -691,13 +662,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  position: relative;
-
-  &.locked {
-    filter: blur(4px);
-    user-select: none;
-    pointer-events: none;
-  }
 }
 
 .lesson-item {
@@ -707,10 +671,21 @@
   padding: 12px;
   background: rgba(139, 111, 190, 0.05);
   border-radius: 8px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  border: 1px solid transparent;
 
   &:hover {
     background: rgba(139, 111, 190, 0.1);
+  }
+
+  &.lesson-locked {
+    .lesson-info h5 {
+      color: var(--text);
+    }
+
+    .lesson-icon {
+      color: var(--muted);
+    }
   }
 }
 
@@ -756,18 +731,14 @@
   white-space: nowrap;
 }
 
-.blur-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.95));
-  pointer-events: none;
-  border-radius: 0 0 8px 8px;
+.lock-label {
+  font-size: 1rem;
+  line-height: 1;
+  filter: grayscale(0);
 }
 
 .lock-message {
+  margin-top: 4px;
   padding: 16px;
   background: rgba(224, 92, 92, 0.08);
   border-radius: 8px;

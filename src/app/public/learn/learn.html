@@ -93,22 +93,37 @@
         <div class="lesson-meta">
           <span>{{ formatDuration(currentLesson()!.durationMinutes) }}</span>
           @if (currentLesson()!.isFree) {
-            <span class="free-badge">Free preview</span>
+            <span class="free-badge">Preview</span>
           }
         </div>
       </header>
 
       @if (showEnrollPrompt()) {
         <div class="enroll-prompt">
-          <p>Enroll to unlock this lesson and the full course.</p>
+          @if (isEnrolled()) {
+            <p>Lesson content unlocks when your live class cohort begins. Check back soon!</p>
+          } @else {
+            <p>Enroll to unlock this lesson and the full course.</p>
+          }
           <div class="enroll-prompt-actions">
-            <button type="button" class="btn-enroll" (click)="enrollInCourse()">Enroll now</button>
+            @if (!isEnrolled()) {
+              <button type="button" class="btn-enroll" (click)="enrollInCourse()">Enroll now</button>
+            }
             <button type="button" class="btn-dismiss" (click)="dismissEnrollPrompt()">Dismiss</button>
           </div>
         </div>
       }
 
-      @if (currentLesson()!.videoUrl) {
+      @if (contentLocked()) {
+        <div class="content-locked-banner">
+          <h2>Content locked</h2>
+          <p>
+            You are enrolled, but this module's content will unlock when your admin enables it for your
+            live class cohort. You can browse lesson titles in the sidebar.
+          </p>
+          <a class="back-course-link" [routerLink]="['/courses', course()!.slug]">Back to course</a>
+        </div>
+      } @else if (currentLesson()!.videoUrl) {
         <div class="video-container">
           <video controls [src]="currentLesson()!.videoUrl" preload="metadata">
             Your browser does not support video playback.
@@ -131,18 +146,20 @@
       }
 
       <div class="content-blocks">
-        @for (block of currentLesson()!.contentBlocks; track block.id) {
-          @switch (block.type) {
-            @case ('heading') { <app-block-heading [content]="block.content" /> }
-            @case ('text') { <app-block-text [content]="block.content" /> }
-            @case ('image') { <app-block-image [content]="block.content" /> }
-            @case ('two_column') { <app-block-two-column [content]="block.content" /> }
-            @case ('callout') { <app-block-callout [content]="block.content" /> }
-            @case ('code') { <app-block-code [content]="block.content" /> }
-            @case ('quote') { <app-block-quote [content]="block.content" /> }
-            @case ('divider') { <app-block-divider /> }
-            @case ('gallery') { <app-block-gallery [content]="block.content" /> }
-            @case ('video') { <app-block-video [content]="block.content" /> }
+        @if (!contentLocked()) {
+          @for (block of currentLesson()!.contentBlocks; track block.id) {
+            @switch (block.type) {
+              @case ('heading') { <app-block-heading [content]="block.content" /> }
+              @case ('text') { <app-block-text [content]="block.content" /> }
+              @case ('image') { <app-block-image [content]="block.content" /> }
+              @case ('two_column') { <app-block-two-column [content]="block.content" /> }
+              @case ('callout') { <app-block-callout [content]="block.content" /> }
+              @case ('code') { <app-block-code [content]="block.content" /> }
+              @case ('quote') { <app-block-quote [content]="block.content" /> }
+              @case ('divider') { <app-block-divider /> }
+              @case ('gallery') { <app-block-gallery [content]="block.content" /> }
+              @case ('video') { <app-block-video [content]="block.content" /> }
+            }
           }
         }
       </div>
@@ -190,4 +207,8 @@
     <h2>Lesson not found</h2>
     <a routerLink="/courses">Browse courses</a>
   </div>
+}
+
+@if (showEnrollModal() && course()) {
+  <app-enroll-modal [course]="course()!" (closed)="closeEnrollModal()" />
 }

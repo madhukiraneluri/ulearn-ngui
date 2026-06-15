@@ -5,5 +5,5 @@ export const environment = {
   appName: 'ULearn',
   supabaseUrl: 'https://yllfccuxohnipleyseup.supabase.co',
   supabaseAnonKey: 'sb_publishable_pf-nQHMOf19pvY_jjYnA-A_pEXhs0JI',
-  razorpayKeyId: 'rzp_test_T1EqU7zvxFuX0r'
+  razorpayKeyId: 'rzp_live_T1SJOKA8QCXSV1'
 };

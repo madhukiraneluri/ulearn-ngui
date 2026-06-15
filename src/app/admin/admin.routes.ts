@@ -76,6 +76,13 @@ export const adminRoutes: Routes = [
           import('./enrollments-management/enrollments-management').then(m => m.EnrollmentsManagement)
       },
       {
+        path: 'coupons',
+        loadComponent: () =>
+          import('./discount-coupons-management/discount-coupons-management').then(
+            m => m.DiscountCouponsManagement
+          )
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./settings/settings').then(m => m.Settings)

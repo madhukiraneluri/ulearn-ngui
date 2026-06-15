@@ -1,1 +1,171 @@
-<p>about works!</p>
+<div class="about-page">
+
+  <!-- Hero -->
+  <section class="about-hero">
+    <div class="hero-orb hero-orb--1" aria-hidden="true"></div>
+    <div class="hero-orb hero-orb--2" aria-hidden="true"></div>
+    <div class="hero-grid-line" aria-hidden="true"></div>
+
+    <div class="about-hero-inner reveal revealed">
+      <p class="hero-eyebrow">About ULearn</p>
+      <h1>Transforming Learning into Career Success</h1>
+      <p class="hero-lead">
+        A future-focused education, research, and career platform—powered by the
+        Information Systems Association at University of Colorado Denver—connecting
+        academic learning with industry-ready outcomes.
+      </p>
+
+      <div class="hero-stats">
+        @for (stat of heroStats; track stat.label; let i = $index) {
+          <div class="hero-stat" [style.animation-delay.ms]="i * 120">
+            <span class="hero-stat-value">{{ stat.value }}</span>
+            <span class="hero-stat-label">{{ stat.label }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview -->
+  <section class="about-overview reveal">
+    <div class="section-inner">
+      <div class="overview-card">
+        <div class="overview-accent" aria-hidden="true"></div>
+        <p>
+          ULearn empowers students and young professionals with the skills, knowledge,
+          and practical experience to thrive in a competitive global environment.
+        </p>
+        <p>
+          Beyond the classroom, our ecosystem delivers hands-on experience, industry
+          exposure, research expertise, and career readiness—from internships and
+          certifications to mentorship and publications.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pillars -->
+  <section class="about-pillars reveal">
+    <div class="section-inner">
+      <header class="section-header">
+        <p class="section-eyebrow">Our Story</p>
+        <h2>Built on purpose, driven by impact</h2>
+      </header>
+      <div class="pillars-grid">
+        @for (pillar of pillars; track pillar.title; let i = $index) {
+          <article class="pillar-card" [style.--delay]="i">
+            <span class="pillar-index">{{ i + 1 }}</span>
+            <h3>{{ pillar.title }}</h3>
+            <p>{{ pillar.description }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Vision & Mission -->
+  <section class="vision-mission reveal">
+    <div class="section-inner">
+      <div class="vm-grid">
+        <article class="vm-card vision-card">
+          <p class="vm-eyebrow">Vision</p>
+          <h2>Global ecosystem for future-ready professionals</h2>
+          <p>
+            To become a globally recognized learning and career development ecosystem
+            that empowers individuals through education, innovation, research, and
+            practical experience—creating leaders who make a positive impact on society.
+          </p>
+        </article>
+
+        <article class="vm-card mission-card">
+          <p class="vm-eyebrow">Mission</p>
+          <h2>What we commit to every day</h2>
+          <ul class="mission-grid">
+            @for (item of missionItems; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Differentiators -->
+  <section class="differentiators reveal">
+    <div class="section-inner">
+      <header class="section-header section-header--center">
+        <p class="section-eyebrow">Why ULearn</p>
+        <h2>What makes us different</h2>
+        <p class="section-sub">A formal, industry-aligned approach to modern education.</p>
+      </header>
+      <div class="diff-grid">
+        @for (item of differentiators; track item.title; let i = $index) {
+          <article class="diff-card" [style.--delay]="i">
+            <span class="diff-num">{{ (i + 1).toString().padStart(2, '0') }}</span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Focus Areas -->
+  <section class="focus-areas reveal">
+    <div class="section-inner">
+      <header class="section-header">
+        <p class="section-eyebrow">Focus Areas</p>
+        <h2>Where we create value</h2>
+      </header>
+      <div class="focus-track">
+        @for (area of focusAreas; track area.label) {
+          <span class="focus-item">{{ area.label }}</span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Impact -->
+  <section class="impact reveal">
+    <div class="section-inner">
+      <div class="impact-panel">
+        <header class="impact-header">
+          <p class="section-eyebrow section-eyebrow--light">Student Impact</p>
+          <h2>Outcomes we aim to create</h2>
+        </header>
+        <ul class="impact-grid">
+          @for (item of impactItems; track item; let i = $index) {
+            <li [style.--delay]="i">{{ item }}</li>
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leadership placeholder -->
+  <section class="leadership-preview reveal">
+    <div class="section-inner">
+      <div class="leadership-card">
+        <span class="coming-soon">Coming Soon</span>
+        <h2>Voices from Our Leadership</h2>
+        <p>
+          Personal messages from our CEO and leadership team will be featured here.
+          We are preparing this section for a future update.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Commitment -->
+  <section class="commitment reveal">
+    <div class="section-inner">
+      <div class="commitment-card">
+        <p class="commitment-eyebrow">Our Commitment</p>
+        <h2>Empowering learners to transform knowledge into success</h2>
+        <p class="commitment-tagline">Learn. Innovate. Research. Lead.</p>
+        <p class="commitment-closing">ULearn — Where Learning Creates Opportunities.</p>
+      </div>
+    </div>
+  </section>
+
+</div>

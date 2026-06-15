@@ -26,12 +26,29 @@ import {
 import { CourseCategory, CourseFormat, CourseStatus } from '../../models';
 import { ToastService } from '../../core/services/toast';
 import { prepareBlogImage } from '../services/blog-image.util';
+import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
+import {
+  AdminTableColumnDef,
+  defaultVisibleColumnIds
+} from '../utils/admin-table.types';
+import { downloadAdminTableXlsx } from '../utils/admin-table-export.util';
+
+const COURSE_COLUMNS: readonly AdminTableColumnDef[] = [
+  { id: 'title', label: 'Title' },
+  { id: 'slug', label: 'Slug', defaultVisible: false },
+  { id: 'status', label: 'Status' },
+  { id: 'category', label: 'Category' },
+  { id: 'price', label: 'Price' },
+  { id: 'classes', label: 'Classes' },
+  { id: 'students', label: 'Students' },
+  { id: 'actions', label: 'Actions', exportable: false }
+];
 
 @Component({
   selector: 'app-courses-management',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AdminTableToolbar],
   templateUrl: './courses-management.html',
   styleUrl: './courses-management.scss'
 })
@@ -54,6 +71,8 @@ export class CoursesManagement implements OnInit {
   readonly editingId = signal<string | null>(null);
   readonly isUploadingThumbnail = signal(false);
   readonly thumbnailPreview = signal<string | null>(null);
+  readonly columnDefs = COURSE_COLUMNS;
+  readonly visibleColumns = signal<string[]>(defaultVisibleColumnIds(COURSE_COLUMNS));
 
   form!: FormGroup;
   private pendingThumbnailFile: File | null = null;
@@ -262,6 +281,45 @@ export class CoursesManagement implements OnInit {
 
   statusClass(status: CourseStatus): string {
     return `status-${status}`;
+  }
+
+  isColVisible(id: string): boolean {
+    return this.visibleColumns().includes(id);
+  }
+
+  downloadData(): void {
+    const rows = this.courses();
+    if (rows.length === 0) {
+      this.toast.error('No data to download');
+      return;
+    }
+    downloadAdminTableXlsx(
+      rows,
+      COURSE_COLUMNS,
+      this.visibleColumns(),
+      'courses',
+      (row, col) => {
+        switch (col) {
+          case 'title':
+            return row.title;
+          case 'slug':
+            return row.slug;
+          case 'status':
+            return row.status;
+          case 'category':
+            return row.category;
+          case 'price':
+            return String(row.price);
+          case 'classes':
+            return String(row.liveClassCount ?? row.totalLessons);
+          case 'students':
+            return String(row.totalStudents);
+          default:
+            return '';
+        }
+      }
+    );
+    this.toast.success('Download started');
   }
 
   openBulkModal(): void {

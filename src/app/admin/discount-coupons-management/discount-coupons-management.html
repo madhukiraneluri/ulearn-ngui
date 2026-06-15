@@ -1,0 +1,115 @@
+<div class="coupons-admin">
+  <div class="page-header">
+    <div>
+      <h1>Discount Coupons</h1>
+      <p>Create and manage enrollment discount codes</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">New coupon</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else if (coupons().length === 0) {
+    <div class="empty">
+      <p>No coupons yet.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Create first coupon</button>
+    </div>
+  } @else {
+    <app-admin-table-toolbar
+      [columns]="columnDefs"
+      [visibleColumnIds]="visibleColumns()"
+      (visibleColumnIdsChange)="visibleColumns.set($event)"
+      (download)="downloadData()"
+    />
+    <div class="table-wrap">
+      <table class="coupons-table">
+        <thead>
+          <tr>
+            @if (isColVisible('code')) { <th>Code</th> }
+            @if (isColVisible('discount')) { <th>Discount</th> }
+            @if (isColVisible('status')) { <th>Status</th> }
+            @if (isColVisible('usage')) { <th>Usage</th> }
+            @if (isColVisible('expires')) { <th>Expires</th> }
+            @if (isColVisible('actions')) { <th>Actions</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (coupon of coupons(); track coupon.id) {
+            <tr>
+              @if (isColVisible('code')) {
+                <td><strong>{{ coupon.code }}</strong></td>
+              }
+              @if (isColVisible('discount')) {
+                <td>{{ coupon.discountPercentage }}%</td>
+              }
+              @if (isColVisible('status')) {
+                <td>
+                  <span class="status-pill" [class.active]="coupon.active" [class.inactive]="!coupon.active">
+                    {{ coupon.active ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+              }
+              @if (isColVisible('usage')) {
+                <td>
+                  {{ coupon.usageCount }}
+                  @if (coupon.maxUses) {
+                    / {{ coupon.maxUses }}
+                  }
+                </td>
+              }
+              @if (isColVisible('expires')) {
+                <td>{{ formatDate(coupon.expiresAt) }}</td>
+              }
+              @if (isColVisible('actions')) {
+                <td class="actions">
+                  <button type="button" class="btn-sm" (click)="toggleActive(coupon)">
+                    {{ coupon.active ? 'Deactivate' : 'Activate' }}
+                  </button>
+                  <button type="button" class="btn-sm danger" (click)="deleteCoupon(coupon)">Delete</button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>Create coupon</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="saveCoupon()" class="modal-body">
+        <div class="form-group">
+          <label for="coupon-code">Code</label>
+          <input id="coupon-code" type="text" formControlName="code" class="form-input" placeholder="SUMMER25" />
+        </div>
+        <div class="form-group">
+          <label for="coupon-discount">Discount %</label>
+          <input id="coupon-discount" type="number" formControlName="discountPercentage" class="form-input" min="1" max="100" />
+        </div>
+        <div class="form-group">
+          <label for="coupon-expires">Expires (optional)</label>
+          <input id="coupon-expires" type="datetime-local" formControlName="expiresAt" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label for="coupon-max">Max uses (optional)</label>
+          <input id="coupon-max" type="number" formControlName="maxUses" class="form-input" min="1" />
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" formControlName="active" />
+          Active
+        </label>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : 'Create coupon' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

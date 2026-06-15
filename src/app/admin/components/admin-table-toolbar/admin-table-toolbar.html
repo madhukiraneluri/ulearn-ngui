@@ -1,0 +1,24 @@
+<div class="admin-table-toolbar">
+  <div class="column-picker-wrap">
+    <button type="button" class="toolbar-btn" (click)="togglePicker(); $event.stopPropagation()">
+      Columns ▾
+    </button>
+    @if (pickerOpen()) {
+      <div class="column-picker-panel" (click)="$event.stopPropagation()">
+        @for (col of columns(); track col.id) {
+          <label class="column-option">
+            <input
+              type="checkbox"
+              [checked]="isVisible(col.id)"
+              (change)="toggleColumn(col.id, $event)"
+            />
+            <span>{{ col.label }}</span>
+          </label>
+        }
+      </div>
+    }
+  </div>
+  <button type="button" class="toolbar-btn download" (click)="onDownload()">
+    {{ downloadLabel() }}
+  </button>
+</div>

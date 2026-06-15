@@ -6,6 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
+interface EnrollmentDetails {
+  fullName: string;
+  phone: string;
+  email: string;
+  collegeName: string;
+  degree: string;
+  degreeYear: number;
+  specialization: string;
+  liveClassStartMonth: string;
+  couponCode?: string;
+  couponDiscountPercent?: number;
+}
+
 async function verifySignature(
   orderId: string,
   paymentId: string,
@@ -68,7 +81,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { courseId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
+    const {
+      courseId,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      enrollmentDetails,
+      amountPaid
+    } = await req.json();
+
     if (!courseId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return new Response(JSON.stringify({ error: 'Missing payment details' }), {
         status: 400,
@@ -103,16 +124,42 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { error: enrollErr } = await adminClient.from('enrollments').insert({
+    const details = enrollmentDetails as EnrollmentDetails | undefined;
+    const insertPayload: Record<string, unknown> = {
       user_id: user.id,
       course_id: courseId
-    });
+    };
+
+    if (details) {
+      insertPayload.full_name = details.fullName;
+      insertPayload.phone = details.phone;
+      insertPayload.email = details.email;
+      insertPayload.college_name = details.collegeName;
+      insertPayload.degree = details.degree;
+      insertPayload.degree_year = details.degreeYear;
+      insertPayload.specialization = details.specialization;
+      insertPayload.live_class_start_month = details.liveClassStartMonth;
+      if (details.couponCode) {
+        insertPayload.coupon_code_used = details.couponCode;
+        insertPayload.coupon_discount_percent = details.couponDiscountPercent ?? null;
+      }
+    }
+
+    if (amountPaid != null) {
+      insertPayload.amount_paid = amountPaid;
+    }
+
+    const { error: enrollErr } = await adminClient.from('enrollments').insert(insertPayload);
 
     if (enrollErr) {
       return new Response(JSON.stringify({ error: enrollErr.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+    }
+
+    if (details?.couponCode) {
+      await adminClient.rpc('increment_coupon_usage', { p_code: details.couponCode });
     }
 
     return new Response(JSON.stringify({ success: true }), {

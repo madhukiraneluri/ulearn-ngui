@@ -5,12 +5,15 @@ import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from './course.service';
 import { supabase } from '../../core/supabase.client';
 import { environment } from '../../../environments/environment';
+import { EnrollmentFormData } from '../../models';
 
 export interface PendingEnrollment {
   courseId: string;
   slug: string;
   price: number;
+  basePrice: number;
   title?: string;
+  formData: EnrollmentFormData;
 }
 
 interface RazorpayResponse {
@@ -114,6 +117,7 @@ export class PaymentService {
 
     const profile = this.auth.profile();
     const userName =
+      pending.formData.fullName ||
       profile?.full_name ||
       (user.user_metadata?.['full_name'] as string | undefined) ||
       user.email.split('@')[0];
@@ -131,7 +135,8 @@ export class PaymentService {
         },
         prefill: {
           name: userName,
-          email: user.email
+          email: pending.formData.email || user.email,
+          contact: pending.formData.phone || profile?.phone || undefined
         },
         theme: { color: '#8B6FBE' },
         modal: {
@@ -161,7 +166,9 @@ export class PaymentService {
         courseId: pending.courseId,
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_signature: response.razorpay_signature
+        razorpay_signature: response.razorpay_signature,
+        enrollmentDetails: pending.formData,
+        amountPaid: pending.price
       }
     });
 
@@ -183,7 +190,7 @@ export class PaymentService {
     const user = this.auth.currentUser();
     if (!user) return false;
 
-    const ok = await this.courseService.enrollUser(pending.courseId, user.id);
+    const ok = await this.courseService.enrollUser(pending.courseId, user.id, pending.formData);
     if (!ok) {
       this.toast.error('Enrollment failed');
       return false;

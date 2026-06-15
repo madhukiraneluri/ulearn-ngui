@@ -174,28 +174,14 @@
 
           <div class="modules-list">
             @for (module of course()!.curriculum; track module.id) {
-              <div class="module-item" [class.module-locked]="!canAccessModule(module)">
+              <div class="module-item">
                 <div
-                  class="module-header"
+                  class="module-header expandable"
                   (click)="handleModuleClick(module)"
-                  [class.expandable]="canAccessModule(module)"
-                  [class.is-locked]="!canAccessModule(module)"
                 >
                   <div class="module-left">
-                    <div
-                      class="module-number"
-                      [class.free]="canAccessModule(module)"
-                      [class.locked]="!canAccessModule(module)"
-                    >
-                      @if (canAccessModule(module)) {
-                        <span>{{ module.order }}</span>
-                      } @else {
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                          <path
-                            d="M7 10h10V7c0-1.1-.9-2-2-2h-6c-1.1 0-2 .9-2 2v3zm11 1H6v6c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2v-6zm1-9H6c-2.2 0-4 1.8-4 4v10c0 2.2 1.8 4 4 4h6c2.2 0 4-1.8 4-4V6c0-2.2-1.8-4-4-4z"
-                          />
-                        </svg>
-                      }
+                    <div class="module-number">
+                      <span>{{ module.order }}</span>
                     </div>
                     <div class="module-info">
                       <h4>{{ formatModuleTitle(module) }}</h4>
@@ -204,9 +190,6 @@
                   </div>
 
                   <div class="module-right">
-                    @if (module.order === 1) {
-                      <span class="free-preview-badge">Free preview</span>
-                    }
                     <svg
                       class="chevron"
                       [class.rotated]="isModuleExpanded(module.id)"
@@ -221,11 +204,12 @@
                 </div>
 
                 @if (isModuleExpanded(module.id)) {
-                  <div class="module-lessons" [class.locked]="shouldShowLockOverlay(module)">
+                  <div class="module-lessons">
                     @for (lesson of module.lessons; track lesson.id) {
                       <button
                         type="button"
                         class="lesson-item lesson-clickable"
+                        [class.lesson-locked]="isLessonContentLocked(module)"
                         (click)="handleLessonClick(module, lesson)"
                       >
                         <div class="lesson-icon">
@@ -238,10 +222,8 @@
                           <span class="lesson-duration">{{ formatDuration(lesson.durationMinutes) }}</span>
                         </div>
                         <div class="lesson-actions">
-                          @if (lesson.isFree) {
-                            <span class="free-badge">Free</span>
-                          } @else if (!canAccessModule(module)) {
-                            <span class="lock-label">🔒</span>
+                          @if (isLessonContentLocked(module)) {
+                            <span class="lock-label" aria-label="Locked">🔒</span>
                           } @else {
                             <span class="open-label">Open →</span>
                           }
@@ -249,18 +231,14 @@
                       </button>
                     }
 
-                    @if (shouldShowLockOverlay(module)) {
-                      <div class="blur-overlay"></div>
+                    @if (lockMessage()?.moduleId === module.id) {
+                      <div class="lock-message">
+                        <p>{{ lockMessage()!.message }}</p>
+                        <button class="btn-secondary" (click)="handleLockAction()">
+                          {{ lockMessage()!.actionLabel }}
+                        </button>
+                      </div>
                     }
-                  </div>
-                }
-
-                @if (lockMessage() && !canAccessModule(module)) {
-                  <div class="lock-message">
-                    <p>{{ lockMessage()!.message }}</p>
-                    <button class="btn-secondary" (click)="handleLockAction()">
-                      {{ lockMessage()!.actionLabel }}
-                    </button>
                   </div>
                 }
               </div>
@@ -342,4 +320,8 @@
       </aside>
     </div>
   </section>
+
+  @if (showEnrollModal() && course()) {
+    <app-enroll-modal [course]="course()!" (closed)="closeEnrollModal()" />
+  }
 }

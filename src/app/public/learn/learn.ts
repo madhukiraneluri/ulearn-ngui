@@ -12,9 +12,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Course, CurriculumLesson, LessonWithBlocks } from '../../models';
 import { LearnService } from '../../shared/services/learn.service';
 import { CourseService } from '../../shared/services/course.service';
-import { PaymentService } from '../../shared/services/payment.service';
+import { EnrollmentAccessService } from '../../shared/services/enrollment-access.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
+import { EnrollModal } from '../../shared/components/enroll-modal/enroll-modal';
 import { Subject, takeUntil } from 'rxjs';
 import { BlockHeading } from '../../shared/components/blocks/block-heading/block-heading';
 import { BlockText } from '../../shared/components/blocks/block-text/block-text';
@@ -40,6 +41,7 @@ interface SidebarLesson extends CurriculumLesson {
   imports: [
     CommonModule,
     RouterLink,
+    EnrollModal,
     BlockHeading,
     BlockText,
     BlockImage,
@@ -60,7 +62,7 @@ export class Learn implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly learnService = inject(LearnService);
   private readonly courseService = inject(CourseService);
-  private readonly paymentService = inject(PaymentService);
+  private readonly accessService = inject(EnrollmentAccessService);
   readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
@@ -69,9 +71,12 @@ export class Learn implements OnInit, OnDestroy {
   isLoading = signal(true);
   expandedModule = signal<string | null>(null);
   isEnrolled = signal(false);
+  unlockedModuleIds = signal<Set<string>>(new Set());
+  contentLocked = signal(false);
   completedLessonIds = signal<Set<string>>(new Set());
   markingComplete = signal(false);
   showEnrollPrompt = signal(false);
+  showEnrollModal = signal(false);
   sidebarOpen = signal(false);
 
   flatLessons = computed(() => {
@@ -110,7 +115,7 @@ export class Learn implements OnInit, OnDestroy {
     return id ? this.completedLessonIds().has(id) : false;
   });
 
-  canTrackProgress = computed(() => this.isEnrolled());
+  canTrackProgress = computed(() => this.isEnrolled() && !this.contentLocked());
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -148,8 +153,8 @@ export class Learn implements OnInit, OnDestroy {
       return;
     }
 
-    const canAccess = await this.checkAccess(course, lesson);
-    if (!canAccess) return;
+    const canView = await this.checkAccess(course, lesson);
+    if (!canView) return;
 
     this.currentLesson.set(lesson);
     this.expandedModule.set(lesson.moduleId);
@@ -157,15 +162,14 @@ export class Learn implements OnInit, OnDestroy {
     if (this.auth.isLoggedIn()) {
       const user = this.auth.currentUser();
       if (user) {
-        const enrolled = await this.courseService.isUserEnrolled(course.id, user.id);
-        this.isEnrolled.set(enrolled);
-
         const flat = this.learnService.flattenLessons(course);
         const progress = await this.learnService.getLessonProgress(
           user.id,
           flat.map((l) => l.id)
         );
-        this.completedLessonIds.set(new Set(progress.filter((p) => p.completed).map((p) => p.lessonId)));
+        this.completedLessonIds.set(
+          new Set(progress.filter((p) => p.completed).map((p) => p.lessonId))
+        );
       }
     }
 
@@ -179,10 +183,8 @@ export class Learn implements OnInit, OnDestroy {
     const courseSlug = course.slug;
     const lessonId = lesson.id;
     const returnUrl = `/learn/${courseSlug}/${lessonId}`;
-    const isFreeModule = lesson.moduleOrder === 1;
 
     if (!this.auth.isLoggedIn()) {
-      if (isFreeModule) return true;
       await this.router.navigate(['/auth/login'], { queryParams: { returnUrl } });
       return false;
     }
@@ -193,16 +195,24 @@ export class Learn implements OnInit, OnDestroy {
     const enrolled = await this.courseService.isUserEnrolled(course.id, user.id);
     this.isEnrolled.set(enrolled);
 
-    if (!enrolled && !isFreeModule) {
-      await this.router.navigate(['/courses', courseSlug]);
+    if (!enrolled) {
+      await this.router.navigate(['/courses', courseSlug], {
+        queryParams: { enroll: 'true' }
+      });
       return false;
     }
+
+    const unlocked = await this.accessService.getUnlockedModuleIds(user.id, course.id);
+    this.unlockedModuleIds.set(unlocked);
+
+    const hasContentAccess = unlocked.has(lesson.moduleId);
+    this.contentLocked.set(!hasContentAccess);
 
     return true;
   }
 
   canAccessLesson(lesson: SidebarLesson): boolean {
-    return lesson.moduleOrder === 1 || this.isEnrolled();
+    return this.isEnrolled() && this.unlockedModuleIds().has(lesson.moduleId);
   }
 
   isLessonLocked(lesson: SidebarLesson): boolean {
@@ -262,6 +272,11 @@ export class Learn implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.isEnrolled()) {
+      this.showEnrollModal.set(true);
+      return;
+    }
+
     this.showEnrollPrompt.set(true);
   }
 
@@ -280,21 +295,20 @@ export class Learn implements OnInit, OnDestroy {
 
     if (!this.auth.isLoggedIn()) {
       this.router.navigate(['/auth/login'], {
-        queryParams: { returnUrl: `/courses/${course.slug}` }
+        queryParams: { returnUrl: `/courses/${course.slug}?enroll=true` }
       });
       return;
     }
 
-    void this.paymentService.startCheckout({
-      courseId: course.id,
-      slug: course.slug,
-      price: course.price,
-      title: course.title
-    });
+    this.showEnrollModal.set(true);
+  }
+
+  closeEnrollModal(): void {
+    this.showEnrollModal.set(false);
   }
 
   async markComplete(): Promise<void> {
-    if (!this.isEnrolled()) return;
+    if (!this.canTrackProgress()) return;
 
     const lesson = this.currentLesson();
     const user = this.auth.currentUser();

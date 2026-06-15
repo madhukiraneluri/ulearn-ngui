@@ -9,6 +9,13 @@ export interface CourseEnrollmentRow {
   name: string;
   email: string | null;
   phone: string | null;
+  collegeName: string | null;
+  specialization: string | null;
+  degree: string | null;
+  degreeYear: number | null;
+  liveClassStartMonth: string | null;
+  couponCodeUsed: string | null;
+  amountPaid: number | null;
   enrolledAt: string;
   progressPercent: number;
 }
@@ -38,7 +45,9 @@ export class AdminEnrollmentsService {
 
     const { data, error } = await supabase
       .from('enrollments')
-      .select('id, user_id, enrolled_at')
+      .select(
+        'id, user_id, enrolled_at, full_name, phone, email, college_name, degree, degree_year, specialization, live_class_start_month, coupon_code_used, amount_paid'
+      )
       .eq('course_id', courseId)
       .order('enrolled_at', { ascending: false });
 
@@ -85,12 +94,22 @@ export class AdminEnrollmentsService {
     const enrollments: CourseEnrollmentRow[] = rows.map((row) => {
       const userId = String(row.user_id);
       const profile = profileMap.get(userId);
+      const enrollmentName = (row.full_name as string | null)?.trim();
+      const enrollmentEmail = (row.email as string | null)?.trim();
+      const enrollmentPhone = (row.phone as string | null)?.trim();
       return {
         enrollmentId: String(row.id),
         userId,
-        name: String(profile?.full_name ?? 'Unnamed user'),
-        email: profile?.email ?? null,
-        phone: profile?.phone ?? null,
+        name: enrollmentName || String(profile?.full_name ?? 'Unnamed user'),
+        email: enrollmentEmail || (profile?.email ?? null),
+        phone: enrollmentPhone || (profile?.phone ?? null),
+        collegeName: (row.college_name as string | null) ?? null,
+        specialization: (row.specialization as string | null) ?? null,
+        degree: (row.degree as string | null) ?? null,
+        degreeYear: row.degree_year != null ? Number(row.degree_year) : null,
+        liveClassStartMonth: (row.live_class_start_month as string | null) ?? null,
+        couponCodeUsed: (row.coupon_code_used as string | null) ?? null,
+        amountPaid: row.amount_paid != null ? Number(row.amount_paid) : null,
         enrolledAt: String(row.enrolled_at),
         progressPercent: progressMap.get(userId) ?? 0
       };

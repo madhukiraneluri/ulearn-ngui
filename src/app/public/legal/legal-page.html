@@ -1,0 +1,32 @@
+<section class="legal-page">
+  <div class="legal-inner">
+    @if (document(); as doc) {
+      <header class="legal-header">
+        <h1>{{ doc.title }}</h1>
+        @if (doc.lastUpdated) {
+          <p class="legal-updated">Last updated: {{ doc.lastUpdated }}</p>
+        }
+      </header>
+
+      @for (section of doc.sections; track $index) {
+        <article class="legal-section">
+          @if (section.title) {
+            <h2>{{ section.title }}</h2>
+          }
+          @for (paragraph of section.paragraphs ?? []; track $index) {
+            <p>{{ paragraph }}</p>
+          }
+          @if (section.list?.length) {
+            <ul>
+              @for (item of section.list; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    } @else {
+      <p class="legal-missing">This policy page could not be loaded.</p>
+    }
+  </div>
+</section>

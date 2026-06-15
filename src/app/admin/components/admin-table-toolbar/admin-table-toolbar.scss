@@ -1,0 +1,75 @@
+@use '../../../../styles/variables' as *;
+
+.admin-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.column-picker-wrap {
+  position: relative;
+}
+
+.toolbar-btn {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+
+  &:hover {
+    background: var(--bg);
+    border-color: rgba(139, 111, 190, 0.35);
+  }
+
+  &.download {
+    background: linear-gradient(135deg, var(--purple), #6c4fd4);
+    border-color: transparent;
+    color: #fff;
+
+    &:hover {
+      box-shadow: 0 4px 14px rgba(108, 79, 212, 0.3);
+    }
+  }
+}
+
+.column-picker-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(30, 30, 46, 0.12);
+  padding: 0.5rem 0;
+}
+
+.column-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(139, 111, 190, 0.06);
+  }
+
+  input {
+    accent-color: var(--purple);
+  }
+}

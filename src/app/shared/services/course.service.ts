@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { from, Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { CourseListItem, Course, Mentor, CourseFormat, UserEnrolledCourse } from '../../models';
+import { CourseListItem, Course, Mentor, CourseFormat, UserEnrolledCourse, EnrollmentFormData } from '../../models';
 import { supabase } from '../../core/supabase.client';
 
 @Injectable({ providedIn: 'root' })
@@ -192,13 +192,34 @@ export class CourseService {
     };
   }
 
-  async enrollUser(courseId: string, userId: string): Promise<boolean> {
+  async enrollUser(
+    courseId: string,
+    userId: string,
+    details?: EnrollmentFormData
+  ): Promise<boolean> {
     if (await this.isUserEnrolled(courseId, userId)) return true;
 
-    const { error } = await supabase.from('enrollments').insert({
+    const payload: Record<string, unknown> = {
       user_id: userId,
       course_id: courseId
-    });
+    };
+
+    if (details) {
+      payload['full_name'] = details.fullName;
+      payload['phone'] = details.phone;
+      payload['email'] = details.email;
+      payload['college_name'] = details.collegeName;
+      payload['degree'] = details.degree;
+      payload['degree_year'] = details.degreeYear;
+      payload['specialization'] = details.specialization;
+      payload['live_class_start_month'] = details.liveClassStartMonth;
+      if (details.couponCode) {
+        payload['coupon_code_used'] = details.couponCode;
+        payload['coupon_discount_percent'] = details.couponDiscountPercent ?? null;
+      }
+    }
+
+    const { error } = await supabase.from('enrollments').insert(payload);
 
     if (error) {
       console.error('enrollUser error:', error);

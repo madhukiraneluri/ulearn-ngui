@@ -273,6 +273,44 @@ export interface Enrollment {
   progressPercent: number;
 }
 
+export interface DiscountCoupon {
+  id: string;
+  code: string;
+  discountPercentage: number;
+  active: boolean;
+  expiresAt?: string;
+  maxUses?: number;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ValidateCouponResult {
+  valid: boolean;
+  discountPercentage?: number;
+  message: string;
+}
+
+export interface EnrollmentFormData {
+  fullName: string;
+  phone: string;
+  email: string;
+  collegeName: string;
+  degree: string;
+  degreeYear: number;
+  specialization: string;
+  liveClassStartMonth: string;
+  couponCode?: string;
+  couponDiscountPercent?: number;
+}
+
+export interface ModuleUnlock {
+  id: string;
+  enrollmentId: string;
+  moduleId: string;
+  unlockedAt: string;
+}
+
 export interface UserEnrolledCourse {
   enrollmentId: string;
   courseId: string;

@@ -27,77 +27,53 @@
       </select>
     </div>
 
-    @if (selectedInternshipId() === 'all') {
-      @if (allApplications().length === 0) {
-        <div class="empty">
-          <p>No applications yet.</p>
-        </div>
-      } @else {
-        <div class="summary-bar">
-          <span><strong>{{ allApplications().length }}</strong> total application(s)</span>
-        </div>
-        <div class="table-wrap">
-          <table class="applications-table">
-            <thead>
-              <tr>
-                <th>Internship</th>
-                <th>Applicant</th>
-                <th>Email</th>
-                <th>Applied</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of allApplications(); track row.applicationId) {
-                <tr>
-                  <td><strong>{{ row.internshipTitle }}</strong></td>
-                  <td>{{ row.userName }}</td>
-                  <td>{{ row.userEmail || '—' }}</td>
-                  <td>{{ formatDate(row.appliedAt) }}</td>
-                  <td>
-                    <select
-                      class="status-select"
-                      [value]="row.status"
-                      [disabled]="updatingId() === row.applicationId"
-                      (change)="onStatusChange(row.applicationId, $event)"
-                    >
-                      @for (opt of statusOptions; track opt) {
-                        <option [value]="opt">{{ formatStatus(opt) }}</option>
-                      }
-                    </select>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    } @else if (summary(); as s) {
+    @if (applicationRows().length === 0) {
+      <div class="empty">
+        <p>No applications yet.</p>
+      </div>
+    } @else {
       <div class="summary-bar">
-        <span><strong>{{ s.totalApplications }}</strong> application(s) for <strong>{{ s.internshipTitle }}</strong></span>
+        @if (selectedInternshipId() === 'all') {
+          <span><strong>{{ applicationRows().length }}</strong> total application(s)</span>
+        } @else if (summary(); as s) {
+          <span><strong>{{ s.totalApplications }}</strong> application(s) for <strong>{{ s.internshipTitle }}</strong></span>
+        }
       </div>
 
-      @if (s.applications.length === 0) {
-        <div class="empty">
-          <p>No applications for this internship yet.</p>
-        </div>
-      } @else {
-        <div class="table-wrap">
-          <table class="applications-table">
-            <thead>
+      <app-admin-table-toolbar
+        [columns]="applicationColumnDefs()"
+        [visibleColumnIds]="visibleApplicationColumns()"
+        (visibleColumnIdsChange)="onVisibleColumnsChange($event)"
+        (download)="downloadData()"
+      />
+
+      <div class="table-wrap">
+        <table class="applications-table">
+          <thead>
+            <tr>
+              @if (isColVisible('internship')) { <th>Internship</th> }
+              @if (isColVisible('applicant')) { <th>Applicant</th> }
+              @if (isColVisible('email')) { <th>Email</th> }
+              @if (isColVisible('applied')) { <th>Applied</th> }
+              @if (isColVisible('status')) { <th>Status</th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of applicationRows(); track row.applicationId) {
               <tr>
-                <th>Applicant</th>
-                <th>Email</th>
-                <th>Applied</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of s.applications; track row.applicationId) {
-                <tr>
-                  <td><strong>{{ row.userName }}</strong></td>
+                @if (isColVisible('internship')) {
+                  <td><strong>{{ row.internshipTitle }}</strong></td>
+                }
+                @if (isColVisible('applicant')) {
+                  <td>{{ row.userName }}</td>
+                }
+                @if (isColVisible('email')) {
                   <td>{{ row.userEmail || '—' }}</td>
+                }
+                @if (isColVisible('applied')) {
                   <td>{{ formatDate(row.appliedAt) }}</td>
+                }
+                @if (isColVisible('status')) {
                   <td>
                     <select
                       class="status-select"
@@ -110,12 +86,12 @@
                       }
                     </select>
                   </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     }
   }
 </div>

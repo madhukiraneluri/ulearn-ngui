@@ -1,0 +1,186 @@
+@if (course(); as c) {
+  <div class="enroll-overlay" (click)="close()" aria-hidden="true"></div>
+  <div class="enroll-dialog" role="dialog" aria-modal="true" aria-label="Enroll in course">
+    <header class="enroll-hero">
+      <div class="enroll-hero-glow" aria-hidden="true"></div>
+      <div class="enroll-hero-content">
+        <span class="enroll-badge">🎓 Enroll now</span>
+        <h2>{{ c.title }}</h2>
+        <p>Fill in your details and pick a live-class start month</p>
+      </div>
+      <button type="button" class="enroll-close" (click)="close()" aria-label="Close">✕</button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="enroll-form">
+      <div class="enroll-layout">
+        <div class="enroll-fields">
+          <section class="field-card field-card--purple">
+            <h3><span class="step-dot">1</span> Your details</h3>
+            <div class="field-grid field-grid--2">
+              <div class="field">
+                <label for="enroll-fullName">Full name</label>
+                <input id="enroll-fullName" type="text" formControlName="fullName" />
+                @if (isFieldInvalid('fullName')) {
+                  <span class="field-error">Required</span>
+                }
+              </div>
+              <div class="field">
+                <label for="enroll-phone">Phone</label>
+                <input id="enroll-phone" type="tel" formControlName="phone" placeholder="+91 9876543210" />
+                @if (isFieldInvalid('phone')) {
+                  <span class="field-error">Valid phone required</span>
+                }
+              </div>
+            </div>
+            <div class="field">
+              <label for="enroll-email">Email</label>
+              <input id="enroll-email" type="email" formControlName="email" readonly class="readonly" />
+            </div>
+          </section>
+
+          <section class="field-card field-card--blue">
+            <h3><span class="step-dot">2</span> Academic details</h3>
+            <app-searchable-select
+              formControlName="collegeName"
+              label="College / University"
+              placeholder="Search colleges..."
+              [searchFn]="searchColleges"
+            />
+            @if (isFieldInvalid('collegeName')) {
+              <span class="field-error">College is required</span>
+            }
+
+            @if (showOtherCollege()) {
+              <div class="field">
+                <label for="enroll-otherCollege">College name</label>
+                <input id="enroll-otherCollege" type="text" formControlName="otherCollegeName" placeholder="Enter college name" />
+                @if (isFieldInvalid('otherCollegeName')) {
+                  <span class="field-error">Required</span>
+                }
+              </div>
+            }
+
+            <div class="field-grid field-grid--2">
+              <div class="field">
+                <label for="enroll-degree">Degree</label>
+                <select id="enroll-degree" formControlName="degree">
+                  <option value="">Select</option>
+                  <option value="B.Tech">B.Tech</option>
+                  <option value="B.Sc">B.Sc</option>
+                  <option value="B.A">B.A</option>
+                  <option value="B.Com">B.Com</option>
+                  <option value="BCA">BCA</option>
+                  <option value="M.Tech">M.Tech</option>
+                  <option value="M.Sc">M.Sc</option>
+                  <option value="MBA">MBA</option>
+                  <option value="Other">Other</option>
+                </select>
+                @if (isFieldInvalid('degree')) {
+                  <span class="field-error">Required</span>
+                }
+              </div>
+              <div class="field">
+                <label for="enroll-degreeYear">Year</label>
+                <select id="enroll-degreeYear" formControlName="degreeYear">
+                  <option value="">Select</option>
+                  <option value="1">1st</option>
+                  <option value="2">2nd</option>
+                  <option value="3">3rd</option>
+                  <option value="4">4th</option>
+                  <option value="5">5th</option>
+                </select>
+                @if (isFieldInvalid('degreeYear')) {
+                  <span class="field-error">Required</span>
+                }
+              </div>
+            </div>
+
+            <app-searchable-select
+              formControlName="specialization"
+              label="Specialization"
+              placeholder="Search branch..."
+              [searchFn]="searchSpecializations"
+            />
+            @if (isFieldInvalid('specialization')) {
+              <span class="field-error">Required</span>
+            }
+          </section>
+
+          <section class="field-card field-card--orange">
+            <h3><span class="step-dot">3</span> Schedule your live classes</h3>
+            <div class="month-grid">
+              @for (month of liveClassMonths(); track month.value; let i = $index) {
+                <label class="month-chip" [class.month-chip--alt]="i % 2 === 1">
+                  <input type="radio" formControlName="liveClassStartMonth" [value]="month.value" />
+                  <span class="month-chip-label">{{ month.label }}</span>
+                </label>
+              }
+            </div>
+            @if (isFieldInvalid('liveClassStartMonth')) {
+              <span class="field-error">Pick a month</span>
+            }
+          </section>
+        </div>
+
+        <aside class="enroll-sidebar">
+          <section class="coupon-card">
+            <h3>🏷️ Coupon</h3>
+            <div class="coupon-input-row">
+              <input
+                type="text"
+                formControlName="couponCode"
+                placeholder="CODE"
+                (blur)="applyCoupon()"
+              />
+              <button type="button" class="coupon-apply" (click)="applyCoupon()" [disabled]="isValidatingCoupon()">
+                {{ isValidatingCoupon() ? '…' : 'Apply' }}
+              </button>
+            </div>
+            @if (couponMessage()) {
+              <p class="coupon-status" [class.ok]="couponValid()" [class.bad]="!couponValid()">
+                {{ couponMessage() }}
+              </p>
+            }
+            @if (couponValid()) {
+              <button type="button" class="coupon-clear" (click)="clearCoupon()">Remove coupon</button>
+            }
+          </section>
+
+          <section class="price-card">
+            <div class="price-row">
+              <span>Course price</span>
+              <span>{{ formatPrice(basePrice()) }}</span>
+            </div>
+            @if (getDiscountPercent() > 0) {
+              <div class="price-row muted">
+                <span>List discount</span>
+                <span>{{ getDiscountPercent() }}% off</span>
+              </div>
+            }
+            @if (couponValid() && couponDiscount() > 0) {
+              <div class="price-row save">
+                <span>Coupon {{ couponDiscount() }}%</span>
+                <span>−{{ formatPrice(basePrice() - finalPrice()) }}</span>
+              </div>
+            }
+            <div class="price-total">
+              <span>Total</span>
+              <strong>{{ formatPrice(finalPrice()) }}</strong>
+            </div>
+          </section>
+
+          <div class="sidebar-actions">
+            <button type="submit" class="btn-pay" [disabled]="!canPay()">
+              @if (isSubmitting()) {
+                <span class="btn-spinner"></span> Processing…
+              } @else {
+                Pay {{ formatPrice(finalPrice()) }} →
+              }
+            </button>
+            <button type="button" class="btn-cancel" (click)="close()">Cancel</button>
+          </div>
+        </aside>
+      </div>
+    </form>
+  </div>
+}

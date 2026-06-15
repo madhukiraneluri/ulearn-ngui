@@ -76,6 +76,11 @@
   margin: 0;
   padding: 4px 0;
   z-index: 50;
+
+  @media (max-width: $bp-mobile) {
+    max-height: min(40vh, 280px);
+    z-index: 1200;
+  }
 }
 
 .dropdown-item {

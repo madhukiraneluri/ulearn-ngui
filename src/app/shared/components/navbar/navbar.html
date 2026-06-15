@@ -229,6 +229,7 @@
     <button class="drawer-login" (click)="navigateWithQuery('/auth/login', {})">Login</button>
   } @else {
     <div class="drawer-item" (click)="navigateWithQuery('/my-courses', {})">My Courses</div>
-    <div class="drawer-item" (click)="logout($event)">Logout</div>
+    <div class="drawer-item" (click)="navigateWithQuery('/profile', {})">My Profile</div>
+    <div class="drawer-item drawer-logout" (click)="logout($event)">Logout</div>
   }
 </div>

@@ -94,11 +94,10 @@
 
   &.completed .lesson-icon { color: var(--green); }
   &.locked {
-    opacity: 0.85;
     cursor: pointer;
 
     .lesson-title {
-      color: var(--muted);
+      color: var(--text);
     }
   }
 
@@ -496,5 +495,30 @@
 
     .btn-enroll,
     .btn-dismiss { width: 100%; }
+  }
+}
+
+.content-locked-banner {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: rgba(139, 111, 190, 0.08);
+  border: 1px solid rgba(139, 111, 190, 0.2);
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0 0 1rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .back-course-link {
+    color: var(--purple);
+    font-weight: 600;
+    text-decoration: none;
   }
 }

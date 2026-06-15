@@ -18,49 +18,75 @@
       <button type="button" class="btn-primary" (click)="openCreate()">Create your first course</button>
     </div>
   } @else {
+    <app-admin-table-toolbar
+      [columns]="columnDefs"
+      [visibleColumnIds]="visibleColumns()"
+      (visibleColumnIdsChange)="visibleColumns.set($event)"
+      (download)="downloadData()"
+    />
     <div class="table-wrap">
       <table class="courses-table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Classes</th>
-            <th>Students</th>
-            <th>Actions</th>
+            @if (isColVisible('title')) { <th>Title</th> }
+            @if (isColVisible('slug')) { <th>Slug</th> }
+            @if (isColVisible('status')) { <th>Status</th> }
+            @if (isColVisible('category')) { <th>Category</th> }
+            @if (isColVisible('price')) { <th>Price</th> }
+            @if (isColVisible('classes')) { <th>Classes</th> }
+            @if (isColVisible('students')) { <th>Students</th> }
+            @if (isColVisible('actions')) { <th>Actions</th> }
           </tr>
         </thead>
         <tbody>
           @for (course of courses(); track course.id) {
             <tr>
-              <td>
-                <strong>{{ course.title }}</strong>
-                <span class="slug">{{ course.slug }}</span>
-              </td>
-              <td>
-                <span class="status-badge" [class]="statusClass(course.status)">
-                  {{ course.status }}
-                </span>
-              </td>
-              <td>{{ course.category }}</td>
-              <td>{{ formatPrice(course.price) }}</td>
-              <td>{{ course.liveClassCount ?? course.totalLessons }}</td>
-              <td>{{ course.totalStudents }}</td>
-              <td class="actions">
-                <a
-                  class="btn-sm link"
-                  [routerLink]="['/admin/curriculum']"
-                  [queryParams]="{ courseId: course.id }"
-                >Curriculum</a>
-                <a
-                  class="btn-sm link"
-                  [routerLink]="['/admin/enrollments']"
-                  [queryParams]="{ courseId: course.id }"
-                >Enrollments</a>
-                <button type="button" class="btn-sm" (click)="openEdit(course)">Edit</button>
-                <button type="button" class="btn-sm danger" (click)="deleteCourse(course)">Delete</button>
-              </td>
+              @if (isColVisible('title')) {
+                <td>
+                  <strong>{{ course.title }}</strong>
+                  @if (!isColVisible('slug')) {
+                    <span class="slug">{{ course.slug }}</span>
+                  }
+                </td>
+              }
+              @if (isColVisible('slug')) {
+                <td><span class="slug">{{ course.slug }}</span></td>
+              }
+              @if (isColVisible('status')) {
+                <td>
+                  <span class="status-badge" [class]="statusClass(course.status)">
+                    {{ course.status }}
+                  </span>
+                </td>
+              }
+              @if (isColVisible('category')) {
+                <td>{{ course.category }}</td>
+              }
+              @if (isColVisible('price')) {
+                <td>{{ formatPrice(course.price) }}</td>
+              }
+              @if (isColVisible('classes')) {
+                <td>{{ course.liveClassCount ?? course.totalLessons }}</td>
+              }
+              @if (isColVisible('students')) {
+                <td>{{ course.totalStudents }}</td>
+              }
+              @if (isColVisible('actions')) {
+                <td class="actions">
+                  <a
+                    class="btn-sm link"
+                    [routerLink]="['/admin/curriculum']"
+                    [queryParams]="{ courseId: course.id }"
+                  >Curriculum</a>
+                  <a
+                    class="btn-sm link"
+                    [routerLink]="['/admin/enrollments']"
+                    [queryParams]="{ courseId: course.id }"
+                  >Enrollments</a>
+                  <button type="button" class="btn-sm" (click)="openEdit(course)">Edit</button>
+                  <button type="button" class="btn-sm danger" (click)="deleteCourse(course)">Delete</button>
+                </td>
+              }
             </tr>
           }
         </tbody>

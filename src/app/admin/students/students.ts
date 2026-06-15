@@ -15,12 +15,27 @@ import {
 } from '../services/admin-students.service';
 import { AdminCourseRow } from '../services/admin-course.service';
 import { ToastService } from '../../core/services/toast';
+import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
+import {
+  AdminTableColumnDef,
+  defaultVisibleColumnIds
+} from '../utils/admin-table.types';
+import { downloadAdminTableXlsx } from '../utils/admin-table-export.util';
+
+const STUDENT_COLUMNS: readonly AdminTableColumnDef[] = [
+  { id: 'name', label: 'Name' },
+  { id: 'email', label: 'Email' },
+  { id: 'phone', label: 'Phone' },
+  { id: 'joined', label: 'Joined' },
+  { id: 'enrollments', label: 'Enrollments' },
+  { id: 'actions', label: 'Actions', exportable: false }
+];
 
 @Component({
   selector: 'app-students',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AdminTableToolbar],
   templateUrl: './students.html',
   styleUrl: './students.scss'
 })
@@ -38,6 +53,8 @@ export class Students implements OnInit {
   readonly showEnrollModal = signal(false);
   readonly enrollUserId = signal('');
   readonly enrollCourseId = signal('');
+  readonly columnDefs = STUDENT_COLUMNS;
+  readonly visibleColumns = signal<string[]>(defaultVisibleColumnIds(STUDENT_COLUMNS));
 
   readonly filteredStudents = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
@@ -139,5 +156,44 @@ export class Students implements OnInit {
     } catch {
       return iso;
     }
+  }
+
+  isColVisible(id: string): boolean {
+    return this.visibleColumns().includes(id);
+  }
+
+  visibleColumnCount(): number {
+    return this.visibleColumns().length;
+  }
+
+  downloadData(): void {
+    const rows = this.filteredStudents();
+    if (rows.length === 0) {
+      this.toast.error('No data to download');
+      return;
+    }
+    downloadAdminTableXlsx(
+      rows,
+      STUDENT_COLUMNS,
+      this.visibleColumns(),
+      'students',
+      (row, col) => {
+        switch (col) {
+          case 'name':
+            return row.name;
+          case 'email':
+            return row.email ?? '';
+          case 'phone':
+            return row.phone ?? '';
+          case 'joined':
+            return this.formatDate(row.joinedAt);
+          case 'enrollments':
+            return String(row.enrollmentCount);
+          default:
+            return '';
+        }
+      }
+    );
+    this.toast.success('Download started');
   }
 }

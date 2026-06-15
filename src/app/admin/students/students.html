@@ -57,40 +57,56 @@
         <p>No students found.</p>
       </div>
     } @else {
+      <app-admin-table-toolbar
+        [columns]="columnDefs"
+        [visibleColumnIds]="visibleColumns()"
+        (visibleColumnIdsChange)="visibleColumns.set($event)"
+        (download)="downloadData()"
+      />
       <div class="table-wrap">
         <table class="students-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Joined</th>
-              <th>Enrollments</th>
-              <th>Actions</th>
+              @if (isColVisible('name')) { <th>Name</th> }
+              @if (isColVisible('email')) { <th>Email</th> }
+              @if (isColVisible('phone')) { <th>Phone</th> }
+              @if (isColVisible('joined')) { <th>Joined</th> }
+              @if (isColVisible('enrollments')) { <th>Enrollments</th> }
+              @if (isColVisible('actions')) { <th>Actions</th> }
             </tr>
           </thead>
           <tbody>
             @for (student of filteredStudents(); track student.id) {
               <tr [class.expanded]="isExpanded(student.id)">
-                <td>
-                  <strong>{{ student.name }}</strong>
-                </td>
-                <td>{{ student.email || '—' }}</td>
-                <td>{{ student.phone || '—' }}</td>
-                <td>{{ formatDate(student.joinedAt) }}</td>
-                <td>{{ student.enrollmentCount }}</td>
-                <td class="actions">
-                  <button type="button" class="btn-sm" (click)="toggleExpand(student.id)">
-                    {{ isExpanded(student.id) ? 'Hide' : 'View' }}
-                  </button>
-                  <button type="button" class="btn-sm link" (click)="openEnrollModal(student.id)">
-                    Enroll
-                  </button>
-                </td>
+                @if (isColVisible('name')) {
+                  <td><strong>{{ student.name }}</strong></td>
+                }
+                @if (isColVisible('email')) {
+                  <td>{{ student.email || '—' }}</td>
+                }
+                @if (isColVisible('phone')) {
+                  <td>{{ student.phone || '—' }}</td>
+                }
+                @if (isColVisible('joined')) {
+                  <td>{{ formatDate(student.joinedAt) }}</td>
+                }
+                @if (isColVisible('enrollments')) {
+                  <td>{{ student.enrollmentCount }}</td>
+                }
+                @if (isColVisible('actions')) {
+                  <td class="actions">
+                    <button type="button" class="btn-sm" (click)="toggleExpand(student.id)">
+                      {{ isExpanded(student.id) ? 'Hide' : 'View' }}
+                    </button>
+                    <button type="button" class="btn-sm link" (click)="openEnrollModal(student.id)">
+                      Enroll
+                    </button>
+                  </td>
+                }
               </tr>
               @if (isExpanded(student.id)) {
                 <tr class="detail-row">
-                  <td colspan="6">
+                  <td [attr.colspan]="visibleColumnCount()">
                     @if (student.enrollments.length === 0) {
                       <p class="no-enrollments">No enrollments yet.</p>
                     } @else {

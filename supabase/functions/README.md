@@ -4,8 +4,8 @@ Set these in **Supabase Dashboard → Project Settings → Edge Functions → Se
 
 | Secret | Value |
 |--------|-------|
-| `RAZORPAY_KEY_ID` | `rzp_test_T1EqU7zvxFuX0r` |
-| `RAZORPAY_KEY_SECRET` | `lhSh7JWJuN8DZ4ePi7p91Ubq` |
+| `RAZORPAY_KEY_ID` | `rzp_live_T1SJOKA8QCXSV1` |
+| `RAZORPAY_KEY_SECRET` | *(set in Supabase Dashboard — do not commit)* |
 
 Functions deployed:
 - `create-razorpay-order` — creates Razorpay order (uses key + secret)
