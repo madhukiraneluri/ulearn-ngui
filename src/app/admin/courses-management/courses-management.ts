@@ -25,6 +25,7 @@ import {
 } from '../services/course-bulk-import.util';
 import { CourseCategory, CourseFormat, CourseStatus } from '../../models';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
 import {
@@ -57,6 +58,7 @@ export class CoursesManagement implements OnInit {
   private readonly courseService = inject(AdminCourseService);
   private readonly bulkImportService = inject(CourseBulkImportService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly bulkColumns = BULK_COURSE_COLUMNS;
 
@@ -264,7 +266,16 @@ export class CoursesManagement implements OnInit {
   }
 
   async deleteCourse(course: AdminCourseRow): Promise<void> {
-    if (!confirm(`Delete "${course.title}"? This cannot be undone.`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete course',
+        message: `Delete "${course.title}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.courseService.delete(course.id);
     if (ok) {

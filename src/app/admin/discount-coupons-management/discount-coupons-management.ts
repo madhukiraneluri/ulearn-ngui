@@ -15,6 +15,7 @@ import {
 import { DiscountCoupon } from '../../models';
 import { AdminCouponsService } from '../services/admin-coupons.service';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
 import {
   AdminTableColumnDef,
@@ -43,6 +44,7 @@ export class DiscountCouponsManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly couponsService = inject(AdminCouponsService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly coupons = signal<DiscountCoupon[]>([]);
   readonly isLoading = signal(true);
@@ -123,7 +125,16 @@ export class DiscountCouponsManagement implements OnInit {
   }
 
   async deleteCoupon(coupon: DiscountCoupon): Promise<void> {
-    if (!confirm(`Delete coupon ${coupon.code}?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete coupon',
+        message: `Delete coupon ${coupon.code}?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.couponsService.delete(coupon.id);
     if (ok) {

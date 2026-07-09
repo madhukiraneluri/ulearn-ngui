@@ -2,11 +2,9 @@
   <div class="page-header">
     <div>
       <h1>Enrollments</h1>
-      <p>Manage enrollments, bulk import, and unlock live class content</p>
+      <p>All enrollments across courses — filter by course when needed</p>
     </div>
-    @if (selectedCourseId()) {
-      <button type="button" class="btn-primary" (click)="openBulkModal()">Bulk enroll</button>
-    }
+    <button type="button" class="btn-primary" (click)="openBulkModal()">Bulk enroll</button>
   </div>
 
   @if (isLoading()) {
@@ -16,224 +14,247 @@
       <p>No courses yet. Create a course first.</p>
     </div>
   } @else {
-    <div class="course-selector">
-      <label for="course-select">Course</label>
-      <select
-        id="course-select"
-        [value]="selectedCourseId() ?? ''"
-        (change)="onCourseChange($event)"
-      >
-        @for (course of courses(); track course.id) {
-          <option [value]="course.id">{{ course.title }} ({{ course.status }})</option>
-        }
-      </select>
+    <app-admin-course-multi-filter
+      [courses]="courses()"
+      [selectedCourseIds]="selectedCourseIds()"
+      (selectedCourseIdsChange)="onCourseFilterChange($event)"
+    />
+
+    <div class="toolbar">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by student name, email, phone, or course…"
+        [ngModel]="studentSearch()"
+        (ngModelChange)="onStudentSearchChange($event)"
+      />
     </div>
 
-    @if (summary(); as s) {
-      <div class="summary-bar">
-        <span><strong>{{ s.totalEnrolled }}</strong> enrolled in <strong>{{ s.courseTitle }}</strong></span>
-      </div>
-
-      <div class="admin-tabs">
-        <button
-          type="button"
-          class="admin-tab"
-          [class.active]="activeTab() === 'enrollments'"
-          (click)="setTab('enrollments')"
-        >
-          Enrollments
-        </button>
-        <button
-          type="button"
-          class="admin-tab"
-          [class.active]="activeTab() === 'unlocks'"
-          (click)="setTab('unlocks')"
-        >
-          Content Unlocks
-        </button>
-      </div>
-
-      @if (activeTab() === 'enrollments') {
-        @if (s.enrollments.length === 0) {
-          <div class="empty">
-            <p>No enrollments for this course yet.</p>
-            <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk enroll by email</button>
-          </div>
+    <div class="summary-bar">
+      <span>
+        <strong>{{ filteredEnrollments().length }}</strong>
+        enrollment(s)
+        @if (selectedCourseIds().length > 0) {
+          <span class="muted"> in selected course(s)</span>
         } @else {
-          <app-admin-table-toolbar
-            [columns]="enrollmentColumnDefs"
-            [visibleColumnIds]="enrollmentVisibleColumns()"
-            (visibleColumnIdsChange)="enrollmentVisibleColumns.set($event)"
-            (download)="downloadEnrollments()"
-          />
-          <div class="table-wrap">
-            <table class="enrollments-table">
-              <thead>
+          <span class="muted"> across all courses</span>
+        }
+      </span>
+    </div>
+
+    <div class="admin-tabs">
+      <button
+        type="button"
+        class="admin-tab"
+        [class.active]="activeTab() === 'enrollments'"
+        (click)="setTab('enrollments')"
+      >
+        Enrollments
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.active]="activeTab() === 'unlocks'"
+        (click)="setTab('unlocks')"
+      >
+        Content Unlocks
+      </button>
+    </div>
+
+    @if (activeTab() === 'enrollments') {
+      @if (filteredEnrollments().length === 0) {
+        <div class="empty">
+          <p>No enrollments match your filters.</p>
+          <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk enroll by email</button>
+        </div>
+      } @else {
+        <app-admin-table-toolbar
+          [columns]="enrollmentColumnDefs"
+          [visibleColumnIds]="enrollmentVisibleColumns()"
+          (visibleColumnIdsChange)="enrollmentVisibleColumns.set($event)"
+          (download)="downloadEnrollments()"
+        />
+        <div class="table-wrap">
+          <table class="enrollments-table">
+            <thead>
+              <tr>
+                @if (isEnrollmentColVisible('name')) { <th>Name</th> }
+                @if (isEnrollmentColVisible('course')) { <th>Course</th> }
+                @if (isEnrollmentColVisible('email')) { <th>Email</th> }
+                @if (isEnrollmentColVisible('phone')) { <th>Phone</th> }
+                @if (isEnrollmentColVisible('college')) { <th>College</th> }
+                @if (isEnrollmentColVisible('specialization')) { <th>Specialization</th> }
+                @if (isEnrollmentColVisible('degree')) { <th>Degree</th> }
+                @if (isEnrollmentColVisible('year')) { <th>Year</th> }
+                @if (isEnrollmentColVisible('liveClass')) { <th>Live class</th> }
+                @if (isEnrollmentColVisible('enrolledAt')) { <th>Enrolled</th> }
+                @if (isEnrollmentColVisible('progress')) { <th>Progress</th> }
+                @if (isEnrollmentColVisible('coupon')) { <th>Coupon</th> }
+                @if (isEnrollmentColVisible('amountPaid')) { <th>Paid</th> }
+                @if (isEnrollmentColVisible('actions')) { <th>Actions</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of filteredEnrollments(); track row.enrollmentId) {
                 <tr>
-                  @if (isEnrollmentColVisible('name')) { <th>Name</th> }
-                  @if (isEnrollmentColVisible('email')) { <th>Email</th> }
-                  @if (isEnrollmentColVisible('phone')) { <th>Phone</th> }
-                  @if (isEnrollmentColVisible('college')) { <th>College</th> }
-                  @if (isEnrollmentColVisible('specialization')) { <th>Specialization</th> }
-                  @if (isEnrollmentColVisible('degree')) { <th>Degree</th> }
-                  @if (isEnrollmentColVisible('year')) { <th>Year</th> }
-                  @if (isEnrollmentColVisible('liveClass')) { <th>Live class</th> }
-                  @if (isEnrollmentColVisible('enrolledAt')) { <th>Enrolled</th> }
-                  @if (isEnrollmentColVisible('progress')) { <th>Progress</th> }
-                  @if (isEnrollmentColVisible('coupon')) { <th>Coupon</th> }
-                  @if (isEnrollmentColVisible('amountPaid')) { <th>Paid</th> }
-                  @if (isEnrollmentColVisible('actions')) { <th>Actions</th> }
-                </tr>
-              </thead>
-              <tbody>
-                @for (row of s.enrollments; track row.enrollmentId) {
-                  <tr>
-                    @if (isEnrollmentColVisible('name')) {
-                      <td><strong>{{ row.name }}</strong></td>
-                    }
-                    @if (isEnrollmentColVisible('email')) {
-                      <td>{{ row.email || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('phone')) {
-                      <td>{{ row.phone || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('college')) {
-                      <td>{{ row.collegeName || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('specialization')) {
-                      <td>{{ row.specialization || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('degree')) {
-                      <td>{{ row.degree || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('year')) {
-                      <td>{{ formatYear(row.degreeYear) }}</td>
-                    }
-                    @if (isEnrollmentColVisible('liveClass')) {
-                      <td>{{ formatLiveClassMonth(row.liveClassStartMonth) }}</td>
-                    }
-                    @if (isEnrollmentColVisible('enrolledAt')) {
-                      <td>{{ formatDate(row.enrolledAt) }}</td>
-                    }
-                    @if (isEnrollmentColVisible('progress')) {
-                      <td>
-                        <div class="progress-cell">
-                          <div class="progress-bar">
-                            <div class="progress-fill" [style.width.%]="row.progressPercent"></div>
-                          </div>
-                          <span>{{ row.progressPercent }}%</span>
+                  @if (isEnrollmentColVisible('name')) {
+                    <td><strong>{{ row.name }}</strong></td>
+                  }
+                  @if (isEnrollmentColVisible('course')) {
+                    <td>{{ row.courseTitle }}</td>
+                  }
+                  @if (isEnrollmentColVisible('email')) {
+                    <td>{{ row.email || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('phone')) {
+                    <td>{{ row.phone || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('college')) {
+                    <td>{{ row.collegeName || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('specialization')) {
+                    <td>{{ row.specialization || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('degree')) {
+                    <td>{{ row.degree || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('year')) {
+                    <td>{{ formatYear(row.degreeYear) }}</td>
+                  }
+                  @if (isEnrollmentColVisible('liveClass')) {
+                    <td>{{ formatLiveClassMonth(row.liveClassStartMonth) }}</td>
+                  }
+                  @if (isEnrollmentColVisible('enrolledAt')) {
+                    <td>{{ formatDate(row.enrolledAt) }}</td>
+                  }
+                  @if (isEnrollmentColVisible('progress')) {
+                    <td>
+                      <div class="progress-cell">
+                        <div class="progress-bar">
+                          <div class="progress-fill" [style.width.%]="row.progressPercent"></div>
                         </div>
-                      </td>
-                    }
-                    @if (isEnrollmentColVisible('coupon')) {
-                      <td>{{ row.couponCodeUsed || '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('amountPaid')) {
-                      <td>{{ row.amountPaid != null ? ('₹' + row.amountPaid) : '—' }}</td>
-                    }
-                    @if (isEnrollmentColVisible('actions')) {
-                      <td>
+                        <span>{{ row.progressPercent }}%</span>
+                      </div>
+                    </td>
+                  }
+                  @if (isEnrollmentColVisible('coupon')) {
+                    <td>{{ row.couponCodeUsed || '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('amountPaid')) {
+                    <td>{{ row.amountPaid != null ? ('₹' + row.amountPaid) : '—' }}</td>
+                  }
+                  @if (isEnrollmentColVisible('actions')) {
+                    <td class="actions-cell">
+                      <button
+                        type="button"
+                        class="btn-sm danger"
+                        (click)="removeEnrollment(row)"
+                      >
+                        Remove
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-sm danger outline"
+                        [disabled]="isDeletingUser()"
+                        (click)="deleteUser(row)"
+                      >
+                        Delete user
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (activeTab() === 'unlocks') {
+      @if (!unlockCourseId()) {
+        <div class="empty">
+          <p>Filter to <strong>one course</strong> to manage content unlocks.</p>
+        </div>
+      } @else if (unlockRows().length === 0 || courseModules().length === 0) {
+        <div class="empty">
+          <p>No enrollments or modules to manage unlocks for <strong>{{ unlockCourseTitle() }}</strong>.</p>
+        </div>
+      } @else {
+        <p class="unlock-hint">
+          Content unlocks for <strong>{{ unlockCourseTitle() }}</strong> — students see lesson names but not content until you unlock modules.
+        </p>
+        <app-admin-table-toolbar
+          [columns]="unlockColumnDefs()"
+          [visibleColumnIds]="unlockVisibleColumns()"
+          (visibleColumnIdsChange)="unlockVisibleColumns.set($event)"
+          (download)="downloadUnlocks()"
+        />
+        <div class="table-wrap">
+          <table class="unlock-table">
+            <thead>
+              <tr>
+                @if (isUnlockColVisible('name')) { <th>Student</th> }
+                @if (isUnlockColVisible('email')) { <th>Email</th> }
+                @if (isUnlockColVisible('liveClass')) { <th>Live class start</th> }
+                @for (mod of courseModules(); track mod.id) {
+                  @if (isUnlockModuleColVisible(mod.id)) {
+                    <th class="unlock-col-header">
+                      <span class="mod-label">M{{ mod.order }}</span>
+                      <label class="select-all-label" [title]="'Select all — Module ' + mod.order">
+                        <input
+                          type="checkbox"
+                          [checked]="isAllUnlockedForModule(mod.id)"
+                          [disabled]="isModuleAllBusy(mod.id) || togglingUnlock() !== null"
+                          (change)="toggleAllForModule(mod.id, $any($event.target).checked)"
+                          [attr.aria-label]="'Select all students for module ' + mod.order"
+                        />
+                        <span>Select all</span>
+                      </label>
+                      @if (isSomeUnlockedForModule(mod.id)) {
                         <button
                           type="button"
-                          class="btn-sm danger"
-                          (click)="removeEnrollment(row.enrollmentId, row.name)"
+                          class="clear-all-btn"
+                          [disabled]="isModuleAllBusy(mod.id)"
+                          (click)="toggleAllForModule(mod.id, false)"
                         >
-                          Remove
+                          Clear
                         </button>
-                      </td>
-                    }
-                  </tr>
+                      }
+                    </th>
+                  }
                 }
-              </tbody>
-            </table>
-          </div>
-        }
-      }
-
-      @if (activeTab() === 'unlocks') {
-        @if (unlockRows().length === 0 || courseModules().length === 0) {
-          <div class="empty">
-            <p>No enrollments or modules to manage unlocks yet.</p>
-          </div>
-        } @else {
-          <p class="unlock-hint">
-            Students see lesson names but not content until you unlock modules for their cohort.
-          </p>
-          <app-admin-table-toolbar
-            [columns]="unlockColumnDefs()"
-            [visibleColumnIds]="unlockVisibleColumns()"
-            (visibleColumnIdsChange)="unlockVisibleColumns.set($event)"
-            (download)="downloadUnlocks()"
-          />
-          <div class="table-wrap">
-            <table class="unlock-table">
-              <thead>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of unlockRows(); track row.enrollmentId) {
                 <tr>
-                  @if (isUnlockColVisible('name')) { <th>Student</th> }
-                  @if (isUnlockColVisible('email')) { <th>Email</th> }
-                  @if (isUnlockColVisible('liveClass')) { <th>Live class start</th> }
+                  @if (isUnlockColVisible('name')) {
+                    <td><strong>{{ row.name }}</strong></td>
+                  }
+                  @if (isUnlockColVisible('email')) {
+                    <td>{{ row.email || '—' }}</td>
+                  }
+                  @if (isUnlockColVisible('liveClass')) {
+                    <td>{{ formatLiveClassMonth(row.liveClassStartMonth) }}</td>
+                  }
                   @for (mod of courseModules(); track mod.id) {
                     @if (isUnlockModuleColVisible(mod.id)) {
-                      <th class="unlock-col-header">
-                        <span class="mod-label">M{{ mod.order }}</span>
-                        <label class="select-all-label" [title]="'Select all — Module ' + mod.order">
-                          <input
-                            type="checkbox"
-                            [checked]="isAllUnlockedForModule(mod.id)"
-                            [disabled]="isModuleAllBusy(mod.id) || togglingUnlock() !== null"
-                            (change)="toggleAllForModule(mod.id, $any($event.target).checked)"
-                            [attr.aria-label]="'Select all students for module ' + mod.order"
-                          />
-                          <span>Select all</span>
-                        </label>
-                        @if (isSomeUnlockedForModule(mod.id)) {
-                          <button
-                            type="button"
-                            class="clear-all-btn"
-                            [disabled]="isModuleAllBusy(mod.id)"
-                            (click)="toggleAllForModule(mod.id, false)"
-                          >
-                            Clear
-                          </button>
-                        }
-                      </th>
+                      <td class="unlock-cell">
+                        <input
+                          type="checkbox"
+                          [checked]="isModuleUnlocked(row, mod.id)"
+                          [disabled]="togglingUnlock() === unlockKey(row.enrollmentId, mod.id)"
+                          (change)="toggleModuleUnlock(row, mod.id, $any($event.target).checked)"
+                          [attr.aria-label]="'Unlock ' + mod.title + ' for ' + row.name"
+                        />
+                      </td>
                     }
                   }
                 </tr>
-              </thead>
-              <tbody>
-                @for (row of unlockRows(); track row.enrollmentId) {
-                  <tr>
-                    @if (isUnlockColVisible('name')) {
-                      <td>
-                        <strong>{{ row.name }}</strong>
-                      </td>
-                    }
-                    @if (isUnlockColVisible('email')) {
-                      <td>{{ row.email || '—' }}</td>
-                    }
-                    @if (isUnlockColVisible('liveClass')) {
-                      <td>{{ formatLiveClassMonth(row.liveClassStartMonth) }}</td>
-                    }
-                    @for (mod of courseModules(); track mod.id) {
-                      @if (isUnlockModuleColVisible(mod.id)) {
-                        <td class="unlock-cell">
-                          <input
-                            type="checkbox"
-                            [checked]="isModuleUnlocked(row, mod.id)"
-                            [disabled]="togglingUnlock() === unlockKey(row.enrollmentId, mod.id)"
-                            (change)="toggleModuleUnlock(row, mod.id, $any($event.target).checked)"
-                            [attr.aria-label]="'Unlock ' + mod.title + ' for ' + row.name"
-                          />
-                        </td>
-                      }
-                    }
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
+              }
+            </tbody>
+          </table>
+        </div>
       }
     }
   }
@@ -242,11 +263,24 @@
     <div class="modal-overlay" (click)="closeBulkModal()"></div>
     <div class="modal modal-bulk" role="dialog">
       <div class="modal-header">
-        <h2>Bulk enroll — {{ selectedCourseTitle() }}</h2>
+        <h2>Bulk enroll</h2>
         <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
       </div>
 
       <div class="bulk-body">
+        <div class="form-group">
+          <label for="bulk-course">Course</label>
+          <select
+            id="bulk-course"
+            [ngModel]="bulkCourseId()"
+            (ngModelChange)="bulkCourseId.set($event)"
+          >
+            @for (c of courses(); track c.id) {
+              <option [value]="c.id">{{ c.title }} ({{ c.status }})</option>
+            }
+          </select>
+        </div>
+
         <p class="bulk-intro">
           Upload an Excel file with one <strong>email</strong> per row. Users must already have a ULearn
           account. Emails without an account are listed below as failed.

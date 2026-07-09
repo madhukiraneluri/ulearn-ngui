@@ -21,6 +21,7 @@ import {
 } from '../services/admin-curriculum.service';
 import { CurriculumLesson, CurriculumModule } from '../../models';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { CurriculumBulkImportService } from '../services/curriculum-bulk-import.service';
 import {
   BULK_CURRICULUM_PLACEHOLDER,
@@ -28,9 +29,10 @@ import {
   BULK_FORMAT_EXAMPLE,
   BULK_FORMAT_HELP,
   CurriculumBulkImportResult,
-  downloadSampleCurriculumText
+  downloadSampleCurriculumText,
+  type CurriculumBulkImportMode
 } from '../services/curriculum-bulk-import.util';
-import type { CurriculumBulkImportMode } from '../services/curriculum-bulk-import.util';
+import { AdminCourseSearchSelect } from '../components/admin-course-search-select/admin-course-search-select';
 
 type FormMode = 'module' | 'lesson';
 
@@ -38,7 +40,7 @@ type FormMode = 'module' | 'lesson';
   selector: 'app-curriculum-builder',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AdminCourseSearchSelect],
   templateUrl: './curriculum-builder.html',
   styleUrl: './curriculum-builder.scss'
 })
@@ -50,6 +52,7 @@ export class CurriculumBuilder implements OnInit {
   private readonly curriculumService = inject(AdminCurriculumService);
   private readonly bulkImportService = inject(CurriculumBulkImportService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly bulkFormatHelp = BULK_FORMAT_HELP;
   readonly bulkFormatExample = BULK_FORMAT_EXAMPLE;
@@ -103,8 +106,8 @@ export class CurriculumBuilder implements OnInit {
     this.isLoading.set(false);
   }
 
-  async onCourseChange(event: Event): Promise<void> {
-    const id = (event.target as HTMLSelectElement).value;
+  async onCourseIdChange(id: string | null): Promise<void> {
+    if (!id || id === this.selectedCourseId()) return;
     this.selectedCourseId.set(id);
     await this.router.navigate([], {
       relativeTo: this.route,
@@ -245,7 +248,16 @@ export class CurriculumBuilder implements OnInit {
   }
 
   async deleteModule(mod: CurriculumModule): Promise<void> {
-    if (!confirm(`Delete module "${mod.title}" and all its lessons?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete module',
+        message: `Delete module "${mod.title}" and all its lessons?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
     const courseId = this.selectedCourseId();
     const ok = await this.curriculumService.deleteModule(mod.id);
     if (ok) {
@@ -257,7 +269,16 @@ export class CurriculumBuilder implements OnInit {
   }
 
   async deleteLesson(lesson: CurriculumLesson, moduleId: string): Promise<void> {
-    if (!confirm(`Delete lesson "${lesson.title}"?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete lesson',
+        message: `Delete lesson "${lesson.title}"?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
     const courseId = this.selectedCourseId();
     const ok = await this.curriculumService.deleteLesson(lesson.id, moduleId);
     if (ok) {
@@ -405,9 +426,13 @@ export class CurriculumBuilder implements OnInit {
 
     const mode = this.bulkImportMode();
     if (mode === 'replace' && this.modules().length > 0) {
-      const ok = confirm(
-        'Replace mode will delete all existing modules and lessons for this course. Continue?'
-      );
+      const ok = await this.confirmDialog.confirm({
+        title: 'Replace curriculum',
+        message:
+          'Replace mode will delete all existing modules and lessons for this course. Continue?',
+        confirmLabel: 'Continue',
+        variant: 'danger'
+      });
       if (!ok) return;
     }
 

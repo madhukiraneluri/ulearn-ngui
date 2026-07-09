@@ -6,6 +6,8 @@ import { BulkEnrollRowResult } from './enrollment-bulk-import.util';
 export interface CourseEnrollmentRow {
   enrollmentId: string;
   userId: string;
+  courseId: string;
+  courseTitle: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -100,6 +102,8 @@ export class AdminEnrollmentsService {
       return {
         enrollmentId: String(row.id),
         userId,
+        courseId,
+        courseTitle: course.title,
         name: enrollmentName || String(profile?.full_name ?? 'Unnamed user'),
         email: enrollmentEmail || (profile?.email ?? null),
         phone: enrollmentPhone || (profile?.phone ?? null),
@@ -269,6 +273,148 @@ export class AdminEnrollmentsService {
     for (const uid of userIds) {
       const done = completedByUser.get(uid) ?? 0;
       result.set(uid, Math.round((done / total) * 100));
+    }
+
+    return result;
+  }
+
+  async getAllEnrollments(): Promise<CourseEnrollmentRow[]> {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select(
+        'id, user_id, course_id, enrolled_at, full_name, phone, email, college_name, degree, degree_year, specialization, live_class_start_month, coupon_code_used, amount_paid, courses(id, title)'
+      )
+      .order('enrolled_at', { ascending: false });
+
+    if (error) {
+      console.error('AdminEnrollmentsService.getAllEnrollments:', error);
+      return [];
+    }
+
+    const rows = data ?? [];
+    if (rows.length === 0) return [];
+
+    const userIds = [...new Set(rows.map((r) => String(r.user_id)))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone')
+      .in('id', userIds);
+
+    const profileMap = new Map<string, ProfileLookup>();
+    for (const p of profiles ?? []) {
+      profileMap.set(String(p.id), {
+        id: String(p.id),
+        full_name: p.full_name as string | null,
+        email: p.email as string | null,
+        phone: p.phone as string | null
+      });
+    }
+
+    const progressMap = await this.buildProgressMap(rows);
+
+    return rows
+      .map((row) => {
+        const userId = String(row.user_id);
+        const courseId = String(row.course_id);
+        const courseRaw = row.courses;
+        const course = (Array.isArray(courseRaw) ? courseRaw[0] : courseRaw) as
+          | { id: string; title: string }
+          | null;
+        if (!course) return null;
+
+        const profile = profileMap.get(userId);
+        const enrollmentName = (row.full_name as string | null)?.trim();
+        const enrollmentEmail = (row.email as string | null)?.trim();
+        const enrollmentPhone = (row.phone as string | null)?.trim();
+
+        return {
+          enrollmentId: String(row.id),
+          userId,
+          courseId,
+          courseTitle: String(course.title),
+          name: enrollmentName || String(profile?.full_name ?? 'Unnamed user'),
+          email: enrollmentEmail || (profile?.email ?? null),
+          phone: enrollmentPhone || (profile?.phone ?? null),
+          collegeName: (row.college_name as string | null) ?? null,
+          specialization: (row.specialization as string | null) ?? null,
+          degree: (row.degree as string | null) ?? null,
+          degreeYear: row.degree_year != null ? Number(row.degree_year) : null,
+          liveClassStartMonth: (row.live_class_start_month as string | null) ?? null,
+          couponCodeUsed: (row.coupon_code_used as string | null) ?? null,
+          amountPaid: row.amount_paid != null ? Number(row.amount_paid) : null,
+          enrolledAt: String(row.enrolled_at),
+          progressPercent: progressMap.get(`${userId}:${courseId}`) ?? 0
+        } satisfies CourseEnrollmentRow;
+      })
+      .filter((row): row is CourseEnrollmentRow => row !== null);
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { userId }
+    });
+
+    if (error) {
+      console.error('AdminEnrollmentsService.deleteUser:', error);
+      throw new Error(error.message);
+    }
+
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+      throw new Error(String(data.error));
+    }
+  }
+
+  private async buildProgressMap(
+    enrollmentRows: Array<{ user_id: string | number; course_id: string | number }>
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (enrollmentRows.length === 0) return result;
+
+    const courseIds = [...new Set(enrollmentRows.map((r) => String(r.course_id)))];
+    const userIds = [...new Set(enrollmentRows.map((r) => String(r.user_id)))];
+
+    const { data: modules } = await supabase
+      .from('course_curriculum')
+      .select('course_id, course_lessons(id)')
+      .in('course_id', courseIds);
+
+    const lessonsByCourse: Record<string, string[]> = {};
+    const allLessonIds: string[] = [];
+
+    for (const mod of modules ?? []) {
+      const courseId = String(mod.course_id);
+      for (const lesson of (mod.course_lessons as Array<{ id: string }>) ?? []) {
+        lessonsByCourse[courseId] = lessonsByCourse[courseId] ?? [];
+        lessonsByCourse[courseId].push(String(lesson.id));
+        allLessonIds.push(String(lesson.id));
+      }
+    }
+
+    const completedByUser = new Map<string, Set<string>>();
+    if (allLessonIds.length > 0) {
+      const { data: progress } = await supabase
+        .from('lesson_progress')
+        .select('user_id, lesson_id')
+        .in('user_id', userIds)
+        .eq('completed', true)
+        .in('lesson_id', allLessonIds);
+
+      for (const p of progress ?? []) {
+        const uid = String(p.user_id);
+        const set = completedByUser.get(uid) ?? new Set<string>();
+        set.add(String(p.lesson_id));
+        completedByUser.set(uid, set);
+      }
+    }
+
+    for (const row of enrollmentRows) {
+      const userId = String(row.user_id);
+      const courseId = String(row.course_id);
+      const lessonIds = lessonsByCourse[courseId] ?? [];
+      const completed = completedByUser.get(userId);
+      const done = lessonIds.filter((id) => completed?.has(id)).length;
+      const pct = lessonIds.length > 0 ? Math.round((done / lessonIds.length) * 100) : 0;
+      result.set(`${userId}:${courseId}`, pct);
     }
 
     return result;

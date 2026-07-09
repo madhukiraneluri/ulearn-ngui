@@ -1,0 +1,37 @@
+<div class="admin-course-search-select">
+  <label class="field-label">{{ label() }}</label>
+
+  <div class="search-row">
+    <input
+      type="text"
+      class="search-input"
+      [placeholder]="placeholder()"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="onSearchInput($event)"
+      (focus)="onFocus()"
+      autocomplete="off"
+    />
+  </div>
+
+  @if (isOpen() && courses().length > 0) {
+    <ul class="course-dropdown" role="listbox">
+      @if (filteredCourses().length === 0) {
+        <li class="course-option empty">No courses match your search</li>
+      } @else {
+        @for (course of filteredCourses(); track course.id) {
+          <li
+            class="course-option"
+            role="option"
+            [class.selected]="course.id === courseId()"
+            (mousedown)="selectCourse(course)"
+          >
+            <span class="course-title">{{ course.title }}</span>
+            @if (showStatus() && course.status) {
+              <span class="course-status">{{ course.status }}</span>
+            }
+          </li>
+        }
+      }
+    </ul>
+  }
+</div>

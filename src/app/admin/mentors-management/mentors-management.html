@@ -16,18 +16,11 @@
       <p>No courses yet. Create a course first.</p>
     </div>
   } @else {
-    <div class="course-selector">
-      <label for="course-select">Course</label>
-      <select
-        id="course-select"
-        [value]="selectedCourseId() ?? ''"
-        (change)="onCourseChange($event)"
-      >
-        @for (course of courses(); track course.id) {
-          <option [value]="course.id">{{ course.title }} ({{ course.status }})</option>
-        }
-      </select>
-    </div>
+    <app-admin-course-search-select
+      [courses]="courses()"
+      [courseId]="selectedCourseId()"
+      (courseIdChange)="onCourseIdChange($event)"
+    />
 
     <div class="summary-bar">
       <span>

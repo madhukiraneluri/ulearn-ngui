@@ -1,1 +1,28 @@
-<p>confirm-dialog works!</p>
+@if (dialog.state(); as state) {
+  @if (state.visible && state.options; as options) {
+    <div class="confirm-overlay" (click)="onOverlayClick()" aria-hidden="true"></div>
+    <div
+      class="confirm-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'confirm-dialog-title'"
+      (click)="onDialogClick($event)"
+    >
+      <h2 id="confirm-dialog-title" class="confirm-title">{{ options.title }}</h2>
+      <p class="confirm-message">{{ options.message }}</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn-cancel" (click)="dialog.dismiss()">
+          {{ options.cancelLabel }}
+        </button>
+        <button
+          type="button"
+          class="btn-confirm"
+          [class.danger]="options.variant === 'danger'"
+          (click)="dialog.accept()"
+        >
+          {{ options.confirmLabel }}
+        </button>
+      </div>
+    </div>
+  }
+}

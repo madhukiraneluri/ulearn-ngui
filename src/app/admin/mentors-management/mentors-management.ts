@@ -19,13 +19,15 @@ import {
   AdminMentorRow,
   AdminMentorsService
 } from '../services/admin-mentors.service';
+import { AdminCourseSearchSelect } from '../components/admin-course-search-select/admin-course-search-select';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 
 @Component({
   selector: 'app-mentors-management',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, AdminCourseSearchSelect],
   templateUrl: './mentors-management.html',
   styleUrl: './mentors-management.scss'
 })
@@ -36,6 +38,7 @@ export class MentorsManagement implements OnInit {
   private readonly courseService = inject(AdminCourseService);
   private readonly mentorsService = inject(AdminMentorsService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly courses = signal<AdminCourseRow[]>([]);
   readonly selectedCourseId = signal<string | null>(null);
@@ -78,8 +81,8 @@ export class MentorsManagement implements OnInit {
     this.isLoading.set(false);
   }
 
-  async onCourseChange(event: Event): Promise<void> {
-    const id = (event.target as HTMLSelectElement).value;
+  async onCourseIdChange(id: string | null): Promise<void> {
+    if (!id || id === this.selectedCourseId()) return;
     this.selectedCourseId.set(id);
     await this.router.navigate([], {
       relativeTo: this.route,
@@ -186,7 +189,16 @@ export class MentorsManagement implements OnInit {
   }
 
   async deleteMentor(mentor: AdminMentorRow): Promise<void> {
-    if (!confirm(`Delete mentor "${mentor.name}" from ${mentor.courseTitle}?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete mentor',
+        message: `Delete mentor "${mentor.name}" from ${mentor.courseTitle}?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.mentorsService.delete(mentor.id);
     if (ok) {

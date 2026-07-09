@@ -19,6 +19,7 @@ import {
 } from '../services/admin-internships.service';
 import { InternshipMode, InternshipType } from '../../models';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 
 @Component({
@@ -33,6 +34,7 @@ export class InternshipsManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly internshipsService = inject(AdminInternshipsService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly internships = signal<AdminInternshipRow[]>([]);
   readonly isLoading = signal(true);
@@ -197,7 +199,16 @@ export class InternshipsManagement implements OnInit {
   }
 
   async deleteRow(row: AdminInternshipRow): Promise<void> {
-    if (!confirm(`Delete "${row.title}"?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete internship',
+        message: `Delete "${row.title}"?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
     const ok = await this.internshipsService.delete(row.id);
     if (ok) {
       this.toast.success('Internship deleted');

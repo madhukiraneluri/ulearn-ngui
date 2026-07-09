@@ -101,6 +101,14 @@
                     <button type="button" class="btn-sm link" (click)="openEnrollModal(student.id)">
                       Enroll
                     </button>
+                    <button
+                      type="button"
+                      class="btn-sm danger"
+                      [disabled]="isDeletingUser()"
+                      (click)="deleteUser(student)"
+                    >
+                      Delete user
+                    </button>
                   </td>
                 }
               </tr>

@@ -19,6 +19,7 @@ import {
 } from '../services/admin-papers.service';
 import { PaperCategory, PaperStatus } from '../../models';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 
 @Component({
@@ -33,6 +34,7 @@ export class PapersManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly papersService = inject(AdminPapersService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly papers = signal<AdminPaperRow[]>([]);
   readonly isLoading = signal(true);
@@ -201,7 +203,16 @@ export class PapersManagement implements OnInit {
   }
 
   async deleteRow(row: AdminPaperRow): Promise<void> {
-    if (!confirm(`Delete "${row.title}"?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete paper',
+        message: `Delete "${row.title}"?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
     const ok = await this.papersService.delete(row.id);
     if (ok) {
       this.toast.success('Paper deleted');

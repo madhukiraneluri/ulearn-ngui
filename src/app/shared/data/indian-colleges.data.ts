@@ -241,8 +241,53 @@ export const TIER_2_COLLEGES: readonly string[] = [
   'St Stephens College Delhi'
 ];
 
+/** Aditya Group of Degree & PG Colleges — Andhra Pradesh & Telangana */
+export const ADITYA_DEGREE_COLLEGES: readonly string[] = [
+  'Aditya Degree College',
+  'Aditya Degree College - Kakinada',
+  'Aditya Degree College for Women - Kakinada',
+  'Aditya School of Computer Science (ASCS) - Kakinada',
+  'Aditya School of Management Studies (ASMS) - Kakinada',
+  'Aditya Degree College - Rajahmundry',
+  'Aditya Degree & PG College for Women - Rajahmundry',
+  'Aditya School of Computer Science - Rajahmundry',
+  'Aditya Business School - Rajahmundry',
+  'Aditya Degree College - Amalapuram',
+  'Aditya Degree College - Tadepalligudem',
+  'Aditya Degree College - Palakol',
+  'Aditya Degree College - Bhimavaram',
+  'Sri Aditya Degree College for Women - Bhimavaram',
+  'Aditya Degree College - Eluru',
+  'Sri Aditya Degree College - Eluru',
+  'Aditya Degree College - Tuni',
+  'Aditya Degree College - Benz Circle, Vijayawada',
+  'Aditya Degree College - Singh Nagar, Vijayawada',
+  'Aditya Degree College - Gudivada',
+  'Aditya Degree College - Machilipatnam',
+  'Aditya BA & KR Degree College - Ongole',
+  'Aditya Degree College - Anakapalli',
+  'Aditya Degree & PG College - Dabagardens',
+  'Aditya Degree College Women Campus - Asilmetta',
+  'Aditya Business School - Visakhapatnam',
+  'Aditya School of Animation - Visakhapatnam',
+  'Aditya Degree & PG College - Gopalapatnam',
+  'Aditya Degree College Womens Campus - Gopalapatnam',
+  'Aditya Degree College - Gajuwaka',
+  "Aditya Degree College Women's Campus - Gajuwaka",
+  'Aditya Degree & PG College - Vizianagaram',
+  'Aditya Degree College for Women - Vizianagaram',
+  'Kakinada Sri Aditya Degree College - Srikakulam',
+  'Kakinada Aditya Degree College for Women - Srikakulam',
+  'Aditya Degree College - Tanuku',
+  'Aditya Degree College - Habsiguda',
+  'Aditya Degree College - Dilsukhnagar',
+  'Aditya Degree College - L.B. Nagar',
+  'Aditya Degree College - ECIL'
+];
+
 /** Tier 3 — regional, affiliated & district-level degree/engineering colleges */
 export const TIER_3_COLLEGES: readonly string[] = [
+  ...ADITYA_DEGREE_COLLEGES,
   'Aditya Engineering College Surampalem',
   'Akshaya College of Engineering and Technology Coimbatore',
   'Alpha College of Engineering Chennai',
@@ -556,9 +601,9 @@ export const INDIAN_COLLEGES: readonly string[] = [
 
 /** Default suggestions shown when the field is focused (mix of all tiers) */
 export const DEFAULT_COLLEGE_SUGGESTIONS: readonly string[] = [
-  ...TIER_1_COLLEGES.slice(0, 8),
-  ...TIER_2_COLLEGES.slice(0, 6),
-  ...TIER_3_COLLEGES.slice(0, 6)
+  ...ADITYA_DEGREE_COLLEGES.slice(0, 10),
+  ...TIER_1_COLLEGES.slice(0, 4),
+  ...TIER_2_COLLEGES.slice(0, 4)
 ];
 
 export type CollegeTier = 'Tier 1' | 'Tier 2' | 'Tier 3';

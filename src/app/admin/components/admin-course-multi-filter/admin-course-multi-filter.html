@@ -1,0 +1,54 @@
+<div class="admin-course-multi-filter">
+  <label class="field-label">{{ label() }}</label>
+
+  @if (selectedCourses().length > 0) {
+    <div class="selected-tags">
+      @for (course of selectedCourses(); track course.id) {
+        <button type="button" class="tag" (click)="removeCourse(course.id)">
+          {{ course.title }}
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+      <button type="button" class="clear-all" (click)="clearFilters()">Clear all</button>
+    </div>
+  } @else {
+    <p class="filter-hint">Showing enrollments for <strong>all courses</strong>. Pick one or more courses below to filter.</p>
+  }
+
+  <div class="search-row">
+    <input
+      type="text"
+      class="search-input"
+      [placeholder]="placeholder()"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="onSearchInput($event)"
+      (focus)="onFocus()"
+      autocomplete="off"
+    />
+  </div>
+
+  @if (isOpen() && courses().length > 0) {
+    <ul class="course-dropdown" role="listbox">
+      @if (filteredCourses().length === 0) {
+        <li class="course-option empty">No courses match your search</li>
+      } @else {
+        @for (course of filteredCourses(); track course.id) {
+          <li class="course-option" (mousedown)="toggleCourse(course.id)">
+            <label class="option-label">
+              <input
+                type="checkbox"
+                [checked]="isSelected(course.id)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleCourse(course.id)"
+              />
+              <span class="course-title">{{ course.title }}</span>
+              @if (course.status) {
+                <span class="course-status">{{ course.status }}</span>
+              }
+            </label>
+          </li>
+        }
+      }
+    </ul>
+  }
+</div>

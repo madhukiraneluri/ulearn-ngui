@@ -15,6 +15,7 @@ import {
 } from '../services/admin-students.service';
 import { AdminCourseRow } from '../services/admin-course.service';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
 import {
   AdminTableColumnDef,
@@ -42,12 +43,14 @@ const STUDENT_COLUMNS: readonly AdminTableColumnDef[] = [
 export class Students implements OnInit {
   private readonly studentsService = inject(AdminStudentsService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly students = signal<AdminStudentRow[]>([]);
   readonly recentEnrollments = signal<RecentEnrollmentRow[]>([]);
   readonly courses = signal<AdminCourseRow[]>([]);
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
+  readonly isDeletingUser = signal(false);
   readonly searchQuery = signal('');
   readonly expandedStudentId = signal<string | null>(null);
   readonly showEnrollModal = signal(false);
@@ -135,7 +138,16 @@ export class Students implements OnInit {
   }
 
   async removeEnrollment(enrollmentId: string, studentName: string, courseTitle: string): Promise<void> {
-    if (!confirm(`Remove enrollment for ${studentName} in "${courseTitle}"?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Remove enrollment',
+        message: `Remove enrollment for ${studentName} in "${courseTitle}"?`,
+        confirmLabel: 'Remove',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.studentsService.removeEnrollment(enrollmentId);
     if (ok) {
@@ -143,6 +155,32 @@ export class Students implements OnInit {
       await this.loadData();
     } else {
       this.toast.error('Could not remove enrollment');
+    }
+  }
+
+  async deleteUser(student: AdminStudentRow): Promise<void> {
+    const label = student.email ? `${student.name} (${student.email})` : student.name;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete user',
+        message: `Delete user ${label}?\n\nThis removes their account, all enrollments, and progress. This cannot be undone.`,
+        confirmLabel: 'Delete user',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
+
+    this.isDeletingUser.set(true);
+    try {
+      await this.studentsService.deleteUser(student.id);
+      this.toast.success('User deleted');
+      await this.loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not delete user';
+      this.toast.error(msg);
+    } finally {
+      this.isDeletingUser.set(false);
     }
   }
 

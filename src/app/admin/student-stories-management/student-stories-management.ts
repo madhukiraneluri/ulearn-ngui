@@ -18,6 +18,7 @@ import {
   AdminStudentStoriesService
 } from '../services/admin-student-stories.service';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 
 @Component({
@@ -32,6 +33,7 @@ export class StudentStoriesManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly storiesService = inject(AdminStudentStoriesService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly stories = signal<AdminStudentStoryRow[]>([]);
   readonly isLoading = signal(true);
@@ -176,7 +178,16 @@ export class StudentStoriesManagement implements OnInit {
   }
 
   async deleteRow(row: AdminStudentStoryRow): Promise<void> {
-    if (!confirm(`Delete story from "${row.studentName}"?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete story',
+        message: `Delete story from "${row.studentName}"?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
     const ok = await this.storiesService.delete(row.id);
     if (ok) {
       this.toast.success('Story deleted');

@@ -14,18 +14,11 @@
       <a routerLink="/admin/courses" class="btn-primary">Go to courses</a>
     </div>
   } @else {
-    <div class="course-selector">
-      <label for="course-select">Course</label>
-      <select
-        id="course-select"
-        [value]="selectedCourseId() ?? ''"
-        (change)="onCourseChange($event)"
-      >
-        @for (course of courses(); track course.id) {
-          <option [value]="course.id">{{ course.title }}</option>
-        }
-      </select>
-    </div>
+    <app-admin-course-search-select
+      [courses]="courses()"
+      [courseId]="selectedCourseId()"
+      (courseIdChange)="onCourseIdChange($event)"
+    />
 
     <div class="toolbar">
       <span class="course-label">{{ selectedCourseTitle() }}</span>

@@ -92,24 +92,23 @@
   text-align: center;
 }
 
-.course-selector {
+.toolbar {
   margin-bottom: 16px;
+  max-width: 520px;
+}
 
-  label {
-    display: block;
-    font-size: 0.78rem;
-    font-weight: 700;
-    margin-bottom: 5px;
-  }
+.search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
 
-  select {
-    width: 100%;
-    max-width: 420px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 0.88rem;
+  &:focus {
+    outline: none;
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(139, 111, 190, 0.15);
   }
 }
 
@@ -193,6 +192,35 @@
   &.danger {
     color: var(--red);
     border-color: rgba(224, 92, 92, 0.35);
+  }
+
+  &.danger.outline {
+    background: transparent;
+  }
+}
+
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.88rem;
   }
 }
 

@@ -23,6 +23,7 @@ import {
 } from '../services/content-bulk-import.util';
 import type { ContentBulkImportMode } from '../services/content-bulk-import.service';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { BlockHeading } from '../../shared/components/blocks/block-heading/block-heading';
 import { BlockText } from '../../shared/components/blocks/block-text/block-text';
 import { BlockImage } from '../../shared/components/blocks/block-image/block-image';
@@ -67,6 +68,7 @@ export class LessonContentEditor implements OnInit {
   private readonly contentService = inject(AdminLessonContentService);
   private readonly bulkImportService = inject(ContentBulkImportService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly blockTypeReference = BLOCK_TYPE_REFERENCE;
 
@@ -260,7 +262,16 @@ export class LessonContentEditor implements OnInit {
   }
 
   async deleteBlock(block: ContentBlock): Promise<void> {
-    if (!confirm(`Delete this ${this.blockLabel(block.type)} block?`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete block',
+        message: `Delete this ${this.blockLabel(block.type)} block?`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.contentService.deleteBlock(block.id);
     if (ok) {
@@ -419,7 +430,12 @@ export class LessonContentEditor implements OnInit {
 
     const mode = this.bulkImportMode();
     if (mode === 'replace' && this.blocks().length > 0) {
-      const ok = confirm('Replace mode will delete all existing blocks. Continue?');
+      const ok = await this.confirmDialog.confirm({
+        title: 'Replace content',
+        message: 'Replace mode will delete all existing blocks. Continue?',
+        confirmLabel: 'Continue',
+        variant: 'danger'
+      });
       if (!ok) return;
     }
 

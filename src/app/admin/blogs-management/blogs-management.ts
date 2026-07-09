@@ -20,6 +20,7 @@ import {
 } from '../services/admin-blogs.service';
 import { BlogStatus } from '../../models';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 
 @Component({
@@ -34,6 +35,7 @@ export class BlogsManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly blogsService = inject(AdminBlogsService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly blogs = signal<AdminBlogRow[]>([]);
   readonly isLoading = signal(true);
@@ -205,7 +207,16 @@ export class BlogsManagement implements OnInit {
   }
 
   async deleteBlog(blog: AdminBlogRow): Promise<void> {
-    if (!confirm(`Delete blog "${blog.title}"? This cannot be undone.`)) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete blog',
+        message: `Delete blog "${blog.title}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.blogsService.delete(blog.id);
     if (ok) {
@@ -265,7 +276,16 @@ export class BlogsManagement implements OnInit {
   }
 
   async deleteGalleryImage(image: AdminBlogImageRow): Promise<void> {
-    if (!confirm('Remove this image from the blog?')) return;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Remove image',
+        message: 'Remove this image from the blog?',
+        confirmLabel: 'Remove',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
     const ok = await this.blogsService.deleteImage(image.id);
     if (ok) {

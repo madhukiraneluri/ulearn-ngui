@@ -7,12 +7,12 @@ import {
   signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AdminCourseService, AdminCourseRow } from '../services/admin-course.service';
 import {
   AdminEnrollmentsService,
-  CourseEnrollmentRow,
-  CourseEnrollmentSummary
+  CourseEnrollmentRow
 } from '../services/admin-enrollments.service';
 import {
   AdminModuleUnlocksService,
@@ -26,6 +26,8 @@ import {
   BulkEnrollRowResult
 } from '../services/enrollment-bulk-import.util';
 import { ToastService } from '../../core/services/toast';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import { AdminCourseMultiFilter } from '../components/admin-course-multi-filter/admin-course-multi-filter';
 import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
 import {
   AdminTableColumnDef,
@@ -37,6 +39,7 @@ type EnrollmentsTab = 'enrollments' | 'unlocks';
 
 const ENROLLMENT_COLUMNS: readonly AdminTableColumnDef[] = [
   { id: 'name', label: 'Name' },
+  { id: 'course', label: 'Course' },
   { id: 'email', label: 'Email' },
   { id: 'phone', label: 'Phone' },
   { id: 'college', label: 'College', defaultVisible: false },
@@ -61,7 +64,7 @@ const UNLOCK_BASE_COLUMNS: readonly AdminTableColumnDef[] = [
   selector: 'app-enrollments-management',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, AdminTableToolbar],
+  imports: [CommonModule, FormsModule, AdminTableToolbar, AdminCourseMultiFilter],
   templateUrl: './enrollments-management.html',
   styleUrl: './enrollments-management.scss'
 })
@@ -74,21 +77,25 @@ export class EnrollmentsManagement implements OnInit {
   private readonly bulkImportService = inject(EnrollmentBulkImportService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly bulkHelp = BULK_ENROLL_HELP;
   readonly enrollmentColumnDefs = ENROLLMENT_COLUMNS;
   readonly activeTab = signal<EnrollmentsTab>('enrollments');
 
   readonly courses = signal<AdminCourseRow[]>([]);
-  readonly selectedCourseId = signal<string | null>(null);
-  readonly summary = signal<CourseEnrollmentSummary | null>(null);
+  readonly allEnrollments = signal<CourseEnrollmentRow[]>([]);
+  readonly selectedCourseIds = signal<string[]>([]);
+  readonly studentSearch = signal('');
   readonly isLoading = signal(true);
+  readonly isDeletingUser = signal(false);
   readonly showBulkModal = signal(false);
   readonly bulkFile = signal<File | null>(null);
   readonly bulkImporting = signal(false);
   readonly bulkResults = signal<BulkEnrollRowResult[] | null>(null);
-
   readonly failedBulkResults = signal<BulkEnrollRowResult[]>([]);
+  readonly bulkCourseId = signal('');
+
   readonly courseModules = signal<CourseModuleOption[]>([]);
   readonly unlockRows = signal<EnrollmentUnlockRow[]>([]);
   readonly togglingUnlock = signal<string | null>(null);
@@ -100,6 +107,32 @@ export class EnrollmentsManagement implements OnInit {
   readonly unlockVisibleColumns = signal<string[]>(
     defaultVisibleColumnIds(UNLOCK_BASE_COLUMNS)
   );
+
+  readonly unlockCourseId = computed(() => {
+    const ids = this.selectedCourseIds();
+    return ids.length === 1 ? ids[0] : null;
+  });
+
+  readonly filteredEnrollments = computed(() => {
+    const courseIds = this.selectedCourseIds();
+    const q = this.studentSearch().trim().toLowerCase();
+    let rows = this.allEnrollments();
+
+    if (courseIds.length > 0) {
+      const set = new Set(courseIds);
+      rows = rows.filter((r) => set.has(r.courseId));
+    }
+
+    if (!q) return rows;
+
+    return rows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.courseTitle.toLowerCase().includes(q) ||
+        (r.email?.toLowerCase().includes(q) ?? false) ||
+        (r.phone?.toLowerCase().includes(q) ?? false)
+    );
+  });
 
   readonly unlockColumnDefs = computed(() => [
     ...UNLOCK_BASE_COLUMNS,
@@ -116,36 +149,48 @@ export class EnrollmentsManagement implements OnInit {
 
   private async initPage(): Promise<void> {
     this.isLoading.set(true);
-    const list = await this.courseService.listAll();
+    const [list, enrollments] = await Promise.all([
+      this.courseService.listAll(),
+      this.enrollmentsService.getAllEnrollments()
+    ]);
     this.courses.set(list);
+    this.allEnrollments.set(enrollments);
 
     const qp = this.route.snapshot.queryParamMap.get('courseId');
-    const initial = qp && list.some((c) => c.id === qp) ? qp : list[0]?.id ?? null;
-    if (initial) {
-      this.selectedCourseId.set(initial);
-      await this.loadEnrollments(initial);
+    if (qp && list.some((c) => c.id === qp)) {
+      this.selectedCourseIds.set([qp]);
+      await this.loadUnlocksForCourse(qp);
     }
+
     this.isLoading.set(false);
   }
 
-  async onCourseChange(event: Event): Promise<void> {
-    const id = (event.target as HTMLSelectElement).value;
-    this.selectedCourseId.set(id);
+  async onCourseFilterChange(ids: string[]): Promise<void> {
+    this.selectedCourseIds.set(ids);
+    const courseId = ids.length === 1 ? ids[0] : null;
     await this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { courseId: id },
+      queryParams: { courseId: courseId ?? null },
       queryParamsHandling: 'merge'
     });
-    await this.loadEnrollments(id);
+    if (courseId) {
+      await this.loadUnlocksForCourse(courseId);
+    } else {
+      this.courseModules.set([]);
+      this.unlockRows.set([]);
+    }
   }
 
-  private async loadEnrollments(courseId: string): Promise<void> {
-    const [data, modules, unlocks] = await Promise.all([
-      this.enrollmentsService.getEnrollmentsForCourse(courseId),
+  private async loadAllEnrollments(): Promise<void> {
+    const enrollments = await this.enrollmentsService.getAllEnrollments();
+    this.allEnrollments.set(enrollments);
+  }
+
+  private async loadUnlocksForCourse(courseId: string): Promise<void> {
+    const [modules, unlocks] = await Promise.all([
       this.unlocksService.getModulesForCourse(courseId),
       this.unlocksService.getEnrollmentUnlocks(courseId)
     ]);
-    this.summary.set(data);
     this.courseModules.set(modules);
     this.unlockRows.set(unlocks);
     this.unlockVisibleColumns.set(
@@ -164,6 +209,10 @@ export class EnrollmentsManagement implements OnInit {
     this.activeTab.set(tab);
   }
 
+  onStudentSearchChange(value: string): void {
+    this.studentSearch.set(value);
+  }
+
   isEnrollmentColVisible(id: string): boolean {
     return this.enrollmentVisibleColumns().includes(id);
   }
@@ -176,23 +225,22 @@ export class EnrollmentsManagement implements OnInit {
     return this.isUnlockColVisible(`mod_${moduleId}`);
   }
 
-  selectedCourseTitle(): string {
-    const id = this.selectedCourseId();
+  unlockCourseTitle(): string {
+    const id = this.unlockCourseId();
     return this.courses().find((c) => c.id === id)?.title ?? '';
   }
 
   downloadEnrollments(): void {
-    const rows = this.summary()?.enrollments ?? [];
+    const rows = this.filteredEnrollments();
     if (rows.length === 0) {
       this.toast.error('No enrollment data to download');
       return;
     }
-    const slug = this.selectedCourseTitle().replace(/[^\w]+/g, '_') || 'course';
     downloadAdminTableXlsx(
       rows,
       ENROLLMENT_COLUMNS,
       this.enrollmentVisibleColumns(),
-      `${slug}_enrollments`,
+      'all_enrollments',
       (row, col) => this.enrollmentCellValue(row, col)
     );
     this.toast.success('Download started');
@@ -204,7 +252,7 @@ export class EnrollmentsManagement implements OnInit {
       this.toast.error('No unlock data to download');
       return;
     }
-    const slug = this.selectedCourseTitle().replace(/[^\w]+/g, '_') || 'course';
+    const slug = this.unlockCourseTitle().replace(/[^\w]+/g, '_') || 'course';
     downloadAdminTableXlsx(
       rows,
       this.unlockColumnDefs(),
@@ -219,6 +267,8 @@ export class EnrollmentsManagement implements OnInit {
     switch (columnId) {
       case 'name':
         return row.name;
+      case 'course':
+        return row.courseTitle;
       case 'email':
         return row.email ?? '';
       case 'phone':
@@ -258,6 +308,8 @@ export class EnrollmentsManagement implements OnInit {
   }
 
   openBulkModal(): void {
+    const courseId = this.unlockCourseId() ?? this.courses()[0]?.id ?? '';
+    this.bulkCourseId.set(courseId);
     this.bulkFile.set(null);
     this.bulkResults.set(null);
     this.failedBulkResults.set([]);
@@ -269,7 +321,8 @@ export class EnrollmentsManagement implements OnInit {
   }
 
   downloadSample(): void {
-    this.bulkImportService.downloadSampleExcel(this.selectedCourseTitle());
+    const course = this.courses().find((c) => c.id === this.bulkCourseId());
+    this.bulkImportService.downloadSampleExcel(course?.title ?? 'course');
   }
 
   onBulkFileSelected(event: Event): void {
@@ -281,7 +334,7 @@ export class EnrollmentsManagement implements OnInit {
   }
 
   async runBulkImport(): Promise<void> {
-    const courseId = this.selectedCourseId();
+    const courseId = this.bulkCourseId();
     const file = this.bulkFile();
     if (!courseId) {
       this.toast.error('Select a course first');
@@ -304,7 +357,10 @@ export class EnrollmentsManagement implements OnInit {
 
       const ok = results.filter((r) => r.success).length;
       const fail = results.length - ok;
-      await this.loadEnrollments(courseId);
+      await this.loadAllEnrollments();
+      if (this.unlockCourseId() === courseId) {
+        await this.loadUnlocksForCourse(courseId);
+      }
 
       if (fail === 0) {
         this.toast.success(`Enrolled ${ok} user(s)`);
@@ -322,16 +378,54 @@ export class EnrollmentsManagement implements OnInit {
     }
   }
 
-  async removeEnrollment(enrollmentId: string, name: string): Promise<void> {
-    if (!confirm(`Remove enrollment for ${name}?`)) return;
+  async removeEnrollment(row: CourseEnrollmentRow): Promise<void> {
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Remove enrollment',
+        message: `Remove ${row.name}'s enrollment in "${row.courseTitle}"?`,
+        confirmLabel: 'Remove',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
 
-    const courseId = this.selectedCourseId();
-    const ok = await this.enrollmentsService.removeEnrollment(enrollmentId);
+    const ok = await this.enrollmentsService.removeEnrollment(row.enrollmentId);
     if (ok) {
       this.toast.success('Enrollment removed');
-      if (courseId) await this.loadEnrollments(courseId);
+      await this.loadAllEnrollments();
+      const courseId = this.unlockCourseId();
+      if (courseId) await this.loadUnlocksForCourse(courseId);
     } else {
       this.toast.error('Could not remove enrollment');
+    }
+  }
+
+  async deleteUser(row: CourseEnrollmentRow): Promise<void> {
+    const label = row.email ? `${row.name} (${row.email})` : row.name;
+    if (
+      !(await this.confirmDialog.confirm({
+        title: 'Delete user',
+        message: `Delete user ${label}?\n\nThis removes their account, all enrollments, and progress. This cannot be undone.`,
+        confirmLabel: 'Delete user',
+        variant: 'danger'
+      }))
+    ) {
+      return;
+    }
+
+    this.isDeletingUser.set(true);
+    try {
+      await this.enrollmentsService.deleteUser(row.userId);
+      this.toast.success('User deleted');
+      await this.loadAllEnrollments();
+      const courseId = this.unlockCourseId();
+      if (courseId) await this.loadUnlocksForCourse(courseId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not delete user';
+      this.toast.error(msg);
+    } finally {
+      this.isDeletingUser.set(false);
     }
   }
 
@@ -410,8 +504,8 @@ export class EnrollmentsManagement implements OnInit {
     this.togglingModuleAll.set(null);
 
     if (ok) {
-      const courseId = this.selectedCourseId();
-      if (courseId) await this.loadEnrollments(courseId);
+      const courseId = this.unlockCourseId();
+      if (courseId) await this.loadUnlocksForCourse(courseId);
       this.toast.success(
         checked ? 'Module unlocked for all students' : 'Module locked for all students'
       );
@@ -444,8 +538,8 @@ export class EnrollmentsManagement implements OnInit {
     this.togglingUnlock.set(null);
 
     if (ok) {
-      const courseId = this.selectedCourseId();
-      if (courseId) await this.loadEnrollments(courseId);
+      const courseId = this.unlockCourseId();
+      if (courseId) await this.loadUnlocksForCourse(courseId);
       this.toast.success(checked ? 'Module unlocked' : 'Module locked');
     } else {
       this.toast.error('Could not update module access');

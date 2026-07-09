@@ -177,6 +177,21 @@ export class AdminStudentsService {
     return true;
   }
 
+  async deleteUser(userId: string): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { userId }
+    });
+
+    if (error) {
+      console.error('AdminStudentsService.deleteUser:', error);
+      throw new Error(error.message);
+    }
+
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+      throw new Error(String(data.error));
+    }
+  }
+
   private async buildProgressMap(userIds: string[]): Promise<Map<string, number>> {
     const result = new Map<string, number>();
     if (userIds.length === 0) return result;
