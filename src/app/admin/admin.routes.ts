@@ -71,6 +71,11 @@ export const adminRoutes: Routes = [
           import('./students/students').then(m => m.Students)
       },
       {
+        path: 'batches',
+        loadComponent: () =>
+          import('./batches-management/batches-management').then(m => m.BatchesManagement)
+      },
+      {
         path: 'enrollments',
         loadComponent: () =>
           import('./enrollments-management/enrollments-management').then(m => m.EnrollmentsManagement)

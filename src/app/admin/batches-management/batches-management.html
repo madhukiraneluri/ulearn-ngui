@@ -1,0 +1,132 @@
+<div class="batches-admin">
+  <div class="page-header">
+    <div>
+      <h1>Batches</h1>
+      <p>Create and manage course cohorts for live classes</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">New batch</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading batches…</p>
+  } @else if (batches().length === 0) {
+    <div class="empty">
+      <p>No batches yet.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Create first batch</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="batches-table">
+        <thead>
+          <tr>
+            <th>Batch</th>
+            <th>Course</th>
+            <th>Start</th>
+            <th>Status</th>
+            <th>Students</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (batch of batches(); track batch.id) {
+            <tr [class.expanded]="isExpanded(batch.id)">
+              <td><strong>{{ batch.name }}</strong></td>
+              <td>{{ batch.courseTitle }}</td>
+              <td>{{ formatDate(batch.startDate) }}</td>
+              <td>
+                <span class="status-pill" [attr.data-status]="batch.status">{{ batch.status }}</span>
+              </td>
+              <td>{{ batch.memberCount }}</td>
+              <td class="actions">
+                <button type="button" class="btn-sm" (click)="toggleExpand(batch.id)">
+                  {{ isExpanded(batch.id) ? 'Hide' : 'Members' }}
+                </button>
+                <button type="button" class="btn-sm" (click)="openEdit(batch)">Edit</button>
+                <button type="button" class="btn-sm danger" (click)="deleteBatch(batch)">Delete</button>
+              </td>
+            </tr>
+            @if (isExpanded(batch.id)) {
+              <tr class="detail-row">
+                <td colspan="6">
+                  @if (loadingMembers()) {
+                    <p class="muted">Loading members…</p>
+                  } @else if (members().length === 0) {
+                    <p class="muted">No students in this batch yet.</p>
+                  } @else {
+                    <ul class="member-list">
+                      @for (m of members(); track m.id) {
+                        <li>
+                          <div>
+                            <strong>{{ m.userName }}</strong>
+                            @if (m.userEmail) {
+                              <span class="muted"> · {{ m.userEmail }}</span>
+                            }
+                          </div>
+                          <button type="button" class="btn-sm danger" (click)="removeMember(m.id, m.userName)">
+                            Remove
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog">
+      <div class="modal-header">
+        <h2>{{ editingId() ? 'Edit batch' : 'Create batch' }}</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="save()" class="modal-body">
+        <div class="form-group">
+          <label>Course</label>
+          <app-admin-course-search-select
+            [courses]="courses()"
+            [courseId]="form.get('courseId')?.value"
+            (courseIdChange)="onCourseIdChange($event)"
+          />
+        </div>
+        <div class="form-group">
+          <label for="batch-name">Batch name</label>
+          <input id="batch-name" type="text" formControlName="name" class="form-input" placeholder="June 2026 — Kakinada" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="batch-start">Start date</label>
+            <input id="batch-start" type="date" formControlName="startDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label for="batch-end">End date</label>
+            <input id="batch-end" type="date" formControlName="endDate" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="batch-status">Status</label>
+          <select id="batch-status" formControlName="status" class="form-input">
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batch-notes">Notes (optional)</label>
+          <textarea id="batch-notes" formControlName="notes" class="form-input" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : (editingId() ? 'Save changes' : 'Create batch') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

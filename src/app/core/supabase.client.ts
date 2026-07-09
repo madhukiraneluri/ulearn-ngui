@@ -32,6 +32,8 @@ export interface UserProfile {
   skills: string[] | null;
   profile_completed: boolean;
   role?: string;
+  must_reset_password?: boolean;
+  created_by_admin?: boolean;
   created_at: string;
   updated_at: string;
 }

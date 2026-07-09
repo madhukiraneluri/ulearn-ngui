@@ -311,6 +311,38 @@ export interface ModuleUnlock {
   unlockedAt: string;
 }
 
+// ─── BATCHES ─────────────────────────────────────────────────────────────────
+
+export type BatchStatus = 'active' | 'completed' | 'archived';
+
+export interface Batch {
+  id: string;
+  courseId: string;
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  status: BatchStatus;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BatchMemberRow {
+  id: string;
+  batchId: string;
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+  addedAt: string;
+}
+
+export interface StudentBatchSummary {
+  batchId: string;
+  batchName: string;
+  courseTitle: string;
+}
+
 export interface UserEnrolledCourse {
   enrollmentId: string;
   courseId: string;

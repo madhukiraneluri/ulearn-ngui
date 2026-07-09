@@ -10,5 +10,16 @@ Set these in **Supabase Dashboard → Project Settings → Edge Functions → Se
 Functions deployed:
 - `create-razorpay-order` — creates Razorpay order (uses key + secret)
 - `verify-razorpay-payment` — verifies signature and inserts enrollment
+- `delete-user` — admin deletes student account and related data
+- `create-student` — admin creates student(s) with temp password, optional enroll & batch
+- `resend-credentials` — admin resets temp password and emails student
+
+Additional secrets for student provisioning (optional email):
+
+| Secret | Value |
+|--------|-------|
+| `RESEND_API_KEY` | Resend API key |
+| `RESEND_FROM_EMAIL` | e.g. `ULearn <noreply@ulearn-edu.in>` |
+| `ULEARN_LOGIN_URL` | e.g. `https://www.ulearn-edu.in/auth/login` |
 
 Frontend uses `razorpayKeyId` from `environment.ts` (public key only).

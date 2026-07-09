@@ -2,9 +2,13 @@
   <div class="page-header">
     <div>
       <h1>Students</h1>
-      <p>View enrollments, progress, and grant manual access</p>
+      <p>Add students, manage enrollments, batches, and credentials</p>
     </div>
-    <button type="button" class="btn-primary" (click)="openEnrollModal()">Manual enroll</button>
+    <div class="header-actions">
+      <button type="button" class="btn-secondary" (click)="openBulkModal()">Bulk add</button>
+      <button type="button" class="btn-primary" (click)="openAddModal()">Add student</button>
+      <button type="button" class="btn-secondary" (click)="openEnrollModal()">Manual enroll</button>
+    </div>
   </div>
 
   @if (isLoading()) {
@@ -79,7 +83,12 @@
             @for (student of filteredStudents(); track student.id) {
               <tr [class.expanded]="isExpanded(student.id)">
                 @if (isColVisible('name')) {
-                  <td><strong>{{ student.name }}</strong></td>
+                  <td>
+                    <strong>{{ student.name }}</strong>
+                    @if (student.mustResetPassword) {
+                      <span class="badge-pending">Pending password reset</span>
+                    }
+                  </td>
                 }
                 @if (isColVisible('email')) {
                   <td>{{ student.email || '—' }}</td>
@@ -101,13 +110,23 @@
                     <button type="button" class="btn-sm link" (click)="openEnrollModal(student.id)">
                       Enroll
                     </button>
+                    @if (student.createdByAdmin || student.mustResetPassword) {
+                      <button
+                        type="button"
+                        class="btn-sm"
+                        [disabled]="isResending()"
+                        (click)="resendCredentials(student)"
+                      >
+                        Resend login
+                      </button>
+                    }
                     <button
                       type="button"
                       class="btn-sm danger"
                       [disabled]="isDeletingUser()"
                       (click)="deleteUser(student)"
                     >
-                      Delete user
+                      Delete
                     </button>
                   </td>
                 }
@@ -115,6 +134,16 @@
               @if (isExpanded(student.id)) {
                 <tr class="detail-row">
                   <td [attr.colspan]="visibleColumnCount()">
+                    @if (student.batches.length > 0) {
+                      <div class="detail-section">
+                        <h3>Batches</h3>
+                        <ul class="batch-chips">
+                          @for (b of student.batches; track b.batchId) {
+                            <li>{{ b.batchName }} <span class="muted">({{ b.courseTitle }})</span></li>
+                          }
+                        </ul>
+                      </div>
+                    }
                     @if (student.enrollments.length === 0) {
                       <p class="no-enrollments">No enrollments yet.</p>
                     } @else {
@@ -152,6 +181,228 @@
     }
   }
 
+  @if (showAddModal()) {
+    <div class="modal-overlay" (click)="closeAddModal()"></div>
+    <div class="modal modal-wide" role="dialog">
+      <div class="modal-header">
+        <h2>Add student</h2>
+        <button type="button" class="close-btn" (click)="closeAddModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full name *</label>
+            <input class="form-input" [ngModel]="addFullName()" (ngModelChange)="addFullName.set($event)" />
+          </div>
+          <div class="form-group">
+            <label>Email (username) *</label>
+            <input type="email" class="form-input" [ngModel]="addEmail()" (ngModelChange)="addEmail.set($event)" />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input class="form-input" [ngModel]="addPhone()" (ngModelChange)="addPhone.set($event)" />
+          </div>
+          <div class="form-group">
+            <label>College</label>
+            <input class="form-input" [ngModel]="addCollege()" (ngModelChange)="addCollege.set($event)" />
+          </div>
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="addSendEmail()" (ngModelChange)="addSendEmail.set($event)" />
+          Email credentials to student (requires Resend configured)
+        </label>
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="addEnrollCourses()" (ngModelChange)="addEnrollCourses.set($event)" />
+          Enroll in courses
+        </label>
+        @if (addEnrollCourses()) {
+          <app-admin-course-multi-filter
+            [courses]="courses()"
+            label="Courses"
+            [selectedCourseIds]="addCourseIds()"
+            (selectedCourseIdsChange)="addCourseIds.set($event)"
+          />
+        }
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="addAssignBatch()" (ngModelChange)="addAssignBatch.set($event)" />
+          Add to batch (optional)
+        </label>
+        @if (addAssignBatch()) {
+          <label class="toggle-row nested">
+            <input type="checkbox" [ngModel]="addCreateNewBatch()" (ngModelChange)="addCreateNewBatch.set($event)" />
+            Create new batch for this student
+          </label>
+          @if (addCreateNewBatch()) {
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Batch course</label>
+                <app-admin-course-search-select
+                  [courses]="courses()"
+                  [courseId]="addNewBatchCourseId()"
+                  (courseIdChange)="addNewBatchCourseId.set($event)"
+                />
+              </div>
+              <div class="form-group">
+                <label>Batch name</label>
+                <input class="form-input" [ngModel]="addNewBatchName()" (ngModelChange)="addNewBatchName.set($event)" placeholder="June 2026 — Kakinada" />
+              </div>
+              <div class="form-group">
+                <label>Start date</label>
+                <input type="date" class="form-input" [ngModel]="addNewBatchStartDate()" (ngModelChange)="addNewBatchStartDate.set($event)" />
+              </div>
+            </div>
+          } @else if (batchOptions().length > 0) {
+            <div class="checkbox-list">
+              @for (b of batchOptions(); track b.id) {
+                <label class="check-item">
+                  <input
+                    type="checkbox"
+                    [checked]="isBatchSelected(b.id, 'add')"
+                    (change)="toggleBatchSelection(b.id, 'add')"
+                  />
+                  {{ b.name }} <span class="muted">({{ b.courseTitle }})</span>
+                </label>
+              }
+            </div>
+          } @else {
+            <p class="modal-hint">No batches yet — create one above or on the Batches page.</p>
+          }
+        }
+
+        @if (addResult()) {
+          <div class="result-box">
+            <p><strong>Account created</strong> for {{ addResult()!.email }}</p>
+            @if (addResult()!.emailSent) {
+              <p>Credentials were emailed to the student.</p>
+            } @else if (addResult()!.tempPassword) {
+              <p>Temporary password (share with student):</p>
+              <code class="password-display">{{ addResult()!.tempPassword }}</code>
+            }
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeAddModal()">Close</button>
+          <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="submitAddStudent()">
+            {{ isSaving() ? 'Creating…' : 'Create student' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showBulkModal()) {
+    <div class="modal-overlay" (click)="closeBulkModal()"></div>
+    <div class="modal modal-wide" role="dialog">
+      <div class="modal-header">
+        <h2>Bulk add students</h2>
+        <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Upload Excel with columns: email, full_name, phone (optional), college (optional).</p>
+        <div class="bulk-actions">
+          <button type="button" class="btn-secondary" (click)="downloadBulkSample()">Download template</button>
+          <input type="file" accept=".xlsx,.xls" (change)="onBulkFileSelected($event)" />
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="bulkSendEmail()" (ngModelChange)="bulkSendEmail.set($event)" />
+          Email credentials to each student
+        </label>
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="bulkEnrollCourses()" (ngModelChange)="bulkEnrollCourses.set($event)" />
+          Enroll all in courses
+        </label>
+        @if (bulkEnrollCourses()) {
+          <app-admin-course-multi-filter
+            [courses]="courses()"
+            label="Courses for all rows"
+            [selectedCourseIds]="bulkCourseIds()"
+            (selectedCourseIdsChange)="bulkCourseIds.set($event)"
+          />
+        }
+
+        <label class="toggle-row">
+          <input type="checkbox" [ngModel]="bulkAssignBatch()" (ngModelChange)="bulkAssignBatch.set($event)" />
+          Add all to a batch
+        </label>
+        @if (bulkAssignBatch()) {
+          <label class="toggle-row nested">
+            <input type="checkbox" [ngModel]="bulkCreateNewBatch()" (ngModelChange)="bulkCreateNewBatch.set($event)" />
+            Create new batch for this import
+          </label>
+          @if (bulkCreateNewBatch()) {
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Batch course</label>
+                <app-admin-course-search-select
+                  [courses]="courses()"
+                  [courseId]="bulkNewBatchCourseId()"
+                  (courseIdChange)="bulkNewBatchCourseId.set($event)"
+                />
+              </div>
+              <div class="form-group">
+                <label>Batch name</label>
+                <input class="form-input" [ngModel]="bulkNewBatchName()" (ngModelChange)="bulkNewBatchName.set($event)" />
+              </div>
+              <div class="form-group">
+                <label>Start date</label>
+                <input type="date" class="form-input" [ngModel]="bulkNewBatchStartDate()" (ngModelChange)="bulkNewBatchStartDate.set($event)" />
+              </div>
+            </div>
+          } @else if (bulkBatchOptions().length > 0) {
+            <div class="checkbox-list">
+              @for (b of bulkBatchOptions(); track b.id) {
+                <label class="check-item">
+                  <input
+                    type="checkbox"
+                    [checked]="isBatchSelected(b.id, 'bulk')"
+                    (change)="toggleBatchSelection(b.id, 'bulk')"
+                  />
+                  {{ b.name }} <span class="muted">({{ b.courseTitle }})</span>
+                </label>
+              }
+            </div>
+          } @else {
+            <p class="modal-hint">No batches available — create a new one above.</p>
+          }
+        }
+
+        @if (bulkResults()) {
+          <div class="bulk-results">
+            <h3>Import results</h3>
+            <table>
+              <thead>
+                <tr><th>Row</th><th>Email</th><th>Status</th><th>Password</th></tr>
+              </thead>
+              <tbody>
+                @for (r of bulkResults()!; track r.rowNumber + r.email) {
+                  <tr [class.fail]="!r.success">
+                    <td>{{ r.rowNumber }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>{{ r.message }}</td>
+                    <td>{{ r.tempPassword ?? (r.emailSent ? 'Emailed' : '—') }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeBulkModal()">Close</button>
+          <button type="button" class="btn-primary" [disabled]="bulkImporting() || !bulkFile()" (click)="submitBulkAdd()">
+            {{ bulkImporting() ? 'Importing…' : 'Import students' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   @if (showEnrollModal()) {
     <div class="modal-overlay" (click)="closeEnrollModal()"></div>
     <div class="modal" role="dialog">
@@ -159,20 +410,17 @@
         <h2>Manual enroll</h2>
         <button type="button" class="close-btn" (click)="closeEnrollModal()">✕</button>
       </div>
-
       <div class="modal-body">
-        <p class="modal-hint">Grant course access without payment (scholarship / comp access).</p>
-
+        <p class="modal-hint">Grant course access to an existing student without payment.</p>
         <div class="form-group">
           <label>Student</label>
           <select [ngModel]="enrollUserId()" (ngModelChange)="enrollUserId.set($event)">
             <option value="">Select student…</option>
             @for (s of students(); track s.id) {
-              <option [value]="s.id">{{ s.name }}{{ s.phone ? ' · ' + s.phone : '' }}</option>
+              <option [value]="s.id">{{ s.name }}{{ s.email ? ' · ' + s.email : '' }}</option>
             }
           </select>
         </div>
-
         <div class="form-group">
           <label>Course</label>
           <select [ngModel]="enrollCourseId()" (ngModelChange)="enrollCourseId.set($event)">
@@ -181,15 +429,9 @@
             }
           </select>
         </div>
-
         <div class="modal-actions">
           <button type="button" class="btn-secondary" (click)="closeEnrollModal()">Cancel</button>
-          <button
-            type="button"
-            class="btn-primary"
-            [disabled]="isSaving() || !enrollUserId() || !enrollCourseId()"
-            (click)="submitManualEnroll()"
-          >
+          <button type="button" class="btn-primary" [disabled]="isSaving() || !enrollUserId() || !enrollCourseId()" (click)="submitManualEnroll()">
             {{ isSaving() ? 'Enrolling…' : 'Enroll student' }}
           </button>
         </div>

@@ -60,7 +60,11 @@ export class Login implements OnInit {
     const success = await this.auth.signIn(email, password);
 
     if (success) {
-      await this.router.navigateByUrl(this.returnUrl || '/');
+      if (this.auth.mustResetPassword()) {
+        await this.router.navigate(['/auth/set-password']);
+      } else {
+        await this.router.navigateByUrl(this.returnUrl || '/');
+      }
     }
   }
 

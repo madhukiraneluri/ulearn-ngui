@@ -383,6 +383,44 @@ export class AuthService {
     return this.profileSignal()?.profile_completed ?? false;
   }
 
+  mustResetPassword(): boolean {
+    const profile = this.profileSignal();
+    if (profile?.must_reset_password) return true;
+    const meta = this.currentUserSignal()?.user_metadata?.['must_reset_password'];
+    return meta === true;
+  }
+
+  async setNewPassword(password: string): Promise<boolean> {
+    try {
+      this.isLoadingSignal.set(true);
+
+      const { error: pwErr } = await supabase.auth.updateUser({ password });
+      if (pwErr) {
+        this.toast.error(pwErr.message);
+        return false;
+      }
+
+      const userId = this.currentUserSignal()?.id;
+      if (userId) {
+        await supabase
+          .from('profiles')
+          .update({ must_reset_password: false })
+          .eq('id', userId);
+        await this.updateAuthMetadata({ must_reset_password: false });
+        await this.loadProfile(userId);
+      }
+
+      this.toast.success('Password updated successfully');
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not update password';
+      this.toast.error(message);
+      return false;
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
+  }
+
   async logout(): Promise<boolean> {
     return this.signOut();
   }

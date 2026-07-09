@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
 
     await adminClient.from('enrollments').delete().eq('user_id', userId);
     await adminClient.from('lesson_progress').delete().eq('user_id', userId);
+    await adminClient.from('batch_members').delete().eq('user_id', userId);
     await adminClient.from('profiles').delete().eq('id', userId);
 
     const { error: deleteAuthErr } = await adminClient.auth.admin.deleteUser(userId);

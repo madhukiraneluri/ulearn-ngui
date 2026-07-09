@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 import { supabase } from '../../core/supabase.client';
 import { AdminCourseService, AdminCourseRow } from './admin-course.service';
+import type { StudentBatchSummary } from '../../models';
+import type {
+  CreateStudentsPayload,
+  CreateStudentsResponse
+} from './student-provision.util';
 
 export interface AdminEnrollmentRow {
   id: string;
@@ -20,6 +25,9 @@ export interface AdminStudentRow {
   joinedAt: string;
   enrollmentCount: number;
   enrollments: AdminEnrollmentRow[];
+  batches: StudentBatchSummary[];
+  mustResetPassword: boolean;
+  createdByAdmin: boolean;
 }
 
 export interface RecentEnrollmentRow {
@@ -38,7 +46,7 @@ export class AdminStudentsService {
   async listStudents(): Promise<AdminStudentRow[]> {
     const { data: profiles, error: profErr } = await supabase
       .from('profiles')
-      .select('id, full_name, email, phone, role, created_at')
+      .select('id, full_name, email, phone, role, created_at, must_reset_password, created_by_admin')
       .order('created_at', { ascending: false });
 
     if (profErr) {
@@ -62,6 +70,7 @@ export class AdminStudentsService {
     }
 
     const progressMap = await this.buildProgressMap(userIds);
+    const batchesByUser = await this.buildBatchesMap(userIds);
 
     const enrollmentsByUser: Record<string, AdminEnrollmentRow[]> = {};
 
@@ -99,9 +108,137 @@ export class AdminStudentsService {
         role: String(p.role ?? 'USER'),
         joinedAt: String(p.created_at),
         enrollmentCount: enrs.length,
-        enrollments: enrs
+        enrollments: enrs,
+        batches: batchesByUser[id] ?? [],
+        mustResetPassword: Boolean(p.must_reset_password),
+        createdByAdmin: Boolean(p.created_by_admin)
       };
     });
+  }
+
+  async createStudents(payload: CreateStudentsPayload): Promise<CreateStudentsResponse> {
+    const { data, error } = await supabase.functions.invoke('create-student', {
+      body: payload
+    });
+
+    if (error) {
+      console.error('AdminStudentsService.createStudents:', error);
+      throw new Error(error.message);
+    }
+
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+      throw new Error(String(data.error));
+    }
+
+    return data as CreateStudentsResponse;
+  }
+
+  async resendCredentials(userId: string): Promise<{
+    emailSent: boolean;
+    tempPassword?: string;
+    emailError?: string;
+  }> {
+    const { data, error } = await supabase.functions.invoke('resend-credentials', {
+      body: { userId }
+    });
+
+    if (error) {
+      console.error('AdminStudentsService.resendCredentials:', error);
+      throw new Error(error.message);
+    }
+
+    if (data && typeof data === 'object' && 'error' in data && data.error) {
+      throw new Error(String(data.error));
+    }
+
+    const result = data as {
+      emailSent?: boolean;
+      tempPassword?: string;
+      emailError?: string | null;
+    };
+
+    return {
+      emailSent: Boolean(result.emailSent),
+      tempPassword: result.tempPassword,
+      emailError: result.emailError ?? undefined
+    };
+  }
+
+  async addStudentToBatch(userId: string, batchId: string): Promise<void> {
+    const { data: batch, error: batchErr } = await supabase
+      .from('batches')
+      .select('course_id, start_date')
+      .eq('id', batchId)
+      .maybeSingle();
+
+    if (batchErr || !batch) throw new Error('Batch not found');
+
+    await this.manualEnroll(userId, String(batch.course_id));
+
+    if (batch.start_date) {
+      await supabase
+        .from('enrollments')
+        .update({ live_class_start_month: String(batch.start_date).slice(0, 7) })
+        .eq('user_id', userId)
+        .eq('course_id', String(batch.course_id));
+    }
+
+    const { data: user } = await supabase.auth.getUser();
+    const { error: memberErr } = await supabase.from('batch_members').upsert(
+      {
+        batch_id: batchId,
+        user_id: userId,
+        added_by: user.user?.id ?? null
+      },
+      { onConflict: 'batch_id,user_id', ignoreDuplicates: true }
+    );
+
+    if (memberErr) throw new Error(memberErr.message);
+  }
+
+  async removeStudentFromBatch(memberId: string): Promise<boolean> {
+    const { error } = await supabase.from('batch_members').delete().eq('id', memberId);
+    if (error) {
+      console.error('AdminStudentsService.removeStudentFromBatch:', error);
+      return false;
+    }
+    return true;
+  }
+
+  private async buildBatchesMap(userIds: string[]): Promise<Record<string, StudentBatchSummary[]>> {
+    const result: Record<string, StudentBatchSummary[]> = {};
+    if (userIds.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from('batch_members')
+      .select('user_id, batch_id, batches(id, name, courses(title))')
+      .in('user_id', userIds);
+
+    if (error) {
+      console.error('AdminStudentsService.buildBatchesMap:', error);
+      return result;
+    }
+
+    for (const row of data ?? []) {
+      const userId = String(row.user_id);
+      const batchRaw = row.batches;
+      const batch = (Array.isArray(batchRaw) ? batchRaw[0] : batchRaw) as
+        | { id: string; name: string; courses: { title: string } | { title: string }[] | null }
+        | null;
+      if (!batch) continue;
+
+      const courseRaw = batch.courses;
+      const course = (Array.isArray(courseRaw) ? courseRaw[0] : courseRaw) as { title: string } | null;
+
+      result[userId] = result[userId] ?? [];
+      result[userId].push({
+        batchId: String(batch.id),
+        batchName: String(batch.name),
+        courseTitle: String(course?.title ?? 'Course')
+      });
+    }
+
+    return result;
   }
 
   async listRecentEnrollments(limit = 10): Promise<RecentEnrollmentRow[]> {
