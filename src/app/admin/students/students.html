@@ -13,6 +13,11 @@
 
   @if (isLoading()) {
     <p class="loading">Loading students…</p>
+  } @else if (loadError()) {
+    <div class="empty">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-secondary" (click)="retryLoad()">Retry</button>
+    </div>
   } @else {
     <div class="summary-row">
       <div class="summary-card">
@@ -183,7 +188,7 @@
 
   @if (showAddModal()) {
     <div class="modal-overlay" (click)="closeAddModal()"></div>
-    <div class="modal modal-wide" role="dialog">
+    <div class="modal modal-wide" role="dialog" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>Add student</h2>
         <button type="button" class="close-btn" (click)="closeAddModal()">✕</button>
@@ -202,9 +207,23 @@
             <label>Phone</label>
             <input class="form-input" [ngModel]="addPhone()" (ngModelChange)="addPhone.set($event)" />
           </div>
-          <div class="form-group">
-            <label>College</label>
-            <input class="form-input" [ngModel]="addCollege()" (ngModelChange)="addCollege.set($event)" />
+          <div class="form-group form-group--full">
+            <app-searchable-select
+              label="College / University"
+              placeholder="Search Indian colleges & universities..."
+              [searchFn]="searchColleges"
+              [ngModel]="addCollege()"
+              (ngModelChange)="onAddCollegeChange($event)"
+            />
+            @if (addShowOtherCollege()) {
+              <label class="field-sub-label">College name</label>
+              <input
+                class="form-input"
+                [ngModel]="addOtherCollege()"
+                (ngModelChange)="addOtherCollege.set($event)"
+                placeholder="Enter college name"
+              />
+            }
           </div>
         </div>
 
@@ -218,12 +237,41 @@
           Enroll in courses
         </label>
         @if (addEnrollCourses()) {
-          <app-admin-course-multi-filter
-            [courses]="courses()"
-            label="Courses"
-            [selectedCourseIds]="addCourseIds()"
-            (selectedCourseIdsChange)="addCourseIds.set($event)"
-          />
+          <p class="modal-hint">Select one or more courses to enroll this student in.</p>
+          @if (courses().length === 0) {
+            <p class="modal-hint">No courses available yet.</p>
+          } @else {
+            <input
+              type="search"
+              class="form-input course-search"
+              placeholder="Search courses…"
+              [ngModel]="addCourseSearchQuery()"
+              (ngModelChange)="addCourseSearchQuery.set($event)"
+            />
+            @if (filteredCoursesForAdd().length === 0) {
+              <p class="modal-hint">No courses match your search.</p>
+            } @else {
+              <div class="checkbox-list">
+                @for (c of filteredCoursesForAdd(); track c.id) {
+                  <div
+                    class="check-item"
+                    role="button"
+                    tabindex="0"
+                    (click)="toggleCourseSelection(c.id, 'add')"
+                    (keydown.enter)="toggleCourseSelection(c.id, 'add')"
+                  >
+                    <input
+                      type="checkbox"
+                      tabindex="-1"
+                      [checked]="isCourseSelected(c.id, 'add')"
+                      (click)="$event.preventDefault()"
+                    />
+                    <span>{{ c.title }} <span class="muted">({{ c.status }})</span></span>
+                  </div>
+                }
+              </div>
+            }
+          }
         }
 
         <label class="toggle-row">
@@ -257,14 +305,21 @@
           } @else if (batchOptions().length > 0) {
             <div class="checkbox-list">
               @for (b of batchOptions(); track b.id) {
-                <label class="check-item">
+                <div
+                  class="check-item"
+                  role="button"
+                  tabindex="0"
+                  (click)="toggleBatchSelection(b.id, 'add')"
+                  (keydown.enter)="toggleBatchSelection(b.id, 'add')"
+                >
                   <input
                     type="checkbox"
+                    tabindex="-1"
                     [checked]="isBatchSelected(b.id, 'add')"
-                    (change)="toggleBatchSelection(b.id, 'add')"
+                    (click)="$event.preventDefault()"
                   />
-                  {{ b.name }} <span class="muted">({{ b.courseTitle }})</span>
-                </label>
+                  <span>{{ b.name }} <span class="muted">({{ b.courseTitle }})</span></span>
+                </div>
               }
             </div>
           } @else {
@@ -296,7 +351,7 @@
 
   @if (showBulkModal()) {
     <div class="modal-overlay" (click)="closeBulkModal()"></div>
-    <div class="modal modal-wide" role="dialog">
+    <div class="modal modal-wide" role="dialog" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>Bulk add students</h2>
         <button type="button" class="close-btn" (click)="closeBulkModal()">✕</button>
@@ -318,12 +373,41 @@
           Enroll all in courses
         </label>
         @if (bulkEnrollCourses()) {
-          <app-admin-course-multi-filter
-            [courses]="courses()"
-            label="Courses for all rows"
-            [selectedCourseIds]="bulkCourseIds()"
-            (selectedCourseIdsChange)="bulkCourseIds.set($event)"
-          />
+          <p class="modal-hint">Select courses to enroll all imported students in.</p>
+          @if (courses().length === 0) {
+            <p class="modal-hint">No courses available yet.</p>
+          } @else {
+            <input
+              type="search"
+              class="form-input course-search"
+              placeholder="Search courses…"
+              [ngModel]="bulkCourseSearchQuery()"
+              (ngModelChange)="bulkCourseSearchQuery.set($event)"
+            />
+            @if (filteredCoursesForBulk().length === 0) {
+              <p class="modal-hint">No courses match your search.</p>
+            } @else {
+              <div class="checkbox-list">
+                @for (c of filteredCoursesForBulk(); track c.id) {
+                  <div
+                    class="check-item"
+                    role="button"
+                    tabindex="0"
+                    (click)="toggleCourseSelection(c.id, 'bulk')"
+                    (keydown.enter)="toggleCourseSelection(c.id, 'bulk')"
+                  >
+                    <input
+                      type="checkbox"
+                      tabindex="-1"
+                      [checked]="isCourseSelected(c.id, 'bulk')"
+                      (click)="$event.preventDefault()"
+                    />
+                    <span>{{ c.title }} <span class="muted">({{ c.status }})</span></span>
+                  </div>
+                }
+              </div>
+            }
+          }
         }
 
         <label class="toggle-row">
@@ -357,14 +441,21 @@
           } @else if (bulkBatchOptions().length > 0) {
             <div class="checkbox-list">
               @for (b of bulkBatchOptions(); track b.id) {
-                <label class="check-item">
+                <div
+                  class="check-item"
+                  role="button"
+                  tabindex="0"
+                  (click)="toggleBatchSelection(b.id, 'bulk')"
+                  (keydown.enter)="toggleBatchSelection(b.id, 'bulk')"
+                >
                   <input
                     type="checkbox"
+                    tabindex="-1"
                     [checked]="isBatchSelected(b.id, 'bulk')"
-                    (change)="toggleBatchSelection(b.id, 'bulk')"
+                    (click)="$event.preventDefault()"
                   />
-                  {{ b.name }} <span class="muted">({{ b.courseTitle }})</span>
-                </label>
+                  <span>{{ b.name }} <span class="muted">({{ b.courseTitle }})</span></span>
+                </div>
               }
             </div>
           } @else {

@@ -18,9 +18,10 @@ import { AdminBatchesService, AdminBatchRow } from '../services/admin-batches.se
 import { StudentBulkImportService } from '../services/student-bulk-import.service';
 import { ToastService } from '../../core/services/toast';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import { ProfileLookupService } from '../../shared/services/profile-lookup.service';
 import { AdminTableToolbar } from '../components/admin-table-toolbar/admin-table-toolbar';
-import { AdminCourseMultiFilter } from '../components/admin-course-multi-filter/admin-course-multi-filter';
 import { AdminCourseSearchSelect } from '../components/admin-course-search-select/admin-course-search-select';
+import { SearchableSelect } from '../../shared/components/searchable-select/searchable-select';
 import {
   AdminTableColumnDef,
   defaultVisibleColumnIds
@@ -45,8 +46,8 @@ const STUDENT_COLUMNS: readonly AdminTableColumnDef[] = [
     CommonModule,
     FormsModule,
     AdminTableToolbar,
-    AdminCourseMultiFilter,
-    AdminCourseSearchSelect
+    AdminCourseSearchSelect,
+    SearchableSelect
   ],
   templateUrl: './students.html',
   styleUrl: './students.scss'
@@ -57,12 +58,16 @@ export class Students implements OnInit {
   private readonly bulkImportService = inject(StudentBulkImportService);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly profileLookup = inject(ProfileLookupService);
+
+  readonly searchColleges = (q: string) => this.profileLookup.searchColleges(q);
 
   readonly students = signal<AdminStudentRow[]>([]);
   readonly recentEnrollments = signal<RecentEnrollmentRow[]>([]);
   readonly courses = signal<AdminCourseRow[]>([]);
   readonly batches = signal<AdminBatchRow[]>([]);
   readonly isLoading = signal(true);
+  readonly loadError = signal<string | null>(null);
   readonly isSaving = signal(false);
   readonly isDeletingUser = signal(false);
   readonly isResending = signal(false);
@@ -80,6 +85,10 @@ export class Students implements OnInit {
   readonly addEmail = signal('');
   readonly addPhone = signal('');
   readonly addCollege = signal('');
+  readonly addOtherCollege = signal('');
+  readonly addShowOtherCollege = signal(false);
+  readonly addCourseSearchQuery = signal('');
+  readonly bulkCourseSearchQuery = signal('');
   readonly addEnrollCourses = signal(false);
   readonly addAssignBatch = signal(false);
   readonly addCourseIds = signal<string[]>([]);
@@ -141,23 +150,53 @@ export class Students implements OnInit {
     return list.filter((b) => courseFilter.has(b.courseId));
   });
 
+  readonly filteredCoursesForAdd = computed(() =>
+    this.filterCoursesBySearch(this.courses(), this.addCourseSearchQuery())
+  );
+
+  readonly filteredCoursesForBulk = computed(() =>
+    this.filterCoursesBySearch(this.courses(), this.bulkCourseSearchQuery())
+  );
+
+  private filterCoursesBySearch(courses: AdminCourseRow[], query: string): AdminCourseRow[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return courses;
+    return courses.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.status.toLowerCase().includes(q)
+    );
+  }
+
   ngOnInit(): void {
     void this.loadData();
   }
 
   private async loadData(): Promise<void> {
     this.isLoading.set(true);
-    const [students, recent, courses, batches] = await Promise.all([
-      this.studentsService.listStudents(),
-      this.studentsService.listRecentEnrollments(8),
-      this.studentsService.listCoursesForEnroll(),
-      this.batchesService.listAll()
-    ]);
-    this.students.set(students);
-    this.recentEnrollments.set(recent);
-    this.courses.set(courses);
-    this.batches.set(batches);
-    this.isLoading.set(false);
+    this.loadError.set(null);
+    try {
+      const [students, recent, courses, batches] = await Promise.all([
+        this.studentsService.listStudents(),
+        this.studentsService.listRecentEnrollments(8),
+        this.studentsService.listCoursesForEnroll(),
+        this.batchesService.listAll()
+      ]);
+      this.students.set(students);
+      this.recentEnrollments.set(recent);
+      this.courses.set(courses);
+      this.batches.set(batches);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not load students';
+      this.loadError.set(msg);
+      console.error('Students.loadData:', err);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  retryLoad(): void {
+    void this.loadData();
   }
 
   onSearchChange(value: string): void {
@@ -187,6 +226,9 @@ export class Students implements OnInit {
     this.addEmail.set('');
     this.addPhone.set('');
     this.addCollege.set('');
+    this.addOtherCollege.set('');
+    this.addShowOtherCollege.set(false);
+    this.addCourseSearchQuery.set('');
     this.addEnrollCourses.set(false);
     this.addAssignBatch.set(false);
     this.addCourseIds.set([]);
@@ -211,6 +253,7 @@ export class Students implements OnInit {
     this.bulkNewBatchName.set('');
     this.bulkNewBatchStartDate.set('');
     this.bulkSendEmail.set(true);
+    this.bulkCourseSearchQuery.set('');
     this.showBulkModal.set(true);
   }
 
@@ -242,6 +285,44 @@ export class Students implements OnInit {
     }
   }
 
+  onAddCollegeChange(value: string): void {
+    this.addCollege.set(value);
+    this.addShowOtherCollege.set(value === 'Other');
+    if (value !== 'Other') {
+      this.addOtherCollege.set('');
+    }
+  }
+
+  private resolvedAddCollegeName(): string | undefined {
+    const college = this.addCollege().trim();
+    if (!college) return undefined;
+    if (college === 'Other') {
+      const other = this.addOtherCollege().trim();
+      return other || undefined;
+    }
+    return college;
+  }
+
+  toggleCourseSelection(courseId: string, mode: 'add' | 'bulk'): void {
+    if (mode === 'add') {
+      const cur = this.addCourseIds();
+      this.addCourseIds.set(
+        cur.includes(courseId) ? cur.filter((id) => id !== courseId) : [...cur, courseId]
+      );
+    } else {
+      const cur = this.bulkCourseIds();
+      this.bulkCourseIds.set(
+        cur.includes(courseId) ? cur.filter((id) => id !== courseId) : [...cur, courseId]
+      );
+    }
+  }
+
+  isCourseSelected(courseId: string, mode: 'add' | 'bulk'): boolean {
+    return mode === 'add'
+      ? this.addCourseIds().includes(courseId)
+      : this.bulkCourseIds().includes(courseId);
+  }
+
   isBatchSelected(batchId: string, mode: 'add' | 'bulk'): boolean {
     return mode === 'add'
       ? this.addBatchIds().includes(batchId)
@@ -256,6 +337,18 @@ export class Students implements OnInit {
       return;
     }
 
+    if (this.addEnrollCourses() && this.addCourseIds().length === 0) {
+      this.toast.error('Select at least one course to enroll');
+      return;
+    }
+
+    if (this.addAssignBatch() && this.addCreateNewBatch()) {
+      if (!this.addNewBatchCourseId() || !this.addNewBatchName().trim()) {
+        this.toast.error('New batch needs a course and name');
+        return;
+      }
+    }
+
     this.isSaving.set(true);
     this.addResult.set(null);
     try {
@@ -265,15 +358,15 @@ export class Students implements OnInit {
             email,
             fullName,
             phone: this.addPhone().trim() || undefined,
-            collegeName: this.addCollege().trim() || undefined
+            collegeName: this.resolvedAddCollegeName()
           }
         ],
         courseIds: this.addEnrollCourses() ? this.addCourseIds() : [],
         batchIds: this.addAssignBatch() && !this.addCreateNewBatch() ? this.addBatchIds() : [],
         newBatch:
-          this.addAssignBatch() && this.addCreateNewBatch()
+          this.addAssignBatch() && this.addCreateNewBatch() && this.addNewBatchCourseId()
             ? {
-                courseId: this.addNewBatchCourseId() ?? '',
+                courseId: this.addNewBatchCourseId()!,
                 name: this.addNewBatchName().trim(),
                 startDate: this.addNewBatchStartDate() || undefined
               }

@@ -1,6 +1,7 @@
 @use '../../../../styles/variables' as *;
 
 .admin-course-search-select {
+  position: relative;
   margin-bottom: 16px;
   max-width: 520px;
 }
@@ -35,6 +36,8 @@
 }
 
 .course-dropdown {
+  position: relative;
+  z-index: 10;
   margin: 6px 0 0;
   padding: 4px 0;
   list-style: none;

@@ -1,6 +1,7 @@
 @use '../../../../styles/variables' as *;
 
 .admin-course-multi-filter {
+  position: relative;
   margin-bottom: 16px;
   max-width: 640px;
 }
@@ -78,6 +79,8 @@
 }
 
 .course-dropdown {
+  position: relative;
+  z-index: 10;
   margin: 6px 0 0;
   padding: 4px 0;
   list-style: none;
@@ -90,16 +93,6 @@
 }
 
 .course-option {
-  padding: 0;
-
-  &.empty {
-    padding: 10px 12px;
-    color: var(--muted);
-    font-style: italic;
-  }
-}
-
-.option-label {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -108,13 +101,30 @@
   width: 100%;
   box-sizing: border-box;
 
-  &:hover {
+  &:hover,
+  &.selected {
     background: rgba(139, 111, 190, 0.08);
+  }
+
+  &.empty {
+    padding: 10px 12px;
+    color: var(--muted);
+    font-style: italic;
+    cursor: default;
+
+    &:hover {
+      background: transparent;
+    }
   }
 
   input {
     flex-shrink: 0;
+    pointer-events: none;
   }
+}
+
+.option-label {
+  display: none;
 }
 
 .course-title {

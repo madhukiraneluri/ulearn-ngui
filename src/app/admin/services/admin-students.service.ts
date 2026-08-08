@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../core/supabase.client';
 import { AdminCourseService, AdminCourseRow } from './admin-course.service';
 import type { StudentBatchSummary } from '../../models';
@@ -39,9 +40,35 @@ export interface RecentEnrollmentRow {
   progressPercent: number;
 }
 
+export interface StudentPickerOption {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminStudentsService {
   constructor(private readonly courseService: AdminCourseService) {}
+
+  async listStudentPickerOptions(): Promise<StudentPickerOption[]> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      console.error('AdminStudentsService.listStudentPickerOptions:', error);
+      return [];
+    }
+
+    return (data ?? [])
+      .filter((p) => p.role !== 'ADMIN')
+      .map((p) => ({
+        id: String(p.id),
+        name: String(p.full_name ?? 'Unnamed user'),
+        email: (p.email as string | null) ?? null
+      }));
+  }
 
   async listStudents(): Promise<AdminStudentRow[]> {
     const { data: profiles, error: profErr } = await supabase
@@ -123,7 +150,7 @@ export class AdminStudentsService {
 
     if (error) {
       console.error('AdminStudentsService.createStudents:', error);
-      throw new Error(error.message);
+      throw new Error(await this.formatFunctionError(error));
     }
 
     if (data && typeof data === 'object' && 'error' in data && data.error) {
@@ -131,6 +158,19 @@ export class AdminStudentsService {
     }
 
     return data as CreateStudentsResponse;
+  }
+
+  private async formatFunctionError(error: unknown): Promise<string> {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = (await error.context.json()) as { error?: string; message?: string };
+        if (body?.error) return String(body.error);
+        if (body?.message) return String(body.message);
+      } catch {
+        /* use default message */
+      }
+    }
+    return error instanceof Error ? error.message : 'Request failed';
   }
 
   async resendCredentials(userId: string): Promise<{

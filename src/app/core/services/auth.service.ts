@@ -55,6 +55,7 @@ export class AuthService {
     supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         this.applySession(session.user);
+        await this.ensureProfile(session.user);
         await this.loadProfile(session.user.id);
         return;
       }
@@ -93,6 +94,7 @@ export class AuthService {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       this.applySession(session.user);
+      await this.ensureProfile(session.user);
       await this.loadProfile(session.user.id);
     }
   }
@@ -189,6 +191,7 @@ export class AuthService {
           user_metadata: data.user.user_metadata
         });
         this.isAuthenticatedSignal.set(true);
+        await this.ensureProfile(data.user);
         await this.loadProfile(data.user.id);
         if (!options?.silent) {
           this.toast.success('Welcome back!');
@@ -250,6 +253,45 @@ export class AuthService {
       email: user.email || '',
       user_metadata: user.user_metadata
     };
+  }
+
+  private async ensureProfile(user: Session['user']): Promise<void> {
+    try {
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (existing) return;
+
+      const meta = user.user_metadata ?? {};
+      const role = meta['role'] === 'ADMIN' ? 'ADMIN' : 'USER';
+      const fullName =
+        (typeof meta['full_name'] === 'string' && meta['full_name'].trim()) ||
+        user.email?.split('@')[0] ||
+        'User';
+
+      const { error } = await supabase.from('profiles').upsert(
+        {
+          id: user.id,
+          full_name: fullName,
+          email: user.email ?? null,
+          phone: (meta['phone_number'] as string | undefined) ?? null,
+          role,
+          profile_completed: false,
+          must_reset_password: Boolean(meta['must_reset_password']),
+          created_by_admin: Boolean(meta['created_by_admin'])
+        },
+        { onConflict: 'id' }
+      );
+
+      if (error) {
+        console.error('ensureProfile:', error);
+      }
+    } catch (error) {
+      console.error('ensureProfile:', error);
+    }
   }
 
   private async loadProfile(userId: string): Promise<void> {

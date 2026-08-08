@@ -4,7 +4,10 @@
       <h1>Batches</h1>
       <p>Create and manage course cohorts for live classes</p>
     </div>
-    <button type="button" class="btn-primary" (click)="openCreate()">New batch</button>
+    <div class="header-actions">
+      <button type="button" class="btn-primary" (click)="openCreate()">New batch</button>
+      <button type="button" class="btn-secondary" (click)="openAddBatchModal()">Add batch</button>
+    </div>
   </div>
 
   @if (isLoading()) {
@@ -29,49 +32,20 @@
         </thead>
         <tbody>
           @for (batch of batches(); track batch.id) {
-            <tr [class.expanded]="isExpanded(batch.id)">
-              <td><strong>{{ batch.name }}</strong></td>
+            <tr class="batch-row" (click)="openBatch(batch)">
+              <td><strong class="batch-link">{{ batch.name }}</strong></td>
               <td>{{ batch.courseTitle }}</td>
               <td>{{ formatDate(batch.startDate) }}</td>
               <td>
                 <span class="status-pill" [attr.data-status]="batch.status">{{ batch.status }}</span>
               </td>
               <td>{{ batch.memberCount }}</td>
-              <td class="actions">
-                <button type="button" class="btn-sm" (click)="toggleExpand(batch.id)">
-                  {{ isExpanded(batch.id) ? 'Hide' : 'Members' }}
-                </button>
+              <td class="actions" (click)="$event.stopPropagation()">
+                <button type="button" class="btn-sm link" (click)="openBatch(batch)">Open</button>
                 <button type="button" class="btn-sm" (click)="openEdit(batch)">Edit</button>
                 <button type="button" class="btn-sm danger" (click)="deleteBatch(batch)">Delete</button>
               </td>
             </tr>
-            @if (isExpanded(batch.id)) {
-              <tr class="detail-row">
-                <td colspan="6">
-                  @if (loadingMembers()) {
-                    <p class="muted">Loading members…</p>
-                  } @else if (members().length === 0) {
-                    <p class="muted">No students in this batch yet.</p>
-                  } @else {
-                    <ul class="member-list">
-                      @for (m of members(); track m.id) {
-                        <li>
-                          <div>
-                            <strong>{{ m.userName }}</strong>
-                            @if (m.userEmail) {
-                              <span class="muted"> · {{ m.userEmail }}</span>
-                            }
-                          </div>
-                          <button type="button" class="btn-sm danger" (click)="removeMember(m.id, m.userName)">
-                            Remove
-                          </button>
-                        </li>
-                      }
-                    </ul>
-                  }
-                </td>
-              </tr>
-            }
           }
         </tbody>
       </table>
@@ -80,7 +54,7 @@
 
   @if (showForm()) {
     <div class="modal-overlay" (click)="closeForm()"></div>
-    <div class="modal" role="dialog">
+    <div class="modal" role="dialog" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>{{ editingId() ? 'Edit batch' : 'Create batch' }}</h2>
         <button type="button" class="close-btn" (click)="closeForm()">✕</button>
@@ -127,6 +101,77 @@
           </button>
         </div>
       </form>
+    </div>
+  }
+
+  @if (showAddBatchModal()) {
+    <div class="modal-overlay" (click)="closeAddBatchModal()"></div>
+    <div class="modal modal-wide" role="dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Add batch</h2>
+        <button type="button" class="close-btn" (click)="closeAddBatchModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">
+          Creates a new standalone batch. Optionally copy students from existing batches once — after that it is fully independent.
+        </p>
+        <div class="form-group">
+          <label>Batch name</label>
+          <input class="form-input" [ngModel]="newBatchName()" (ngModelChange)="newBatchName.set($event)" placeholder="ADC_HYD" />
+        </div>
+        <div class="form-group">
+          <label>Course</label>
+          <app-admin-course-search-select
+            [courses]="courses()"
+            [courseId]="newBatchCourseId()"
+            (courseIdChange)="newBatchCourseId.set($event)"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start date</label>
+            <input type="date" class="form-input" [ngModel]="newBatchStartDate()" (ngModelChange)="newBatchStartDate.set($event)" />
+          </div>
+          <div class="form-group">
+            <label>End date</label>
+            <input type="date" class="form-input" [ngModel]="newBatchEndDate()" (ngModelChange)="newBatchEndDate.set($event)" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <textarea class="form-input" rows="2" [ngModel]="newBatchNotes()" (ngModelChange)="newBatchNotes.set($event)"></textarea>
+        </div>
+
+        <label class="field-label">Copy students from existing batches (optional)</label>
+        @if (batches().length === 0) {
+          <p class="muted">No existing batches to copy from.</p>
+        } @else {
+          <div class="batch-pick-list">
+            @for (b of batches(); track b.id) {
+              <div
+                class="batch-pick-item"
+                role="button"
+                tabindex="0"
+                (click)="toggleCopyFromBatch(b.id)"
+                (keydown.enter)="toggleCopyFromBatch(b.id)"
+              >
+                <input type="checkbox" tabindex="-1" [checked]="isCopyFromBatchSelected(b.id)" (click)="$event.preventDefault()" />
+                <span>
+                  <strong>{{ b.name }}</strong>
+                  <span class="muted"> · {{ b.courseTitle }} ({{ b.memberCount }} students)</span>
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeAddBatchModal()">Cancel</button>
+          <button type="button" class="btn-primary" [disabled]="isSavingAddBatch()" (click)="submitAddBatch()">
+            {{ isSavingAddBatch() ? 'Creating…' : 'Create batch' }}
+          </button>
+        </div>
+      </div>
     </div>
   }
 </div>

@@ -33,19 +33,22 @@
         <li class="course-option empty">No courses match your search</li>
       } @else {
         @for (course of filteredCourses(); track course.id) {
-          <li class="course-option" (mousedown)="toggleCourse(course.id)">
-            <label class="option-label">
-              <input
-                type="checkbox"
-                [checked]="isSelected(course.id)"
-                (click)="$event.stopPropagation()"
-                (change)="toggleCourse(course.id)"
-              />
-              <span class="course-title">{{ course.title }}</span>
-              @if (course.status) {
-                <span class="course-status">{{ course.status }}</span>
-              }
-            </label>
+          <li
+            class="course-option"
+            role="option"
+            [class.selected]="isSelected(course.id)"
+            (click)="toggleCourse(course.id)"
+          >
+            <input
+              type="checkbox"
+              tabindex="-1"
+              [checked]="isSelected(course.id)"
+              (click)="$event.preventDefault()"
+            />
+            <span class="course-title">{{ course.title }}</span>
+            @if (course.status) {
+              <span class="course-status">{{ course.status }}</span>
+            }
           </li>
         }
       }

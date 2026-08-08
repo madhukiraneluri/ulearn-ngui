@@ -7,7 +7,7 @@ import {
   effect,
   inject,
   input,
-  model,
+  output,
   signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -36,7 +36,8 @@ export class AdminCourseSearchSelect {
   readonly showStatus = input(true);
   readonly minSearchChars = input(2);
 
-  readonly courseId = model<string | null>(null);
+  readonly courseId = input<string | null>(null);
+  readonly courseIdChange = output<string | null>();
 
   readonly searchQuery = signal('');
   readonly isOpen = signal(false);
@@ -79,7 +80,7 @@ export class AdminCourseSearchSelect {
   }
 
   selectCourse(course: AdminCourseSearchOption): void {
-    this.courseId.set(course.id);
+    this.courseIdChange.emit(course.id);
     this.searchQuery.set(this.displayLabel(course));
     this.isOpen.set(false);
   }

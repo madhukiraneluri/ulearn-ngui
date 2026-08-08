@@ -1,0 +1,169 @@
+<div class="batch-detail">
+  <div class="top-bar">
+    <a routerLink="/admin/batches" class="back-link">← Back to batches</a>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading batch…</p>
+  } @else if (batch(); as b) {
+    <div class="batch-header">
+      <div>
+        <h1>{{ b.name }}</h1>
+        <p class="subtitle">{{ b.courseTitle }}</p>
+        <div class="meta-row">
+          <span>Start: {{ formatDate(b.startDate) }}</span>
+          <span>End: {{ formatDate(b.endDate) }}</span>
+          <span class="status-pill" [attr.data-status]="b.status">{{ b.status }}</span>
+          <span>{{ members().length }} student(s)</span>
+        </div>
+        @if (b.notes) {
+          <p class="notes">{{ b.notes }}</p>
+        }
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-primary" (click)="openAddStudents()">Add students</button>
+        <button type="button" class="btn-sm danger" (click)="deleteBatch()">Delete batch</button>
+      </div>
+    </div>
+
+    <section class="members-section">
+      <div class="section-header">
+        <h2>Batch members</h2>
+        <input
+          type="search"
+          class="search-input"
+          placeholder="Search members…"
+          [ngModel]="memberSearch()"
+          (ngModelChange)="memberSearch.set($event)"
+        />
+      </div>
+
+      @if (members().length === 0) {
+        <div class="empty">
+          <p>No students in this batch yet.</p>
+          <button type="button" class="btn-primary" (click)="openAddStudents()">Add students</button>
+        </div>
+      } @else {
+        <app-admin-table-toolbar
+          [columns]="columnDefs"
+          [visibleColumnIds]="visibleColumns()"
+          (visibleColumnIdsChange)="visibleColumns.set($event)"
+          (download)="downloadData()"
+        />
+
+        <div class="table-wrap">
+          <table class="members-table">
+            <thead>
+              <tr>
+                @if (isColVisible('name')) { <th>Name</th> }
+                @if (isColVisible('email')) { <th>Email</th> }
+                @if (isColVisible('phone')) { <th>Phone</th> }
+                @if (isColVisible('college')) { <th>College</th> }
+                @if (isColVisible('degree')) { <th>Degree</th> }
+                @if (isColVisible('year')) { <th>Year</th> }
+                @if (isColVisible('specialization')) { <th>Specialization</th> }
+                @if (isColVisible('enrolledAt')) { <th>Enrolled</th> }
+                @if (isColVisible('liveClass')) { <th>Live class</th> }
+                @if (isColVisible('progress')) { <th>Progress</th> }
+                @if (isColVisible('coupon')) { <th>Coupon</th> }
+                @if (isColVisible('amountPaid')) { <th>Paid</th> }
+                @if (isColVisible('addedToBatch')) { <th>Added to batch</th> }
+                @if (isColVisible('actions')) { <th>Actions</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of filteredMembers(); track m.memberId) {
+                <tr>
+                  @if (isColVisible('name')) { <td><strong>{{ m.userName }}</strong></td> }
+                  @if (isColVisible('email')) { <td>{{ m.userEmail || '—' }}</td> }
+                  @if (isColVisible('phone')) { <td>{{ m.phone || '—' }}</td> }
+                  @if (isColVisible('college')) { <td>{{ m.collegeName || '—' }}</td> }
+                  @if (isColVisible('degree')) { <td>{{ m.degree || '—' }}</td> }
+                  @if (isColVisible('year')) { <td>{{ m.degreeYear || '—' }}</td> }
+                  @if (isColVisible('specialization')) { <td>{{ m.specialization || '—' }}</td> }
+                  @if (isColVisible('enrolledAt')) { <td>{{ formatDate(m.enrolledAt) }}</td> }
+                  @if (isColVisible('liveClass')) { <td>{{ m.liveClassStartMonth || '—' }}</td> }
+                  @if (isColVisible('progress')) {
+                    <td>
+                      <div class="progress-cell">
+                        <div class="progress-bar"><div class="progress-fill" [style.width.%]="m.progressPercent"></div></div>
+                        <span>{{ m.progressPercent }}%</span>
+                      </div>
+                    </td>
+                  }
+                  @if (isColVisible('coupon')) { <td>{{ m.couponCode || '—' }}</td> }
+                  @if (isColVisible('amountPaid')) { <td>{{ formatMoney(m.amountPaid) }}</td> }
+                  @if (isColVisible('addedToBatch')) { <td>{{ formatDate(m.addedToBatchAt) }}</td> }
+                  @if (isColVisible('actions')) {
+                    <td>
+                      <button type="button" class="btn-sm danger" (click)="removeMember(m)">Remove</button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+
+  @if (showAddStudentsModal()) {
+    <div class="modal-overlay" (click)="closeAddStudentsModal()"></div>
+    <div class="modal modal-wide" role="dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Add students to {{ batch()?.name }}</h2>
+        <button type="button" class="close-btn" (click)="closeAddStudentsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">
+          Students will be enrolled in <strong>{{ batch()?.courseTitle }}</strong> if not already enrolled.
+        </p>
+
+        @if (loadingStudentOptions()) {
+          <p class="muted">Loading students…</p>
+        } @else if (studentOptions().length === 0) {
+          <p class="muted">All students are already in this batch.</p>
+        } @else {
+          <input
+            type="search"
+            class="form-input"
+            placeholder="Search by name or email…"
+            [ngModel]="studentSearchQuery()"
+            (ngModelChange)="studentSearchQuery.set($event)"
+          />
+          <div class="batch-pick-list">
+            @for (s of filteredStudentOptions(); track s.id) {
+              <div
+                class="batch-pick-item"
+                role="button"
+                tabindex="0"
+                (click)="toggleStudentSelection(s.id)"
+                (keydown.enter)="toggleStudentSelection(s.id)"
+              >
+                <input type="checkbox" tabindex="-1" [checked]="isStudentSelected(s.id)" (click)="$event.preventDefault()" />
+                <span>
+                  <strong>{{ s.name }}</strong>
+                  @if (s.email) { <span class="muted"> · {{ s.email }}</span> }
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeAddStudentsModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="isAddingStudents() || selectedStudentIds().length === 0"
+            (click)="submitAddStudents()"
+          >
+            {{ isAddingStudents() ? 'Adding…' : 'Add ' + selectedStudentIds().length + ' student(s)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

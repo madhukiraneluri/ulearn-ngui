@@ -9,11 +9,14 @@ import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
   FormGroup,
+  FormsModule,
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AdminBatchesService, AdminBatchRow } from '../services/admin-batches.service';
 import { AdminCourseService, AdminCourseRow } from '../services/admin-course.service';
+import { AdminStudentsService } from '../services/admin-students.service';
 import { ToastService } from '../../core/services/toast';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { AdminCourseSearchSelect } from '../components/admin-course-search-select/admin-course-search-select';
@@ -23,14 +26,16 @@ import type { BatchStatus } from '../../models';
   selector: 'app-batches-management',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, AdminCourseSearchSelect],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, AdminCourseSearchSelect],
   templateUrl: './batches-management.html',
   styleUrl: './batches-management.scss'
 })
 export class BatchesManagement implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly batchesService = inject(AdminBatchesService);
   private readonly courseService = inject(AdminCourseService);
+  private readonly studentsService = inject(AdminStudentsService);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
 
@@ -40,11 +45,15 @@ export class BatchesManagement implements OnInit {
   readonly isSaving = signal(false);
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
-  readonly expandedBatchId = signal<string | null>(null);
-  readonly members = signal<
-    Array<{ id: string; userName: string; userEmail: string | null; addedAt: string }>
-  >([]);
-  readonly loadingMembers = signal(false);
+
+  readonly showAddBatchModal = signal(false);
+  readonly newBatchName = signal('');
+  readonly newBatchCourseId = signal<string | null>(null);
+  readonly newBatchStartDate = signal('');
+  readonly newBatchEndDate = signal('');
+  readonly newBatchNotes = signal('');
+  readonly copyFromBatchIds = signal<string[]>([]);
+  readonly isSavingAddBatch = signal(false);
 
   form!: FormGroup;
 
@@ -69,6 +78,10 @@ export class BatchesManagement implements OnInit {
     this.batches.set(batches);
     this.courses.set(courses);
     this.isLoading.set(false);
+  }
+
+  openBatch(batch: AdminBatchRow): void {
+    void this.router.navigate(['/admin/batches', batch.id]);
   }
 
   openCreate(): void {
@@ -128,7 +141,7 @@ export class BatchesManagement implements OnInit {
         if (!ok) throw new Error('Could not update batch');
         this.toast.success('Batch updated');
       } else {
-        await this.batchesService.create({
+        const created = await this.batchesService.create({
           courseId: v.courseId,
           name: v.name,
           startDate: v.startDate || null,
@@ -136,6 +149,7 @@ export class BatchesManagement implements OnInit {
           status: v.status,
           notes: v.notes || null
         });
+        if (!created) throw new Error('Could not create batch');
         this.toast.success('Batch created');
       }
       this.closeForm();
@@ -145,6 +159,90 @@ export class BatchesManagement implements OnInit {
       this.toast.error(msg);
     } finally {
       this.isSaving.set(false);
+    }
+  }
+
+  openAddBatchModal(): void {
+    this.newBatchName.set('');
+    this.newBatchCourseId.set(this.courses()[0]?.id ?? null);
+    this.newBatchStartDate.set('');
+    this.newBatchEndDate.set('');
+    this.newBatchNotes.set('');
+    this.copyFromBatchIds.set([]);
+    this.showAddBatchModal.set(true);
+  }
+
+  closeAddBatchModal(): void {
+    this.showAddBatchModal.set(false);
+  }
+
+  toggleCopyFromBatch(batchId: string): void {
+    const cur = this.copyFromBatchIds();
+    this.copyFromBatchIds.set(
+      cur.includes(batchId) ? cur.filter((id) => id !== batchId) : [...cur, batchId]
+    );
+  }
+
+  isCopyFromBatchSelected(batchId: string): boolean {
+    return this.copyFromBatchIds().includes(batchId);
+  }
+
+  async submitAddBatch(): Promise<void> {
+    const name = this.newBatchName().trim();
+    const courseId = this.newBatchCourseId();
+    if (!name) {
+      this.toast.error('Batch name is required');
+      return;
+    }
+    if (!courseId) {
+      this.toast.error('Select a course');
+      return;
+    }
+
+    this.isSavingAddBatch.set(true);
+    try {
+      const created = await this.batchesService.create({
+        courseId,
+        name,
+        startDate: this.newBatchStartDate() || null,
+        endDate: this.newBatchEndDate() || null,
+        status: 'active' as BatchStatus,
+        notes: this.newBatchNotes().trim() || null
+      });
+
+      if (!created) {
+        throw new Error('Could not create batch');
+      }
+
+      const sourceIds = this.copyFromBatchIds();
+      if (sourceIds.length > 0) {
+        const userIds = await this.batchesService.collectMemberUserIds(sourceIds);
+        let copied = 0;
+        for (const userId of userIds) {
+          try {
+            await this.studentsService.addStudentToBatch(userId, created.id);
+            copied++;
+          } catch {
+            /* skip failed copies */
+          }
+        }
+        this.toast.success(
+          copied > 0
+            ? `Batch created with ${copied} student(s) copied`
+            : 'Batch created (no students copied)'
+        );
+      } else {
+        this.toast.success('Batch created');
+      }
+
+      this.closeAddBatchModal();
+      await this.load();
+      await this.router.navigate(['/admin/batches', created.id]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not create batch';
+      this.toast.error(msg);
+    } finally {
+      this.isSavingAddBatch.set(false);
     }
   }
 
@@ -166,47 +264,6 @@ export class BatchesManagement implements OnInit {
       await this.load();
     } else {
       this.toast.error(result.message ?? 'Could not delete batch');
-    }
-  }
-
-  async toggleExpand(batchId: string): Promise<void> {
-    if (this.expandedBatchId() === batchId) {
-      this.expandedBatchId.set(null);
-      return;
-    }
-    this.expandedBatchId.set(batchId);
-    this.loadingMembers.set(true);
-    const list = await this.batchesService.listMembers(batchId);
-    this.members.set(list);
-    this.loadingMembers.set(false);
-  }
-
-  isExpanded(batchId: string): boolean {
-    return this.expandedBatchId() === batchId;
-  }
-
-  async removeMember(memberId: string, userName: string): Promise<void> {
-    if (
-      !(await this.confirmDialog.confirm({
-        title: 'Remove from batch',
-        message: `Remove ${userName} from this batch?`,
-        confirmLabel: 'Remove',
-        variant: 'danger'
-      }))
-    ) {
-      return;
-    }
-
-    const ok = await this.batchesService.removeMember(memberId);
-    if (ok) {
-      this.toast.success('Removed from batch');
-      const batchId = this.expandedBatchId();
-      if (batchId) {
-        this.members.set(await this.batchesService.listMembers(batchId));
-        await this.load();
-      }
-    } else {
-      this.toast.error('Could not remove member');
     }
   }
 

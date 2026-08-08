@@ -58,13 +58,15 @@ Deno.serve(async (req) => {
     const courseIds = normalizeIds(body.courseIds);
     const batchIds = [...normalizeIds(body.batchIds)];
     const sendEmail = body.sendEmail !== false;
+    let batchWarning: string | undefined;
 
     if (body.newBatch?.courseId && body.newBatch?.name?.trim()) {
       const created = await createBatch(adminClient, body.newBatch, adminUserId);
       if (created.error) {
-        return json({ error: created.error }, 400);
+        batchWarning = created.error;
+      } else if (created.id) {
+        batchIds.push(created.id);
       }
-      if (created.id) batchIds.push(created.id);
     }
 
     const results: RowResult[] = [];
@@ -167,6 +169,7 @@ Deno.serve(async (req) => {
       }
 
       const extra = [...enrollMessages, ...batchMessages].filter(Boolean);
+      if (batchWarning) extra.unshift(`Batch not created: ${batchWarning}`);
       const mailNote = sendEmail
         ? emailSent
           ? ' Credentials emailed.'
