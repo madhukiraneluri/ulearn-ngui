@@ -1,0 +1,48 @@
+@if (isLoading()) {
+  <p class="sessions-loading">Loading sessions…</p>
+} @else if (sessions().length === 0) {
+  <div class="sessions-empty">
+    <p>No live sessions scheduled for your batch yet.</p>
+  </div>
+} @else {
+  @if (upcomingSessions().length > 0) {
+    <h3 class="sessions-heading">Upcoming</h3>
+    <div class="session-list">
+      @for (session of upcomingSessions(); track session.id) {
+        <div class="session-card">
+          <div>
+            <strong>{{ session.title }}</strong>
+            <p class="session-meta">{{ formatDate(session.scheduledAt) }} · {{ session.durationMinutes }} min</p>
+            <p class="session-batch">{{ session.batchName }}</p>
+            @if (session.description) {
+              <p class="session-desc">{{ session.description }}</p>
+            }
+          </div>
+          <div class="session-actions">
+            <span class="status-pill" [attr.data-status]="session.status">{{ session.status }}</span>
+            @if (session.canJoin && session.studentJoinToken) {
+              <a class="btn-join" [routerLink]="joinPath(session.studentJoinToken)">Join session</a>
+            } @else {
+              <span class="join-hint">Join opens 10 min before start</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (pastSessions().length > 0) {
+    <h3 class="sessions-heading">Past</h3>
+    <div class="session-list past">
+      @for (session of pastSessions(); track session.id) {
+        <div class="session-card muted">
+          <div>
+            <strong>{{ session.title }}</strong>
+            <p class="session-meta">{{ formatDate(session.scheduledAt) }}</p>
+          </div>
+          <span class="status-pill" data-status="ended">ended</span>
+        </div>
+      }
+    </div>
+  }
+}

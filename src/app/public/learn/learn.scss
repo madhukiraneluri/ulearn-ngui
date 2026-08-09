@@ -162,6 +162,33 @@
   min-width: 0;
 }
 
+.content-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.content-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: $font-base;
+
+  &.active {
+    background: rgba(139, 111, 190, 0.12);
+    border-color: rgba(139, 111, 190, 0.35);
+    color: var(--purple);
+  }
+}
+
+.sessions-panel-wrap {
+  padding-top: 8px;
+}
+
 .sidebar-toggle {
   display: none;
   align-items: center;

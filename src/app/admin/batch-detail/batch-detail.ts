@@ -15,6 +15,10 @@ import {
   BatchMemberDetailRow
 } from '../services/admin-batches.service';
 import {
+  AdminSessionsService,
+  AdminSessionRow
+} from '../services/admin-sessions.service';
+import {
   AdminStudentsService,
   StudentPickerOption
 } from '../services/admin-students.service';
@@ -56,12 +60,14 @@ export class BatchDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly batchesService = inject(AdminBatchesService);
+  private readonly sessionsService = inject(AdminSessionsService);
   private readonly studentsService = inject(AdminStudentsService);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly batch = signal<AdminBatchRow | null>(null);
   readonly members = signal<BatchMemberDetailRow[]>([]);
+  readonly batchSessions = signal<AdminSessionRow[]>([]);
   readonly isLoading = signal(true);
   readonly memberSearch = signal('');
   readonly columnDefs = MEMBER_COLUMNS;
@@ -115,9 +121,10 @@ export class BatchDetail implements OnInit {
 
     this.isLoading.set(true);
     try {
-      const [batch, members] = await Promise.all([
+      const [batch, members, sessions] = await Promise.all([
         this.batchesService.getById(id),
-        this.batchesService.listMemberDetails(id)
+        this.batchesService.listMemberDetails(id),
+        this.sessionsService.listForBatch(id)
       ]);
 
       if (!batch) {
@@ -128,6 +135,7 @@ export class BatchDetail implements OnInit {
 
       this.batch.set(batch);
       this.members.set(members);
+      this.batchSessions.set(sessions);
     } finally {
       this.isLoading.set(false);
     }
@@ -247,6 +255,18 @@ export class BatchDetail implements OnInit {
     } else {
       this.toast.error('Could not remove member');
     }
+  }
+
+  openScheduleSession(): void {
+    const batch = this.batch();
+    if (!batch) return;
+    void this.router.navigate(['/admin/sessions'], {
+      queryParams: { batchId: batch.id }
+    });
+  }
+
+  openSession(session: AdminSessionRow): void {
+    void this.router.navigate(['/admin/sessions', session.id]);
   }
 
   async deleteBatch(): Promise<void> {

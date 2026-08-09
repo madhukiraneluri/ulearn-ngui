@@ -343,6 +343,52 @@ export interface StudentBatchSummary {
   courseTitle: string;
 }
 
+// ─── LIVE SESSIONS ───────────────────────────────────────────────────────────
+
+export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
+export type SessionRole = 'instructor' | 'moderator' | 'student';
+
+export interface LiveSession {
+  id: string;
+  batchId: string;
+  courseId: string;
+  title: string;
+  description: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: LiveSessionStatus;
+  livekitRoomName: string;
+  hostUserId: string | null;
+  createdBy: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionInvite {
+  id: string;
+  sessionId: string;
+  role: SessionRole;
+  token: string;
+  revoked: boolean;
+  createdAt: string;
+}
+
+export interface StudentLiveSession {
+  id: string;
+  batchId: string;
+  batchName: string;
+  courseId: string;
+  title: string;
+  description: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: LiveSessionStatus;
+  studentJoinToken: string | null;
+  canJoin: boolean;
+}
+
 export interface UserEnrolledCourse {
   enrollmentId: string;
   courseId: string;

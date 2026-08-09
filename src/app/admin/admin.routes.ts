@@ -81,6 +81,16 @@ export const adminRoutes: Routes = [
           import('./batch-detail/batch-detail').then(m => m.BatchDetail)
       },
       {
+        path: 'sessions',
+        loadComponent: () =>
+          import('./sessions-management/sessions-management').then(m => m.SessionsManagement)
+      },
+      {
+        path: 'sessions/:sessionId',
+        loadComponent: () =>
+          import('./session-detail/session-detail').then(m => m.SessionDetail)
+      },
+      {
         path: 'enrollments',
         loadComponent: () =>
           import('./enrollments-management/enrollments-management').then(m => m.EnrollmentsManagement)

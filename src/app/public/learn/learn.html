@@ -88,6 +88,20 @@
         {{ sidebarOpen() ? 'Hide course menu' : 'Show course menu' }}
       </button>
 
+      <div class="content-tabs">
+        <button type="button" class="content-tab" [class.active]="contentTab() === 'lesson'" (click)="setContentTab('lesson')">
+          Lessons
+        </button>
+        <button type="button" class="content-tab" [class.active]="contentTab() === 'sessions'" (click)="setContentTab('sessions')">
+          Sessions
+        </button>
+      </div>
+
+      @if (contentTab() === 'sessions') {
+        <section class="sessions-panel-wrap">
+          <app-course-sessions-panel [courseId]="course()!.id" />
+        </section>
+      } @else {
       <header class="lesson-header">
         <h1>{{ formatLessonTitle(currentLesson()!.title) }}</h1>
         <div class="lesson-meta">
@@ -200,6 +214,7 @@
           <span></span>
         }
       </nav>
+      }
     </main>
   </div>
 } @else {

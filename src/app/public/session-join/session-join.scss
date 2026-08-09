@@ -1,0 +1,168 @@
+@use '../../../styles/variables' as *;
+
+.session-join-page {
+  min-height: 100vh;
+  background: #0f1117;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.join-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.back-link {
+  color: #c9b8ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.room-name {
+  font-weight: 700;
+}
+
+.role-badge {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(139, 111, 190, 0.25);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.state-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+
+  &.error h2 { margin: 0; }
+  &.error p { color: rgba(255, 255, 255, 0.7); max-width: 420px; }
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.room-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+}
+
+.video-stage {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  background: #151821;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .remote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .remote-tile {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 180px;
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .participant-name {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.55);
+    font-size: 0.75rem;
+  }
+}
+
+:host ::ng-deep .local-preview {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 160px;
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: #000;
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+
+  &.off { background: rgba(244, 67, 54, 0.35); }
+  &.leave { background: #c62828; }
+}
+
+.connected-hint, .connecting {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+}
+
+.btn-secondary {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+}

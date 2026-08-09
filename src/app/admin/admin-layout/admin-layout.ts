@@ -36,6 +36,7 @@ export class AdminLayout {
     { label: 'Coupons', path: '/admin/coupons', icon: '🏷️' },
     { label: 'Students', path: '/admin/students', icon: '👥' },
     { label: 'Batches', path: '/admin/batches', icon: '📅' },
+    { label: 'Sessions', path: '/admin/sessions', icon: '🎥' },
     { label: 'Mentors', path: '/admin/mentors', icon: '🧑‍🏫' },
     { label: 'Blogs', path: '/admin/blogs', icon: '📝' },
     { label: 'Internships', path: '/admin/internships', icon: '💼' },

@@ -27,6 +27,7 @@ import { BlockQuote } from '../../shared/components/blocks/block-quote/block-quo
 import { BlockDivider } from '../../shared/components/blocks/block-divider/block-divider';
 import { BlockGallery } from '../../shared/components/blocks/block-gallery/block-gallery';
 import { BlockVideo } from '../../shared/components/blocks/block-video/block-video';
+import { CourseSessionsPanel } from '../../shared/components/course-sessions-panel/course-sessions-panel';
 import { formatModuleTitle, formatLessonTitle } from '../../shared/utils/course-format.util';
 
 interface SidebarLesson extends CurriculumLesson {
@@ -51,7 +52,8 @@ interface SidebarLesson extends CurriculumLesson {
     BlockQuote,
     BlockDivider,
     BlockGallery,
-    BlockVideo
+    BlockVideo,
+    CourseSessionsPanel
   ],
   templateUrl: './learn.html',
   styleUrl: './learn.scss'
@@ -78,6 +80,7 @@ export class Learn implements OnInit, OnDestroy {
   showEnrollPrompt = signal(false);
   showEnrollModal = signal(false);
   sidebarOpen = signal(false);
+  contentTab = signal<'lesson' | 'sessions'>('lesson');
 
   flatLessons = computed(() => {
     const c = this.course();
@@ -378,5 +381,9 @@ export class Learn implements OnInit, OnDestroy {
 
   formatLessonTitle(title: string): string {
     return formatLessonTitle(title);
+  }
+
+  setContentTab(tab: 'lesson' | 'sessions'): void {
+    this.contentTab.set(tab);
   }
 }

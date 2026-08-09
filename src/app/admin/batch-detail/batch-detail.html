@@ -26,6 +26,28 @@
       </div>
     </div>
 
+    <section class="sessions-section">
+      <div class="section-header">
+        <h2>Sessions</h2>
+        <button type="button" class="btn-secondary" (click)="openScheduleSession()">Schedule session</button>
+      </div>
+      @if (batchSessions().length === 0) {
+        <p class="section-hint">No live sessions scheduled for this batch yet.</p>
+      } @else {
+        <div class="session-mini-list">
+          @for (session of batchSessions(); track session.id) {
+            <button type="button" class="session-mini-item" (click)="openSession(session)">
+              <span>
+                <strong>{{ session.title }}</strong>
+                <span class="muted"> · {{ formatDate(session.scheduledAt) }}</span>
+              </span>
+              <span class="status-pill" [attr.data-status]="session.status">{{ session.status }}</span>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
     <section class="members-section">
       <div class="section-header">
         <h2>Batch members</h2>

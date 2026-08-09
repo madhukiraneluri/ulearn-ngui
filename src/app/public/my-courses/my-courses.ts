@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from '../../shared/services/course.service';
+import { LiveSessionService } from '../../shared/services/live-session.service';
 import { PaymentService } from '../../shared/services/payment.service';
-import { UserEnrolledCourse, CourseCategory } from '../../models';
+import { UserEnrolledCourse, CourseCategory, StudentLiveSession } from '../../models';
 
 @Component({
   selector: 'app-my-courses',
@@ -18,9 +19,11 @@ export class MyCourses implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly courseService = inject(CourseService);
+  private readonly liveSessionService = inject(LiveSessionService);
   private readonly paymentService = inject(PaymentService);
 
   readonly myCourses = signal<UserEnrolledCourse[]>([]);
+  readonly nextSessions = signal<Map<string, StudentLiveSession>>(new Map());
   readonly isLoading = signal(true);
   readonly filterBy = signal<'all' | 'in-progress' | 'completed'>('all');
 
@@ -64,7 +67,24 @@ export class MyCourses implements OnInit, OnDestroy {
 
     const courses = await this.courseService.getUserEnrolledCourses(user.id);
     this.myCourses.set(courses);
+
+    const courseIds = courses.map((c) => c.courseId);
+    const nextMap = await this.liveSessionService.getNextForCourses(courseIds, user.id);
+    this.nextSessions.set(nextMap);
+
     this.isLoading.set(false);
+  }
+
+  nextSessionFor(courseId: string): StudentLiveSession | undefined {
+    return this.nextSessions().get(courseId);
+  }
+
+  formatSessionDate(iso: string): string {
+    return this.liveSessionService.formatSessionDate(iso);
+  }
+
+  sessionJoinPath(token: string | null): string | null {
+    return token ? this.liveSessionService.joinPath(token) : null;
   }
 
   setFilter(filter: 'all' | 'in-progress' | 'completed'): void {

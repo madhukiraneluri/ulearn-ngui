@@ -66,6 +66,12 @@ export const routes: Routes = [
       import('./public/my-courses/my-courses').then(m => m.MyCourses)
   },
   {
+    path: 's/join/:token',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./public/session-join/session-join').then(m => m.SessionJoin)
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () =>

@@ -90,6 +90,37 @@
   color: var(--muted);
 }
 
+.sessions-section {
+  margin-bottom: 28px;
+  padding: 20px 22px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.session-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-mini-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+
+  .muted { color: var(--muted); }
+}
+
 .search-input {
   min-width: 220px;
   padding: 8px 12px;

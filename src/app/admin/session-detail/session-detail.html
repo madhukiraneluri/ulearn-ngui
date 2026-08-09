@@ -1,0 +1,84 @@
+<div class="session-detail">
+  <div class="top-bar">
+    <a routerLink="/admin/sessions" class="back-link">← Back to sessions</a>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading session…</p>
+  } @else if (session(); as s) {
+    <div class="session-header">
+      <div>
+        <h1>{{ s.title }}</h1>
+        <p class="subtitle">{{ s.batchName }} · {{ s.courseTitle }}</p>
+        <div class="meta-row">
+          <span>{{ formatDate(s.scheduledAt) }}</span>
+          <span>{{ s.durationMinutes }} min</span>
+          <span class="status-pill" [attr.data-status]="s.status">{{ s.status }}</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        @if (s.status === 'scheduled') {
+          <button type="button" class="btn-secondary" (click)="setStatus('live')">Mark live</button>
+        }
+        @if (s.status === 'live') {
+          <button type="button" class="btn-secondary" (click)="setStatus('ended')">End session</button>
+        }
+        @if (s.status !== 'cancelled' && s.status !== 'ended') {
+          <button type="button" class="btn-sm" (click)="setStatus('cancelled')">Cancel</button>
+        }
+        <button type="button" class="btn-sm danger" (click)="deleteSession()">Delete</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>Join links</h2>
+      <p class="hint">Share the appropriate link with instructor, moderator, or students. Links require login.</p>
+
+      <div class="link-cards">
+        @for (link of inviteLinks(); track link.role) {
+          <div class="link-card">
+            <div class="link-card-head">
+              <strong>{{ roleLabel(link.role) }}</strong>
+              <div class="link-actions">
+                <button type="button" class="btn-sm" (click)="copyLink(link.url)">Copy</button>
+                <button type="button" class="btn-sm link" (click)="openJoin(link.url)">Open</button>
+              </div>
+            </div>
+            <code class="link-url">{{ link.url }}</code>
+          </div>
+        }
+      </div>
+
+      <button type="button" class="btn-secondary regen-btn" [disabled]="isRegenerating()" (click)="regenerateLinks()">
+        {{ isRegenerating() ? 'Regenerating…' : 'Regenerate all links' }}
+      </button>
+    </section>
+
+    <section class="panel">
+      <h2>Session details</h2>
+      <div class="form-group">
+        <label>Title</label>
+        <input class="form-input" [ngModel]="editTitle()" (ngModelChange)="editTitle.set($event)" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-input" rows="3" [ngModel]="editDescription()" (ngModelChange)="editDescription.set($event)"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date & time</label>
+          <input type="datetime-local" class="form-input" [ngModel]="editScheduledAt()" (ngModelChange)="editScheduledAt.set($event)" />
+        </div>
+        <div class="form-group">
+          <label>Duration (minutes)</label>
+          <input type="number" min="15" step="15" class="form-input" [ngModel]="editDuration()" (ngModelChange)="editDuration.set($event)" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="saveDetails()">
+          {{ isSaving() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </section>
+  }
+</div>

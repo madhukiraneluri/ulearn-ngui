@@ -13,6 +13,15 @@ Functions deployed:
 - `delete-user` — admin deletes student account and related data
 - `create-student` — admin creates student(s) with temp password, optional enroll & batch
 - `resend-credentials` — admin resets temp password and emails student
+- `livekit-token` — mints LiveKit JWT for session join links (requires LiveKit secrets)
+
+LiveKit secrets (required for live sessions):
+
+| Secret | Value |
+|--------|-------|
+| `LIVEKIT_API_KEY` | From LiveKit Cloud project settings |
+| `LIVEKIT_API_SECRET` | From LiveKit Cloud project settings |
+| `LIVEKIT_WS_URL` | e.g. `wss://your-project.livekit.cloud` |
 
 Additional secrets for student provisioning (optional email):
 

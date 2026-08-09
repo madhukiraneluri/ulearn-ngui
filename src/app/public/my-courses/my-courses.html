@@ -85,6 +85,17 @@
             </div>
           </div>
 
+          @if (nextSessionFor(course.courseId); as session) {
+            <div class="next-session">
+              <span class="next-session-label">Next live session</span>
+              <strong>{{ session.title }}</strong>
+              <span class="next-session-time">{{ formatSessionDate(session.scheduledAt) }}</span>
+              @if (session.canJoin && session.studentJoinToken) {
+                <a class="btn-session-join" [routerLink]="sessionJoinPath(session.studentJoinToken)">Join session</a>
+              }
+            </div>
+          }
+
           <button class="btn-continue" (click)="continueCourse(course)">
             @if (course.progress === 100) {
               <span>Review Course</span>

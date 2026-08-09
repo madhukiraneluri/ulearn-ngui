@@ -1,0 +1,101 @@
+<div class="sessions-admin">
+  <div class="page-header">
+    <div>
+      <h1>Sessions</h1>
+      <p>Schedule live classes and manage LiveKit join links</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">Schedule session</button>
+  </div>
+
+  <div class="filter-tabs">
+    <button type="button" class="filter-tab" [class.active]="filterStatus() === 'all'" (click)="setFilter('all')">All</button>
+    <button type="button" class="filter-tab" [class.active]="filterStatus() === 'scheduled'" (click)="setFilter('scheduled')">Scheduled</button>
+    <button type="button" class="filter-tab" [class.active]="filterStatus() === 'live'" (click)="setFilter('live')">Live</button>
+    <button type="button" class="filter-tab" [class.active]="filterStatus() === 'ended'" (click)="setFilter('ended')">Ended</button>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading sessions…</p>
+  } @else if (filteredSessions().length === 0) {
+    <div class="empty">
+      <p>No sessions found.</p>
+      <button type="button" class="btn-secondary" (click)="openCreate()">Schedule first session</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th>Session</th>
+            <th>Batch</th>
+            <th>Course</th>
+            <th>When</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (session of filteredSessions(); track session.id) {
+            <tr class="session-row" (click)="openSession(session)">
+              <td><strong class="session-link">{{ session.title }}</strong></td>
+              <td>{{ session.batchName }}</td>
+              <td>{{ session.courseTitle }}</td>
+              <td>{{ formatDate(session.scheduledAt) }}</td>
+              <td>
+                <span class="status-pill" [attr.data-status]="session.status">{{ session.status }}</span>
+              </td>
+              <td class="actions" (click)="$event.stopPropagation()">
+                <button type="button" class="btn-sm link" (click)="openSession(session)">Open</button>
+                <button type="button" class="btn-sm danger" (click)="deleteSession(session)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="closeForm()"></div>
+    <div class="modal" role="dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Schedule session</h2>
+        <button type="button" class="close-btn" (click)="closeForm()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Batch</label>
+          <select class="form-input" [ngModel]="formBatchId()" (ngModelChange)="formBatchId.set($event)">
+            @for (b of batches(); track b.id) {
+              <option [value]="b.id">{{ b.name }} · {{ b.courseTitle }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Title</label>
+          <input class="form-input" [ngModel]="formTitle()" (ngModelChange)="formTitle.set($event)" placeholder="Module 3 — Live class" />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea class="form-input" rows="3" [ngModel]="formDescription()" (ngModelChange)="formDescription.set($event)"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date & time</label>
+            <input type="datetime-local" class="form-input" [ngModel]="formScheduledAt()" (ngModelChange)="formScheduledAt.set($event)" />
+          </div>
+          <div class="form-group">
+            <label>Duration (minutes)</label>
+            <input type="number" min="15" step="15" class="form-input" [ngModel]="formDuration()" (ngModelChange)="formDuration.set($event)" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="save()">
+            {{ isSaving() ? 'Saving…' : 'Create session' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
