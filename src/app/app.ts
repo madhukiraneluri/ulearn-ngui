@@ -9,6 +9,7 @@ import { LegalModal } from './shared/components/legal-modal/legal-modal';
 import { ConfirmDialog } from './shared/components/confirm-dialog/confirm-dialog';
 import { ToastComponent } from './shared/components/toast/toast';
 import { PaymentService } from './shared/services/payment.service';
+import { SessionTimeoutService } from './core/services/session-timeout.service';
 
 @Component({
   selector: 'app-root',
@@ -46,6 +47,7 @@ import { PaymentService } from './shared/services/payment.service';
 export class App implements OnInit {
   private readonly router = inject(Router);
   private readonly paymentService = inject(PaymentService);
+  private readonly _sessionTimeout = inject(SessionTimeoutService);
 
   private readonly currentUrl = toSignal(
     this.router.events.pipe(

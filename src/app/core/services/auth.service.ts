@@ -9,6 +9,8 @@ import { supabase, type UserProfile, type AuthUser } from '../supabase.client';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { ToastService } from './toast';
 
+export type SignOutReason = 'manual' | 'remote' | 'timeout';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,7 +31,7 @@ export class AuthService {
   isLoggedIn = computed(() => this.isAuthenticatedSignal());
   profileCompleted = computed(() => this.profileSignal()?.profile_completed ?? false);
 
-  private static readonly PROTECTED_PREFIXES = ['/my-courses', '/profile', '/admin'];
+  private static readonly PROTECTED_PREFIXES = ['/my-courses', '/profile', '/admin', '/s/join'];
 
   constructor() {
     this.sessionInitPromise = this.initializeAuth();
@@ -60,7 +62,14 @@ export class AuthService {
         return;
       }
 
+      const wasRemoteSignOut = event === 'SIGNED_OUT' && !this.isSigningOut;
       this.clearAuthState();
+
+      if (wasRemoteSignOut) {
+        this.toast.info('You were signed in on another device. Please sign in again.');
+        await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
+        return;
+      }
 
       if (event === 'SIGNED_OUT' && this.isProtectedUrl(this.router.url)) {
         await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
@@ -151,6 +160,7 @@ export class AuthService {
         return false;
       }
 
+      await supabase.auth.signOut({ scope: 'others' });
       this.toast.success('Account created! Please complete your profile.');
       return true;
     } catch (error: any) {
@@ -193,6 +203,7 @@ export class AuthService {
         this.isAuthenticatedSignal.set(true);
         await this.ensureProfile(data.user);
         await this.loadProfile(data.user.id);
+        await supabase.auth.signOut({ scope: 'others' });
         if (!options?.silent) {
           this.toast.success('Welcome back!');
         }
@@ -208,21 +219,22 @@ export class AuthService {
     }
   }
 
-  async signOut(redirectTo = '/auth/login'): Promise<boolean> {
+  async signOut(redirectTo = '/auth/login', reason: SignOutReason = 'manual'): Promise<boolean> {
     if (this.isSigningOut) return false;
     this.isSigningOut = true;
 
-    // Clear app state immediately so UI updates without waiting on network
     this.clearAuthState();
 
     try {
-      // Local sign-out clears persisted session in the browser (instant)
       await supabase.auth.signOut({ scope: 'local' });
 
-      // Revoke server session in background — do not block the UI
-      void supabase.auth.signOut({ scope: 'global' }).catch(() => { });
+      if (reason === 'manual') {
+        void supabase.auth.signOut({ scope: 'global' }).catch(() => { });
+        this.toast.success('Logged out successfully');
+      } else if (reason === 'timeout') {
+        this.toast.info('Your session expired after 30 minutes of inactivity.');
+      }
 
-      this.toast.success('Logged out successfully');
       await this.router.navigateByUrl(redirectTo, { replaceUrl: true });
       return true;
     } catch (error: unknown) {
