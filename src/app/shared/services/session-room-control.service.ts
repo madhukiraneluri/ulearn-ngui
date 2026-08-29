@@ -18,6 +18,10 @@ export interface SessionRoomControlResult {
 
 @Injectable({ providedIn: 'root' })
 export class SessionRoomControlService {
+  async startSession(sessionId: string): Promise<SessionRoomControlResult> {
+    return this.invoke({ sessionId, action: 'start_session' });
+  }
+
   async muteAll(sessionId: string): Promise<SessionRoomControlResult> {
     return this.invoke({ sessionId, action: 'mute_all' });
   }

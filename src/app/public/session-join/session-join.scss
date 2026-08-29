@@ -6,6 +6,12 @@
   color: #fff;
   display: flex;
   flex-direction: column;
+
+  &.fullscreen-room {
+    min-height: 100vh;
+    height: 100vh;
+    background: #2b303b;
+  }
 }
 
 .join-header {

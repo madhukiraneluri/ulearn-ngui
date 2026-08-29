@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { supabase } from '../../core/supabase.client';
-import type { LiveSession, LiveSessionStatus, SessionInvite, SessionRole } from '../../models';
+import type {
+  LiveSession,
+  LiveSessionStatus,
+  SessionInvite,
+  SessionRole,
+  SessionStudentPermission
+} from '../../models';
 
 export interface AdminSessionRow extends LiveSession {
   batchName: string;
@@ -20,6 +26,10 @@ export interface SessionUpsertInput {
   scheduledAt: string;
   durationMinutes?: number;
   hostUserId?: string | null;
+  maxParticipants?: number | null;
+  defaultStudentPermission?: SessionStudentPermission;
+  allowGuestJoin?: boolean;
+  isolateStudents?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -108,6 +118,8 @@ export class AdminSessionsService {
     const sessionId = crypto.randomUUID();
     const roomName = `ulearn-${sessionId.replace(/-/g, '')}`;
     const createdBy = await this.resolveCreatedBy();
+    const permission = input.defaultStudentPermission ?? 'audio_video';
+    const { allowMic, allowCam } = this.permissionToRoomFlags(permission);
 
     const { data, error } = await supabase
       .from('live_sessions')
@@ -122,7 +134,14 @@ export class AdminSessionsService {
         status: 'scheduled',
         livekit_room_name: roomName,
         host_user_id: input.hostUserId ?? null,
-        created_by: createdBy
+        created_by: createdBy,
+        max_participants: input.maxParticipants ?? null,
+        default_student_permission: permission,
+        allow_guest_join: input.allowGuestJoin ?? false,
+        isolate_students: input.isolateStudents ?? false,
+        allow_student_mic: allowMic,
+        allow_student_camera: allowCam,
+        allow_student_unmute: true
       })
       .select('*, batches(id, name), courses(id, title)')
       .single();
@@ -235,6 +254,21 @@ export class AdminSessionsService {
     return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 
+  private permissionToRoomFlags(permission: SessionStudentPermission): {
+    allowMic: boolean;
+    allowCam: boolean;
+  } {
+    switch (permission) {
+      case 'audio':
+        return { allowMic: true, allowCam: false };
+      case 'writing':
+        return { allowMic: false, allowCam: false };
+      case 'audio_video':
+      default:
+        return { allowMic: true, allowCam: true };
+    }
+  }
+
   private mapRow(row: Record<string, unknown>): AdminSessionRow {
     const batchRaw = row['batches'];
     const courseRaw = row['courses'];
@@ -257,6 +291,10 @@ export class AdminSessionsService {
       createdBy: (row['created_by'] as string | null) ?? null,
       startedAt: (row['started_at'] as string | null) ?? null,
       endedAt: (row['ended_at'] as string | null) ?? null,
+      maxParticipants: row['max_participants'] != null ? Number(row['max_participants']) : null,
+      defaultStudentPermission: (row['default_student_permission'] as SessionStudentPermission) ?? 'audio_video',
+      allowGuestJoin: Boolean(row['allow_guest_join']),
+      isolateStudents: Boolean(row['isolate_students']),
       allowStudentMic: row['allow_student_mic'] !== false,
       allowStudentCamera: row['allow_student_camera'] !== false,
       allowStudentUnmute: row['allow_student_unmute'] !== false,

@@ -185,3 +185,48 @@
 @media (max-width: 640px) {
   .form-row { grid-template-columns: 1fr; }
 }
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.permission-panel {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fafafa;
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    color: #1a237e;
+  }
+}
+
+.permission-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.check-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.block {
+    display: flex;
+    margin-bottom: 8px;
+  }
+
+  input {
+    accent-color: var(--purple);
+  }
+}

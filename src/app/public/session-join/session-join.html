@@ -1,5 +1,6 @@
-<div class="session-join-page">
-  <header class="join-header">
+<div class="session-join-page" [class.fullscreen-room]="step() === 'room'">
+  @if (step() !== 'room') {
+    <header class="join-header">
     <a routerLink="/my-courses" class="back-link">← My courses</a>
     @if (sessionTitle() && step() !== 'loading') {
       <span class="session-name">{{ sessionTitle() }}</span>
@@ -7,7 +8,8 @@
     @if (role() && step() === 'lobby') {
       <span class="role-badge">{{ role() | titlecase }}</span>
     }
-  </header>
+    </header>
+  }
 
   @switch (step()) {
     @case ('loading') {

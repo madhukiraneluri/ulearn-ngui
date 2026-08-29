@@ -89,6 +89,46 @@
             <input type="number" min="15" step="15" class="form-input" [ngModel]="formDuration()" (ngModelChange)="formDuration.set($event)" />
           </div>
         </div>
+
+        <div class="form-group">
+          <label>Max participants allowed</label>
+          <input
+            type="number"
+            min="0"
+            class="form-input"
+            [ngModel]="formMaxParticipants()"
+            (ngModelChange)="formMaxParticipants.set($event === '' || $event == null ? null : +$event)"
+            placeholder="Unlimited"
+          />
+          <p class="field-hint">Leave empty or zero for unlimited participants.</p>
+        </div>
+
+        <section class="permission-panel">
+          <h3>Default permissions for participants</h3>
+          <div class="permission-row">
+            <label class="check-option">
+              <input type="radio" name="permission" [checked]="formPermission() === 'audio'" (change)="setPermission('audio')" />
+              Audio
+            </label>
+            <label class="check-option">
+              <input type="radio" name="permission" [checked]="formPermission() === 'audio_video'" (change)="setPermission('audio_video')" />
+              Audio &amp; Video
+            </label>
+            <label class="check-option">
+              <input type="radio" name="permission" [checked]="formPermission() === 'writing'" (change)="setPermission('writing')" />
+              Writing
+            </label>
+          </div>
+          <label class="check-option block">
+            <input type="checkbox" [ngModel]="formAllowGuestJoin()" (ngModelChange)="formAllowGuestJoin.set($event)" />
+            Allow participants to enter without signing up
+          </label>
+          <label class="check-option block">
+            <input type="checkbox" [ngModel]="formIsolateStudents()" (ngModelChange)="formIsolateStudents.set($event)" />
+            Prevent participants from seeing or hearing each other
+          </label>
+        </section>
+
         <div class="modal-actions">
           <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
           <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="save()">

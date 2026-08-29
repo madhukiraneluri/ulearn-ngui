@@ -4,121 +4,145 @@
       <h2>Could not join session</h2>
       <p>{{ errorMessage() }}</p>
     </div>
+  } @else if (sessionPhase() === 'waiting') {
+    <div class="waiting-room">
+      <div class="waiting-card">
+        <div class="waiting-icon">⏳</div>
+        <h2>Waiting for instructor</h2>
+        <p>Participants can enter only after the instructor starts the session.</p>
+        <p class="waiting-session">{{ sessionTitle() }}</p>
+      </div>
+    </div>
   } @else {
-    <div class="room-shell" [class.with-panel]="showParticipantPanel() && isInstructorOrModerator()">
-      <div class="room-main">
-        <header class="room-header">
-          <div class="room-meta">
-            <h1>{{ sessionTitle() }}</h1>
-            @if (roomName()) {
-              <span class="room-name">{{ roomName() }}</span>
+    <div class="mh-shell">
+      <header class="mh-topbar">
+        <div class="mh-topbar-left">
+          <span class="mh-board-label">{{ sessionTitle() }}</span>
+        </div>
+        <div class="mh-topbar-controls">
+          @if (sessionLive()) {
+            <button type="button" class="mh-icon-btn" [class.off]="!micEnabled()" (click)="toggleMic()" title="Microphone">
+              🎤
+            </button>
+            <button type="button" class="mh-icon-btn" [class.off]="!camEnabled()" (click)="toggleCam()" title="Camera">
+              📹
+            </button>
+            @if (isInstructorOrModerator()) {
+              <button type="button" class="mh-icon-btn" [class.active]="screenShareEnabled()" (click)="toggleScreenShare()" title="Share screen">
+                🖥
+              </button>
             }
-          </div>
-          <span class="role-badge">{{ roleLabel() }}</span>
-        </header>
+          }
+          <button type="button" class="mh-icon-btn leave" (click)="onLeave()" title="Leave">⏻</button>
+        </div>
+      </header>
 
-        <div class="video-stage">
+      <div class="mh-body">
+        <aside class="mh-left-rail">
+          <button type="button" class="rail-btn active" title="Board">▢</button>
+          <button type="button" class="rail-btn" title="Select">↖</button>
+          <button type="button" class="rail-btn" title="Pen">✎</button>
+        </aside>
+
+        <main class="mh-stage">
           <div #screenShareStage class="screen-share-stage"></div>
           <div #remoteVideos class="remote-grid"></div>
           <div #localVideo class="local-preview"></div>
-        </div>
 
-        <div class="controls">
-          <button
-            type="button"
-            class="ctrl-btn"
-            [class.off]="!micEnabled()"
-            [disabled]="!canControlMic() && !micEnabled()"
-            (click)="toggleMic()"
-          >
-            {{ micEnabled() ? 'Mute' : 'Unmute' }}
-          </button>
-          <button
-            type="button"
-            class="ctrl-btn"
-            [class.off]="!camEnabled()"
-            [disabled]="!canControlCam() && !camEnabled()"
-            (click)="toggleCam()"
-          >
-            {{ camEnabled() ? 'Stop video' : 'Start video' }}
-          </button>
-
-          @if (isInstructorOrModerator()) {
-            <button
-              type="button"
-              class="ctrl-btn"
-              [class.active]="screenShareEnabled()"
-              (click)="toggleScreenShare()"
-            >
-              {{ screenShareEnabled() ? 'Stop share' : 'Share screen' }}
-            </button>
-            <button type="button" class="ctrl-btn" (click)="toggleParticipantPanel()">
-              {{ showParticipantPanel() ? 'Hide panel' : 'Participants' }}
-            </button>
+          @if (!sessionLive() && isInstructorOrModerator()) {
+            <div class="stage-overlay">
+              <p>Start the session so students can join the live class.</p>
+            </div>
           }
 
-          <button type="button" class="ctrl-btn leave" (click)="onLeave()">Leave</button>
-        </div>
+          @if (showGoLiveModal() && isInstructorOrModerator()) {
+            <div class="go-live-modal">
+              <button type="button" class="modal-close" (click)="dismissGoLiveModal()">✕</button>
+              <div class="go-live-icon">📹</div>
+              <h2>Make the Session Live</h2>
+              <p>Make the session live so students can join.</p>
+              <div class="go-live-actions">
+                <button type="button" class="btn-later" (click)="dismissGoLiveModal()">Maybe Later</button>
+                <button type="button" class="btn-live" [disabled]="controlBusy()" (click)="makeSessionLive()">
+                  📹 Make Session Live
+                </button>
+              </div>
+            </div>
+          }
+        </main>
 
-        @if (isConnecting()) {
-          <p class="room-hint">Connecting…</p>
-        } @else if (isConnected()) {
-          <p class="room-hint">You are in the live session.</p>
-        }
-      </div>
-
-      @if (showParticipantPanel() && isInstructorOrModerator()) {
-        <aside class="instructor-panel">
-          <h2>Instructor controls</h2>
-
-          <section class="panel-section">
-            <h3>Room settings</h3>
-            <button type="button" class="panel-btn" [disabled]="controlBusy()" (click)="toggleAllowStudentMic()">
-              Student mic: {{ roomSettings().allowStudentMic ? 'Allowed' : 'Locked' }}
-            </button>
-            <button type="button" class="panel-btn" [disabled]="controlBusy()" (click)="toggleAllowStudentCamera()">
-              Student camera: {{ roomSettings().allowStudentCamera ? 'Allowed' : 'Locked' }}
-            </button>
-            <button type="button" class="panel-btn" [disabled]="controlBusy()" (click)="muteAll()">
-              Mute all students
-            </button>
-            @if (roomSettings().allowStudentUnmute) {
-              <button type="button" class="panel-btn" [disabled]="controlBusy()" (click)="disallowUnmute()">
-                Disable self-unmute
-              </button>
-            } @else {
-              <button type="button" class="panel-btn" [disabled]="controlBusy()" (click)="allowUnmute()">
-                Allow self-unmute
-              </button>
-            }
-          </section>
-
-          <section class="panel-section">
-            <h3>Participants ({{ participants().length }})</h3>
-            <ul class="participant-list">
-              @for (p of participants(); track p.identity) {
-                <li class="participant-row">
-                  <div class="participant-info">
-                    <span class="participant-name">{{ p.name }}{{ p.isLocal ? ' (you)' : '' }}</span>
-                    <span class="participant-role">{{ p.role }}</span>
-                  </div>
-                  <div class="participant-status">
-                    <span [class.off]="!p.micEnabled">Mic</span>
-                    <span [class.off]="!p.camEnabled">Cam</span>
-                    @if (p.isScreenSharing) {
-                      <span class="sharing">Share</span>
+        <aside class="mh-sidebar">
+          @if (!sessionLive() && isInstructorOrModerator()) {
+            <section class="sidebar-block">
+              <h3>Start session with</h3>
+              <div class="start-options">
+                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithAudio()" title="Audio only">
+                  📞
+                </button>
+                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithVideo()" title="Audio and video">
+                  📹
+                </button>
+              </div>
+              <p class="sidebar-note">Participants can enter only after you start the session.</p>
+            </section>
+          } @else if (isInstructorOrModerator()) {
+            <section class="sidebar-block">
+              <h3>Participants ({{ participants().length }})</h3>
+              <ul class="participant-list">
+                @for (p of participants(); track p.identity) {
+                  <li class="participant-row">
+                    <span>{{ p.name }}{{ p.isLocal ? ' (you)' : '' }}</span>
+                    @if (!p.isLocal && p.role === 'student') {
+                      <button type="button" class="mute-one-btn" (click)="muteParticipant(p.identity)">Mute</button>
                     }
-                  </div>
-                  @if (!p.isLocal && p.role === 'student') {
-                    <button type="button" class="mute-one-btn" [disabled]="controlBusy()" (click)="muteParticipant(p.identity)">
-                      Mute
-                    </button>
-                  }
-                </li>
+                  </li>
+                }
+              </ul>
+              <div class="control-stack">
+                <button type="button" class="panel-btn" (click)="muteAll()">Mute all</button>
+                <button type="button" class="panel-btn" (click)="toggleAllowStudentMic()">
+                  Mic: {{ roomSettings().allowStudentMic ? 'On' : 'Locked' }}
+                </button>
+                <button type="button" class="panel-btn" (click)="toggleAllowStudentCamera()">
+                  Camera: {{ roomSettings().allowStudentCamera ? 'On' : 'Locked' }}
+                </button>
+              </div>
+            </section>
+          } @else {
+            <section class="sidebar-block">
+              <h3>Live session</h3>
+              <p class="sidebar-note">You are connected to {{ sessionTitle() }}.</p>
+            </section>
+          }
+
+          <section class="sidebar-block chat-block">
+            <h3>Chat</h3>
+            <div class="chat-log">
+              @for (msg of chatMessages(); track msg.id) {
+                <div class="chat-msg">
+                  <strong>{{ msg.from }}</strong>
+                  <span>{{ msg.text }}</span>
+                </div>
+              } @empty {
+                <p class="chat-empty">No messages yet.</p>
               }
-            </ul>
+            </div>
+            <form class="chat-form" (submit)="sendChat($event)">
+              <input
+                type="text"
+                placeholder="Type a message"
+                [value]="chatDraft()"
+                (input)="chatDraft.set($any($event.target).value)"
+                [disabled]="!sessionLive()"
+              />
+              <button type="submit" [disabled]="!sessionLive()">Send</button>
+            </form>
           </section>
         </aside>
+      </div>
+
+      @if (isConnecting()) {
+        <div class="connecting-overlay">Connecting…</div>
       }
     </div>
   }

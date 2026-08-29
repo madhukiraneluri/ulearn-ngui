@@ -11,6 +11,7 @@ interface SessionRow {
   allow_student_mic: boolean;
   allow_student_camera: boolean;
   allow_student_unmute: boolean;
+  isolate_students: boolean;
 }
 
 function livekitHttpUrl(wsUrl: string): string {
@@ -21,7 +22,8 @@ function mapSettings(session: SessionRow) {
   return {
     allowStudentMic: session.allow_student_mic !== false,
     allowStudentCamera: session.allow_student_camera !== false,
-    allowStudentUnmute: session.allow_student_unmute !== false
+    allowStudentUnmute: session.allow_student_unmute !== false,
+    isolateStudents: session.isolate_students === true
   };
 }
 
@@ -61,7 +63,7 @@ async function loadSession(adminClient: ReturnType<typeof createClient>, session
   const { data, error } = await adminClient
     .from('live_sessions')
     .select(
-      'id, livekit_room_name, host_user_id, allow_student_mic, allow_student_camera, allow_student_unmute'
+      'id, livekit_room_name, host_user_id, allow_student_mic, allow_student_camera, allow_student_unmute, isolate_students'
     )
     .eq('id', sessionId)
     .maybeSingle();
@@ -157,6 +159,13 @@ Deno.serve(async (req) => {
     let nextSession: SessionRow = { ...session };
 
     switch (action) {
+      case 'start_session': {
+        await auth.adminClient
+          .from('live_sessions')
+          .update({ status: 'live', started_at: now, updated_at: now })
+          .eq('id', sessionId);
+        break;
+      }
       case 'mute_all': {
         await muteAllStudents(roomService, roomName);
         nextSession.allow_student_unmute = false;

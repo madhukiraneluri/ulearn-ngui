@@ -347,6 +347,7 @@ export interface StudentBatchSummary {
 
 export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
 export type SessionRole = 'instructor' | 'moderator' | 'student';
+export type SessionStudentPermission = 'audio' | 'audio_video' | 'writing';
 
 export interface LiveSession {
   id: string;
@@ -362,6 +363,10 @@ export interface LiveSession {
   createdBy: string | null;
   startedAt: string | null;
   endedAt: string | null;
+  maxParticipants: number | null;
+  defaultStudentPermission: SessionStudentPermission;
+  allowGuestJoin: boolean;
+  isolateStudents: boolean;
   allowStudentMic: boolean;
   allowStudentCamera: boolean;
   allowStudentUnmute: boolean;
@@ -373,6 +378,7 @@ export interface SessionRoomSettings {
   allowStudentMic: boolean;
   allowStudentCamera: boolean;
   allowStudentUnmute: boolean;
+  isolateStudents: boolean;
 }
 
 export interface SessionInvite {

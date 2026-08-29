@@ -16,7 +16,7 @@ import {
 import { AdminBatchesService, AdminBatchRow } from '../services/admin-batches.service';
 import { ToastService } from '../../core/services/toast';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
-import type { LiveSessionStatus } from '../../models';
+import type { LiveSessionStatus, SessionStudentPermission } from '../../models';
 
 @Component({
   selector: 'app-sessions-management',
@@ -46,6 +46,10 @@ export class SessionsManagement implements OnInit {
   readonly formDescription = signal('');
   readonly formScheduledAt = signal('');
   readonly formDuration = signal(90);
+  readonly formMaxParticipants = signal<number | null>(null);
+  readonly formPermission = signal<SessionStudentPermission>('audio_video');
+  readonly formAllowGuestJoin = signal(false);
+  readonly formIsolateStudents = signal(false);
 
   readonly filteredSessions = signal<AdminSessionRow[]>([]);
 
@@ -89,11 +93,19 @@ export class SessionsManagement implements OnInit {
     this.formDescription.set('');
     this.formScheduledAt.set('');
     this.formDuration.set(90);
+    this.formMaxParticipants.set(null);
+    this.formPermission.set('audio_video');
+    this.formAllowGuestJoin.set(false);
+    this.formIsolateStudents.set(false);
     this.showForm.set(true);
   }
 
   closeForm(): void {
     this.showForm.set(false);
+  }
+
+  setPermission(permission: SessionStudentPermission): void {
+    this.formPermission.set(permission);
   }
 
   openSession(session: AdminSessionRow): void {
@@ -125,7 +137,11 @@ export class SessionsManagement implements OnInit {
         title,
         description: this.formDescription().trim() || null,
         scheduledAt: new Date(scheduledAt).toISOString(),
-        durationMinutes: this.formDuration()
+        durationMinutes: this.formDuration(),
+        maxParticipants: this.formMaxParticipants(),
+        defaultStudentPermission: this.formPermission(),
+        allowGuestJoin: this.formAllowGuestJoin(),
+        isolateStudents: this.formIsolateStudents()
       };
 
       const created = await this.sessionsService.create(input);

@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { AccessToken, TrackSource } from 'npm:livekit-server-sdk@2.9.1';
+import { AccessToken, RoomServiceClient, TrackSource } from 'npm:livekit-server-sdk@2.9.1';
 import { corsHeaders, json } from '../_shared/admin-auth.ts';
 
 type SessionRole = 'instructor' | 'moderator' | 'student';
@@ -10,9 +10,11 @@ interface SessionRow {
   livekit_room_name: string;
   status: string;
   host_user_id: string | null;
+  max_participants: number | null;
   allow_student_mic: boolean;
   allow_student_camera: boolean;
   allow_student_unmute: boolean;
+  isolate_students: boolean;
 }
 
 interface InviteRow {
@@ -22,6 +24,9 @@ interface InviteRow {
   live_sessions: SessionRow;
 }
 
+function livekitHttpUrl(wsUrl: string): string {
+  return wsUrl.replace('wss://', 'https://').replace('ws://', 'http://');
+}
 
 function roleGrants(
   role: SessionRole,
@@ -98,6 +103,20 @@ async function requireUser(req: Request) {
   };
 }
 
+async function checkCapacity(
+  roomService: RoomServiceClient,
+  roomName: string,
+  maxParticipants: number | null
+): Promise<string | null> {
+  if (!maxParticipants || maxParticipants <= 0) return null;
+
+  const participants = await roomService.listParticipants(roomName);
+  if (participants.length >= maxParticipants) {
+    return 'This session has reached the maximum number of participants';
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -128,7 +147,7 @@ Deno.serve(async (req) => {
     const { data: invite, error: inviteErr } = await auth.adminClient
       .from('session_invites')
       .select(
-        'id, role, revoked, live_sessions(id, batch_id, livekit_room_name, status, host_user_id, allow_student_mic, allow_student_camera, allow_student_unmute)'
+        'id, role, revoked, live_sessions(id, batch_id, livekit_room_name, status, host_user_id, max_participants, allow_student_mic, allow_student_camera, allow_student_unmute, isolate_students)'
       )
       .eq('token', inviteToken)
       .maybeSingle();
@@ -192,17 +211,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (role === 'instructor' && session.status === 'scheduled') {
-      await auth.adminClient
-        .from('live_sessions')
-        .update({ status: 'live', started_at: new Date().toISOString() })
-        .eq('id', session.id);
+    const roomService = new RoomServiceClient(livekitHttpUrl(wsUrl), apiKey, apiSecret);
+
+    if (role !== 'instructor' && session.status === 'scheduled') {
+      return json({ error: 'The instructor has not started this session yet' }, 403);
+    }
+
+    const capacityError = await checkCapacity(
+      roomService,
+      session.livekit_room_name,
+      session.max_participants
+    );
+    if (capacityError) {
+      return json({ error: capacityError }, 403);
     }
 
     const roomSettings = {
       allowStudentMic: session.allow_student_mic !== false,
       allowStudentCamera: session.allow_student_camera !== false,
-      allowStudentUnmute: session.allow_student_unmute !== false
+      allowStudentUnmute: session.allow_student_unmute !== false,
+      isolateStudents: session.isolate_students === true
     };
 
     const at = new AccessToken(apiKey, apiSecret, {
@@ -218,16 +246,18 @@ Deno.serve(async (req) => {
 
     const token = await at.toJwt();
 
-    await auth.adminClient.from('session_attendance').upsert(
-      {
-        session_id: session.id,
-        user_id: auth.userId,
-        role,
-        joined_at: new Date().toISOString(),
-        left_at: null
-      },
-      { onConflict: 'session_id,user_id' }
-    );
+    if (session.status === 'live') {
+      await auth.adminClient.from('session_attendance').upsert(
+        {
+          session_id: session.id,
+          user_id: auth.userId,
+          role,
+          joined_at: new Date().toISOString(),
+          left_at: null
+        },
+        { onConflict: 'session_id,user_id' }
+      );
+    }
 
     return json({
       token,
@@ -235,6 +265,7 @@ Deno.serve(async (req) => {
       roomName: session.livekit_room_name,
       role,
       sessionId: session.id,
+      sessionStatus: session.status,
       roomSettings
     });
   } catch (err) {
