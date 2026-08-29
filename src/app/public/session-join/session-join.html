@@ -1,47 +1,52 @@
 <div class="session-join-page">
   <header class="join-header">
     <a routerLink="/my-courses" class="back-link">← My courses</a>
-    @if (roomName()) {
-      <span class="room-name">{{ roomName() }}</span>
+    @if (sessionTitle() && step() !== 'loading') {
+      <span class="session-name">{{ sessionTitle() }}</span>
     }
-    @if (role()) {
-      <span class="role-badge">{{ roleLabel() }}</span>
+    @if (role() && step() === 'lobby') {
+      <span class="role-badge">{{ role() | titlecase }}</span>
     }
   </header>
 
-  @if (isLoading()) {
-    <div class="state-box">
-      <div class="spinner"></div>
-      <p>Joining session…</p>
-    </div>
-  } @else if (errorMessage()) {
-    <div class="state-box error">
-      <h2>Could not join</h2>
-      <p>{{ errorMessage() }}</p>
-      <a routerLink="/my-courses" class="btn-secondary">Back to courses</a>
-    </div>
-  } @else {
-    <div class="room-layout">
-      <div class="video-stage">
-        <div #remoteVideos class="remote-grid"></div>
-        <div #localVideo class="local-preview"></div>
+  @switch (step()) {
+    @case ('loading') {
+      <div class="state-box">
+        <div class="spinner"></div>
+        <p>Verifying your access…</p>
       </div>
-
-      <div class="controls">
-        <button type="button" class="ctrl-btn" [class.off]="!micEnabled()" (click)="toggleMic()">
-          {{ micEnabled() ? 'Mute' : 'Unmute' }}
-        </button>
-        <button type="button" class="ctrl-btn" [class.off]="!camEnabled()" (click)="toggleCam()">
-          {{ camEnabled() ? 'Stop video' : 'Start video' }}
-        </button>
-        <button type="button" class="ctrl-btn leave" (click)="leaveSession()">Leave</button>
+    }
+    @case ('error') {
+      <div class="state-box error">
+        <h2>Cannot join session</h2>
+        @if (sessionTitle()) {
+          <p class="session-title">{{ sessionTitle() }}</p>
+        }
+        <p>{{ errorMessage() }}</p>
+        <div class="state-actions">
+          <a routerLink="/my-courses" class="btn-secondary">Back to my courses</a>
+          <a routerLink="/auth/login" [queryParams]="{ returnUrl: '/s/join/' + inviteToken() }" class="btn-secondary">
+            Sign in with another account
+          </a>
+        </div>
       </div>
-
-      @if (isConnecting()) {
-        <p class="connecting">Connecting…</p>
-      } @else if (isConnected()) {
-        <p class="connected-hint">You are in the live session.</p>
-      }
-    </div>
+    }
+    @case ('lobby') {
+      <app-session-join-lobby
+        [sessionTitle]="sessionTitle()"
+        [role]="role()"
+        (joinSession)="onLobbyJoin($event)"
+        (joinWithoutDevices)="onLobbyJoinWithoutDevices()"
+      />
+    }
+    @case ('room') {
+      <app-session-room
+        [inviteToken]="inviteToken()"
+        [sessionTitle]="sessionTitle()"
+        [initialMic]="joinMic()"
+        [initialCam]="joinCam()"
+        (leaveSession)="onLeaveSession()"
+      />
+    }
   }
 </div>

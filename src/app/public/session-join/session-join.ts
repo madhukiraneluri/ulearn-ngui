@@ -1,219 +1,103 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  OnDestroy,
   OnInit,
   inject,
-  signal,
-  viewChild
+  signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  Room,
-  RoomEvent,
-  Track,
-  type LocalParticipant,
-  type RemoteParticipant,
-  type RemoteTrack,
-  type RemoteTrackPublication
-} from 'livekit-client';
-import { supabase } from '../../core/supabase.client';
 import { AuthService } from '../../core/services/auth.service';
-import { ToastService } from '../../core/services/toast';
+import { LiveSessionJoinService } from '../../shared/services/live-session-join.service';
 import type { SessionRole } from '../../models';
+import { SessionJoinLobby, type LobbyJoinChoice } from './session-join-lobby/session-join-lobby';
+import { SessionRoom } from './session-room/session-room';
 
-interface LiveKitTokenResponse {
-  token: string;
-  wsUrl: string;
-  roomName: string;
-  role: SessionRole;
-  sessionId: string;
-  error?: string;
-}
+type JoinStep = 'loading' | 'error' | 'lobby' | 'room';
 
 @Component({
   selector: 'app-session-join',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, SessionJoinLobby, SessionRoom],
   templateUrl: './session-join.html',
   styleUrl: './session-join.scss'
 })
-export class SessionJoin implements OnInit, OnDestroy {
+export class SessionJoin implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
-  private readonly toast = inject(ToastService);
+  private readonly joinAccess = inject(LiveSessionJoinService);
 
-  private room: Room | null = null;
-
-  readonly localVideo = viewChild<ElementRef<HTMLDivElement>>('localVideo');
-  readonly remoteVideos = viewChild<ElementRef<HTMLDivElement>>('remoteVideos');
-
-  readonly isLoading = signal(true);
-  readonly isConnecting = signal(false);
-  readonly isConnected = signal(false);
+  readonly step = signal<JoinStep>('loading');
   readonly errorMessage = signal<string | null>(null);
-  readonly role = signal<SessionRole | null>(null);
-  readonly roomName = signal('');
-  readonly micEnabled = signal(true);
-  readonly camEnabled = signal(true);
+  readonly sessionTitle = signal('');
+  readonly role = signal<SessionRole>('student');
+  readonly joinMic = signal(true);
+  readonly joinCam = signal(true);
 
   ngOnInit(): void {
-    if (!this.auth.currentUser()) {
-      const token = this.route.snapshot.paramMap.get('token') ?? '';
-      void this.router.navigate(['/auth/login'], {
-        queryParams: { returnUrl: `/s/join/${token}` }
-      });
-      return;
-    }
-
-    void this.connect();
+    void this.initialize();
   }
 
-  ngOnDestroy(): void {
-    void this.disconnect();
-  }
-
-  private inviteToken(): string {
+  inviteToken(): string {
     return this.route.snapshot.paramMap.get('token') ?? '';
   }
 
-  private async connect(): Promise<void> {
+  private loginReturnUrl(): string {
+    return `/s/join/${this.inviteToken()}`;
+  }
+
+  private async initialize(): Promise<void> {
     const inviteToken = this.inviteToken();
     if (!inviteToken) {
       this.errorMessage.set('Invalid join link');
-      this.isLoading.set(false);
+      this.step.set('error');
       return;
     }
 
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke<LiveKitTokenResponse>('livekit-token', {
-        body: { inviteToken }
+    const isLoggedIn = await this.auth.ensureSessionChecked();
+    if (!isLoggedIn) {
+      await this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: this.loginReturnUrl() }
       });
+      return;
+    }
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (!data?.token || !data.wsUrl) {
-        throw new Error(data?.error ?? 'Could not get session token');
-      }
-
-      this.role.set(data.role);
-      this.roomName.set(data.roomName);
-
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true
+    const user = this.auth.currentUser();
+    if (!user) {
+      await this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: this.loginReturnUrl() }
       });
-
-      this.room = room;
-
-      room
-        .on(RoomEvent.TrackSubscribed, (_track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
-          this.attachRemoteTrack(pub, participant);
-        })
-        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-          track.detach();
-        })
-        .on(RoomEvent.LocalTrackPublished, () => {
-          this.attachLocalVideo(room.localParticipant);
-        })
-        .on(RoomEvent.Disconnected, () => {
-          this.isConnected.set(false);
-        });
-
-      this.isConnecting.set(true);
-      await room.connect(data.wsUrl, data.token);
-
-      const canPublish = data.role === 'instructor' || data.role === 'moderator' || data.role === 'student';
-      if (canPublish) {
-        await room.localParticipant.enableCameraAndMicrophone();
-        this.attachLocalVideo(room.localParticipant);
-      }
-
-      this.isConnected.set(true);
-      this.toast.success('Connected to session');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not join session';
-      this.errorMessage.set(msg);
-      this.toast.error(msg);
-    } finally {
-      this.isLoading.set(false);
-      this.isConnecting.set(false);
+      return;
     }
-  }
 
-  private attachLocalVideo(participant: LocalParticipant): void {
-    const el = this.localVideo()?.nativeElement;
-    if (!el) return;
+    const access = await this.joinAccess.validateAccess(inviteToken, user.id);
+    this.sessionTitle.set(access.sessionTitle ?? 'Live session');
+    this.role.set(access.role ?? 'student');
 
-    el.innerHTML = '';
-    for (const pub of participant.videoTrackPublications.values()) {
-      if (pub.track) {
-        el.appendChild(pub.track.attach());
-      }
+    if (!access.allowed) {
+      this.errorMessage.set(access.message);
+      this.step.set('error');
+      return;
     }
+
+    this.step.set('lobby');
   }
 
-  private attachRemoteTrack(pub: RemoteTrackPublication, participant: RemoteParticipant): void {
-    if (!pub.track || pub.kind !== Track.Kind.Video) return;
-
-    const container = this.remoteVideos()?.nativeElement;
-    if (!container) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'remote-tile';
-    wrapper.dataset['participant'] = participant.identity;
-
-    const label = document.createElement('span');
-    label.className = 'participant-name';
-    label.textContent = participant.name || participant.identity;
-
-    wrapper.appendChild(pub.track.attach());
-    wrapper.appendChild(label);
-    container.appendChild(wrapper);
+  onLobbyJoin(choice: LobbyJoinChoice): void {
+    this.joinMic.set(choice.enableMic);
+    this.joinCam.set(choice.enableCam);
+    this.step.set('room');
   }
 
-  async toggleMic(): Promise<void> {
-    const room = this.room;
-    if (!room) return;
-
-    const enabled = !this.micEnabled();
-    await room.localParticipant.setMicrophoneEnabled(enabled);
-    this.micEnabled.set(enabled);
+  onLobbyJoinWithoutDevices(): void {
+    this.joinMic.set(false);
+    this.joinCam.set(false);
+    this.step.set('room');
   }
 
-  async toggleCam(): Promise<void> {
-    const room = this.room;
-    if (!room) return;
-
-    const enabled = !this.camEnabled();
-    await room.localParticipant.setCameraEnabled(enabled);
-    this.camEnabled.set(enabled);
-    this.attachLocalVideo(room.localParticipant);
-  }
-
-  async leaveSession(): Promise<void> {
-    await this.disconnect();
+  async onLeaveSession(): Promise<void> {
     await this.router.navigate(['/my-courses']);
-  }
-
-  private async disconnect(): Promise<void> {
-    if (this.room) {
-      await this.room.disconnect();
-      this.room = null;
-    }
-  }
-
-  roleLabel(): string {
-    const r = this.role();
-    return r ? r.charAt(0).toUpperCase() + r.slice(1) : '';
   }
 }

@@ -1,0 +1,308 @@
+@use '../../../../styles/variables' as *;
+
+.session-room {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.room-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.room-shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  gap: 0;
+
+  &.with-panel .room-main {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.room-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 14px;
+  min-height: 0;
+}
+
+.room-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.room-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  h1 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+}
+
+.room-name {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.role-badge {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(139, 111, 190, 0.25);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.video-stage {
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+  background: #151821;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:host ::ng-deep .screen-share-stage {
+  flex: 1;
+  min-height: 220px;
+  background: #000;
+
+  .screen-share-tile {
+    position: relative;
+    width: 100%;
+    height: 100%;
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .participant-name {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      font-size: 0.78rem;
+    }
+  }
+}
+
+:host ::ng-deep .remote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  max-height: 220px;
+}
+
+:host ::ng-deep .remote-tile {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 120px;
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .participant-name {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.55);
+    font-size: 0.75rem;
+  }
+}
+
+:host ::ng-deep .local-preview {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 160px;
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: #000;
+  z-index: 2;
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &.off { background: rgba(244, 67, 54, 0.35); }
+  &.active { background: rgba(76, 175, 80, 0.35); }
+  &.leave { background: #c62828; }
+}
+
+.room-hint {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.instructor-panel {
+  width: 320px;
+  max-width: 40vw;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  overflow-y: auto;
+  background: #12151c;
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.panel-section {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-btn, .mute-one-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.participant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.participant-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.participant-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.participant-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.participant-role {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: capitalize;
+}
+
+.participant-status {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.72rem;
+
+  span {
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(76, 175, 80, 0.25);
+
+    &.off { background: rgba(244, 67, 54, 0.25); }
+    &.sharing { background: rgba(33, 150, 243, 0.25); }
+  }
+}
+
+.mute-one-btn {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .room-shell.with-panel {
+    flex-direction: column;
+  }
+
+  .instructor-panel {
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}

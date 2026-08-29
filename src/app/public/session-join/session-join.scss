@@ -22,7 +22,7 @@
   font-weight: 600;
 }
 
-.room-name {
+.session-name {
   font-weight: 700;
 }
 
@@ -46,7 +46,23 @@
   text-align: center;
 
   &.error h2 { margin: 0; }
-  &.error p { color: rgba(255, 255, 255, 0.7); max-width: 420px; }
+
+  &.error .session-name,
+  &.error .session-title {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 700;
+  }
+
+  &.error p { color: rgba(255, 255, 255, 0.7); max-width: 480px; }
+}
+
+.state-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .spinner {

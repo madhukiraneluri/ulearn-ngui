@@ -362,8 +362,17 @@ export interface LiveSession {
   createdBy: string | null;
   startedAt: string | null;
   endedAt: string | null;
+  allowStudentMic: boolean;
+  allowStudentCamera: boolean;
+  allowStudentUnmute: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SessionRoomSettings {
+  allowStudentMic: boolean;
+  allowStudentCamera: boolean;
+  allowStudentUnmute: boolean;
 }
 
 export interface SessionInvite {

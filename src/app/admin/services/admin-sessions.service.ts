@@ -257,6 +257,9 @@ export class AdminSessionsService {
       createdBy: (row['created_by'] as string | null) ?? null,
       startedAt: (row['started_at'] as string | null) ?? null,
       endedAt: (row['ended_at'] as string | null) ?? null,
+      allowStudentMic: row['allow_student_mic'] !== false,
+      allowStudentCamera: row['allow_student_camera'] !== false,
+      allowStudentUnmute: row['allow_student_unmute'] !== false,
       createdAt: String(row['created_at']),
       updatedAt: String(row['updated_at'])
     };

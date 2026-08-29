@@ -1,49 +1,63 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { AccessToken } from 'npm:livekit-server-sdk@2.9.1';
+import { AccessToken, TrackSource } from 'npm:livekit-server-sdk@2.9.1';
 import { corsHeaders, json } from '../_shared/admin-auth.ts';
 
 type SessionRole = 'instructor' | 'moderator' | 'student';
+
+interface SessionRow {
+  id: string;
+  batch_id: string;
+  livekit_room_name: string;
+  status: string;
+  host_user_id: string | null;
+  allow_student_mic: boolean;
+  allow_student_camera: boolean;
+  allow_student_unmute: boolean;
+}
 
 interface InviteRow {
   id: string;
   role: SessionRole;
   revoked: boolean;
-  live_sessions: {
-    id: string;
-    batch_id: string;
-    livekit_room_name: string;
-    status: string;
-    host_user_id: string | null;
-  };
+  live_sessions: SessionRow;
 }
 
-function roleGrants(role: SessionRole): Record<string, boolean> {
-  switch (role) {
-    case 'instructor':
-      return {
-        roomJoin: true,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
-        roomAdmin: true
-      };
-    case 'moderator':
-      return {
-        roomJoin: true,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
-        roomAdmin: true
-      };
-    case 'student':
-    default:
-      return {
-        roomJoin: true,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true
-      };
+
+function roleGrants(
+  role: SessionRole,
+  session: SessionRow
+): Record<string, unknown> {
+  const base = {
+    roomJoin: true,
+    canSubscribe: true,
+    canPublishData: true,
+    roomAdmin: role === 'instructor' || role === 'moderator'
+  };
+
+  if (role === 'instructor' || role === 'moderator') {
+    return {
+      ...base,
+      canPublish: true,
+      canPublishSources: [
+        TrackSource.CAMERA,
+        TrackSource.MICROPHONE,
+        TrackSource.SCREEN_SHARE,
+        TrackSource.SCREEN_SHARE_AUDIO
+      ]
+    };
   }
+
+  const sources: TrackSource[] = [];
+  if (session.allow_student_camera) sources.push(TrackSource.CAMERA);
+  if (session.allow_student_mic && session.allow_student_unmute) {
+    sources.push(TrackSource.MICROPHONE);
+  }
+
+  return {
+    ...base,
+    canPublish: sources.length > 0,
+    canPublishSources: sources
+  };
 }
 
 async function requireUser(req: Request) {
@@ -114,7 +128,7 @@ Deno.serve(async (req) => {
     const { data: invite, error: inviteErr } = await auth.adminClient
       .from('session_invites')
       .select(
-        'id, role, revoked, live_sessions(id, batch_id, livekit_room_name, status, host_user_id)'
+        'id, role, revoked, live_sessions(id, batch_id, livekit_room_name, status, host_user_id, allow_student_mic, allow_student_camera, allow_student_unmute)'
       )
       .eq('token', inviteToken)
       .maybeSingle();
@@ -151,8 +165,21 @@ Deno.serve(async (req) => {
         .eq('user_id', auth.userId)
         .maybeSingle();
 
-      if (!membership && !auth.isAdmin) {
-        return json({ error: 'You are not assigned to this batch' }, 403);
+      if (!membership) {
+        return json(
+          {
+            error:
+              'Only students assigned to this batch can join with the student link'
+          },
+          403
+        );
+      }
+
+      if (auth.isAdmin) {
+        return json(
+          { error: 'Admins cannot join using the student link. Use instructor or moderator link.' },
+          403
+        );
       }
     } else if (role === 'instructor') {
       const isHost = session.host_user_id === auth.userId;
@@ -172,6 +199,12 @@ Deno.serve(async (req) => {
         .eq('id', session.id);
     }
 
+    const roomSettings = {
+      allowStudentMic: session.allow_student_mic !== false,
+      allowStudentCamera: session.allow_student_camera !== false,
+      allowStudentUnmute: session.allow_student_unmute !== false
+    };
+
     const at = new AccessToken(apiKey, apiSecret, {
       identity: auth.userId,
       name: auth.userName,
@@ -179,7 +212,7 @@ Deno.serve(async (req) => {
     });
 
     at.addGrant({
-      ...roleGrants(role),
+      ...roleGrants(role, session),
       room: session.livekit_room_name
     });
 
@@ -201,7 +234,8 @@ Deno.serve(async (req) => {
       wsUrl,
       roomName: session.livekit_room_name,
       role,
-      sessionId: session.id
+      sessionId: session.id,
+      roomSettings
     });
   } catch (err) {
     console.error('livekit-token error:', err);

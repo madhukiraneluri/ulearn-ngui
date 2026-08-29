@@ -1,0 +1,56 @@
+<div class="lobby">
+  <header class="lobby-header">
+    <h1>{{ sessionTitle() }}</h1>
+    <span class="role-badge">{{ roleLabel() }}</span>
+  </header>
+
+  <p class="lobby-subtitle">Check your devices before joining the live session.</p>
+
+  @if (previewError()) {
+    <p class="lobby-warning">{{ previewError() }}</p>
+  }
+
+  <div class="lobby-body">
+    <div class="preview-panel">
+      <div class="preview-frame">
+        <video #previewVideo playsinline muted autoplay></video>
+        @if (!camEnabled()) {
+          <div class="preview-off">Camera off</div>
+        }
+      </div>
+
+      <div class="device-controls">
+        <button type="button" class="device-btn" [class.off]="!micEnabled()" (click)="toggleMic()">
+          {{ micEnabled() ? 'Mic on' : 'Mic off' }}
+        </button>
+        <button type="button" class="device-btn" [class.off]="!camEnabled()" (click)="toggleCam()">
+          {{ camEnabled() ? 'Camera on' : 'Camera off' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="checks-panel">
+      <div class="check-row">
+        <span class="check-label">Microphone level</span>
+        <div class="level-bar">
+          <div class="level-fill" [style.width.%]="micLevel()"></div>
+        </div>
+        <span class="check-hint">{{ micEnabled() ? 'Speak to test your mic' : 'Mic disabled' }}</span>
+      </div>
+
+      <div class="check-row">
+        <span class="check-label">Speaker</span>
+        <button type="button" class="test-btn" (click)="testSpeaker()">
+          {{ isTestingSpeaker() ? 'Playing…' : speakerTested() ? 'Play again' : 'Test speaker' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lobby-actions">
+    <button type="button" class="btn-primary" (click)="onJoinSession()">Join session</button>
+    <button type="button" class="btn-secondary" (click)="onJoinWithoutDevices()">
+      Join without devices
+    </button>
+  </div>
+</div>
