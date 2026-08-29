@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  OnInit,
   inject,
   input,
   output,
@@ -59,7 +60,7 @@ export interface ParticipantView {
   templateUrl: './session-room.html',
   styleUrl: './session-room.scss'
 })
-export class SessionRoom implements OnDestroy {
+export class SessionRoom implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly roomControl = inject(SessionRoomControlService);
 
@@ -95,7 +96,7 @@ export class SessionRoom implements OnDestroy {
   private room: Room | null = null;
   private screenShareIdentity: string | null = null;
 
-  constructor() {
+  ngOnInit(): void {
     void this.connect();
   }
 
