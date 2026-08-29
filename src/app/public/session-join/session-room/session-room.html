@@ -7,9 +7,8 @@
   } @else if (sessionPhase() === 'waiting') {
     <div class="waiting-room">
       <div class="waiting-card">
-        <div class="waiting-icon">⏳</div>
+        <button type="button" class="wait-icon-btn" disabled title="Waiting">⏳</button>
         <h2>Waiting for instructor</h2>
-        <p>Participants can enter only after the instructor starts the session.</p>
         <p class="waiting-session">{{ sessionTitle() }}</p>
       </div>
     </div>
@@ -18,30 +17,44 @@
       <header class="mh-topbar">
         <div class="mh-topbar-left">
           <span class="mh-board-label">{{ sessionTitle() }}</span>
+          @if (sessionLive()) {
+            <span class="live-dot" title="Live"></span>
+          }
         </div>
         <div class="mh-topbar-controls">
           @if (sessionLive()) {
-            <button type="button" class="mh-icon-btn" [class.off]="!micEnabled()" (click)="toggleMic()" title="Microphone">
-              🎤
+            <button type="button" class="mh-icon-btn" [class.off]="!micEnabled()" (click)="toggleMic()" title="Microphone" aria-label="Microphone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
             </button>
-            <button type="button" class="mh-icon-btn" [class.off]="!camEnabled()" (click)="toggleCam()" title="Camera">
-              📹
+            <button type="button" class="mh-icon-btn" [class.off]="!camEnabled()" (click)="toggleCam()" title="Camera" aria-label="Camera">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/></svg>
             </button>
             @if (isInstructorOrModerator()) {
-              <button type="button" class="mh-icon-btn" [class.active]="screenShareEnabled()" (click)="toggleScreenShare()" title="Share screen">
-                🖥
+              <button type="button" class="mh-icon-btn" [class.active]="screenShareEnabled()" (click)="toggleScreenShare()" title="Share screen" aria-label="Share screen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+              </button>
+              <button type="button" class="mh-icon-btn" (click)="muteAll()" title="Mute all" aria-label="Mute all">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm-7-3h2.17A5 5 0 0 0 7 5.83V11zm12.83 0H19V5.83A5 5 0 0 0 14.83 11zM5 11v2.83A7 7 0 0 0 12 19v2h2v-2a7 7 0 0 0 7-7V11h-2v2.83A5 5 0 0 1 14 17.17V11H5z"/></svg>
               </button>
             }
           }
-          <button type="button" class="mh-icon-btn leave" (click)="onLeave()" title="Leave">⏻</button>
+          <button type="button" class="mh-icon-btn leave" (click)="onLeave()" title="Leave" aria-label="Leave">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+          </button>
         </div>
       </header>
 
       <div class="mh-body">
         <aside class="mh-left-rail">
-          <button type="button" class="rail-btn active" title="Board">▢</button>
-          <button type="button" class="rail-btn" title="Select">↖</button>
-          <button type="button" class="rail-btn" title="Pen">✎</button>
+          <button type="button" class="rail-btn active" title="Board" aria-label="Board">
+            <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
+          </button>
+          <button type="button" class="rail-btn" title="Select" aria-label="Select">
+            <svg viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+          </button>
+          <button type="button" class="rail-btn" title="Pen" aria-label="Pen">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
         </aside>
 
         <main class="mh-stage">
@@ -49,22 +62,19 @@
           <div #remoteVideos class="remote-grid"></div>
           <div #localVideo class="local-preview"></div>
 
-          @if (!sessionLive() && isInstructorOrModerator()) {
-            <div class="stage-overlay">
-              <p>Start the session so students can join the live class.</p>
-            </div>
-          }
-
           @if (showGoLiveModal() && isInstructorOrModerator()) {
             <div class="go-live-modal">
-              <button type="button" class="modal-close" (click)="dismissGoLiveModal()">✕</button>
-              <div class="go-live-icon">📹</div>
+              <button type="button" class="modal-close" (click)="dismissGoLiveModal()" title="Close" aria-label="Close">✕</button>
+              <button type="button" class="go-live-icon-btn" disabled title="Go live">
+                <svg viewBox="0 0 24 24"><path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/></svg>
+              </button>
               <h2>Make the Session Live</h2>
-              <p>Make the session live so students can join.</p>
               <div class="go-live-actions">
-                <button type="button" class="btn-later" (click)="dismissGoLiveModal()">Maybe Later</button>
-                <button type="button" class="btn-live" [disabled]="controlBusy()" (click)="makeSessionLive()">
-                  📹 Make Session Live
+                <button type="button" class="icon-action-btn secondary" (click)="dismissGoLiveModal()" title="Maybe later" aria-label="Maybe later">
+                  <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                </button>
+                <button type="button" class="icon-action-btn primary" [disabled]="controlBusy()" (click)="makeSessionLive()" title="Make session live" aria-label="Make session live">
+                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z"/></svg>
                 </button>
               </div>
             </div>
@@ -74,75 +84,70 @@
         <aside class="mh-sidebar">
           @if (!sessionLive() && isInstructorOrModerator()) {
             <section class="sidebar-block">
-              <h3>Start session with</h3>
               <div class="start-options">
-                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithAudio()" title="Audio only">
-                  📞
+                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithAudio()" title="Start with audio" aria-label="Start with audio">
+                  <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
                 </button>
-                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithVideo()" title="Audio and video">
-                  📹
+                <button type="button" class="start-circle" [disabled]="controlBusy()" (click)="startWithVideo()" title="Start with video" aria-label="Start with video">
+                  <svg viewBox="0 0 24 24"><path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/></svg>
                 </button>
               </div>
-              <p class="sidebar-note">Participants can enter only after you start the session.</p>
             </section>
           } @else if (isInstructorOrModerator()) {
             <section class="sidebar-block">
-              <h3>Participants ({{ participants().length }})</h3>
+              <div class="icon-toolbar">
+                <button type="button" class="tool-icon-btn" (click)="muteAll()" title="Mute all" aria-label="Mute all">
+                  <svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 12 7.5v2.03c.85.3 1.5 1.08 1.5 1.97 0 .89-.65 1.67-1.5 1.97V12zm-4.5-4.5A4.5 4.5 0 0 0 7.5 12H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2.5a4.5 4.5 0 0 0-4.5-4.5z"/></svg>
+                </button>
+                <button type="button" class="tool-icon-btn" [class.active]="roomSettings().allowStudentMic" (click)="toggleAllowStudentMic()" title="Student microphone" aria-label="Student microphone">
+                  <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/></svg>
+                </button>
+                <button type="button" class="tool-icon-btn" [class.active]="roomSettings().allowStudentCamera" (click)="toggleAllowStudentCamera()" title="Student camera" aria-label="Student camera">
+                  <svg viewBox="0 0 24 24"><path d="M17 10.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/></svg>
+                </button>
+              </div>
               <ul class="participant-list">
                 @for (p of participants(); track p.identity) {
                   <li class="participant-row">
-                    <span>{{ p.name }}{{ p.isLocal ? ' (you)' : '' }}</span>
+                    <span class="p-name">{{ p.name }}{{ p.isLocal ? ' •' : '' }}</span>
                     @if (!p.isLocal && p.role === 'student') {
-                      <button type="button" class="mute-one-btn" (click)="muteParticipant(p.identity)">Mute</button>
+                      <button type="button" class="tool-icon-btn sm" (click)="muteParticipant(p.identity)" title="Mute participant" aria-label="Mute participant">
+                        <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/></svg>
+                      </button>
                     }
                   </li>
                 }
               </ul>
-              <div class="control-stack">
-                <button type="button" class="panel-btn" (click)="muteAll()">Mute all</button>
-                <button type="button" class="panel-btn" (click)="toggleAllowStudentMic()">
-                  Mic: {{ roomSettings().allowStudentMic ? 'On' : 'Locked' }}
-                </button>
-                <button type="button" class="panel-btn" (click)="toggleAllowStudentCamera()">
-                  Camera: {{ roomSettings().allowStudentCamera ? 'On' : 'Locked' }}
-                </button>
-              </div>
-            </section>
-          } @else {
-            <section class="sidebar-block">
-              <h3>Live session</h3>
-              <p class="sidebar-note">You are connected to {{ sessionTitle() }}.</p>
             </section>
           }
 
           <section class="sidebar-block chat-block">
-            <h3>Chat</h3>
             <div class="chat-log">
               @for (msg of chatMessages(); track msg.id) {
                 <div class="chat-msg">
                   <strong>{{ msg.from }}</strong>
                   <span>{{ msg.text }}</span>
                 </div>
-              } @empty {
-                <p class="chat-empty">No messages yet.</p>
               }
             </div>
             <form class="chat-form" (submit)="sendChat($event)">
               <input
                 type="text"
-                placeholder="Type a message"
+                placeholder="Message"
                 [value]="chatDraft()"
                 (input)="chatDraft.set($any($event.target).value)"
                 [disabled]="!sessionLive()"
               />
-              <button type="submit" [disabled]="!sessionLive()">Send</button>
+              <button type="submit" class="chat-send-btn" [disabled]="!sessionLive()" title="Send" aria-label="Send">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2 0 7z"/></svg>
+              </button>
             </form>
           </section>
         </aside>
       </div>
 
       @if (isConnecting()) {
-        <div class="connecting-overlay">Connecting…</div>
+        <div class="connecting-overlay"><span class="spinner"></span></div>
       }
     </div>
   }

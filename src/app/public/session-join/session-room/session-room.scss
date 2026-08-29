@@ -69,11 +69,27 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
   cursor: pointer;
-  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
 
   &.off { background: rgba(244, 67, 54, 0.35); }
   &.active { background: rgba(76, 175, 80, 0.35); }
   &.leave { background: #c62828; }
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4caf50;
+  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.25);
 }
 
 .mh-body {
@@ -101,6 +117,15 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.65);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
 
   &.active, &:hover {
     background: rgba(255, 255, 255, 0.1);
@@ -253,40 +278,56 @@
   color: #888;
 }
 
-.go-live-icon {
+.go-live-icon-btn {
   width: 56px;
   height: 56px;
-  margin: 0 auto;
+  margin: 0 auto 12px;
   border-radius: 50%;
+  border: none;
   background: rgba(126, 87, 194, 0.15);
+  color: #7e57c2;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+
+  svg {
+    width: 28px;
+    height: 28px;
+    fill: currentColor;
+  }
+}
+
+.icon-action-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+  }
+
+  &.secondary {
+    background: #eceff1;
+    color: #333;
+  }
+
+  &.primary {
+    background: #7e57c2;
+    color: #fff;
+  }
 }
 
 .go-live-actions {
   display: flex;
   gap: 10px;
-}
-
-.btn-later, .btn-live {
-  flex: 1;
-  padding: 11px 14px;
-  border-radius: 8px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn-later {
-  background: #eceff1;
-  color: #333;
-}
-
-.btn-live {
-  background: #7e57c2;
-  color: #fff;
+  justify-content: center;
 }
 
 .mh-sidebar {
@@ -322,8 +363,16 @@
   border: none;
   background: #343a46;
   color: #fff;
-  font-size: 1.5rem;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 30px;
+    height: 30px;
+    fill: currentColor;
+  }
 
   &:disabled {
     opacity: 0.5;
@@ -332,6 +381,46 @@
 
   &:hover:not(:disabled) {
     background: #7e57c2;
+  }
+}
+
+.icon-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tool-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  &.active {
+    background: rgba(126, 87, 194, 0.35);
+    color: #fff;
+  }
+
+  &.sm {
+    width: 28px;
+    height: 28px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
   }
 }
 
@@ -360,20 +449,49 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.mute-one-btn, .panel-btn {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 0.75rem;
-  cursor: pointer;
+.p-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.control-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.chat-send-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: #7e57c2;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.connecting-overlay .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #7e57c2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .chat-block {
@@ -418,16 +536,6 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
-  }
-
-  button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    background: #7e57c2;
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
   }
 }
 

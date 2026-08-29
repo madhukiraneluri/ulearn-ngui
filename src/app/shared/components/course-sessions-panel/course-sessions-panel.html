@@ -21,9 +21,9 @@
           <div class="session-actions">
             <span class="status-pill" [attr.data-status]="session.status">{{ session.status }}</span>
             @if (session.canJoin && session.studentJoinToken) {
-              <a class="btn-join" [routerLink]="joinPath(session.studentJoinToken)">Join session</a>
+              <a class="btn-join-icon" [routerLink]="joinPath(session.studentJoinToken)" title="Join session" aria-label="Join session">▶</a>
             } @else {
-              <span class="join-hint">Join opens 10 min before start</span>
+              <span class="join-hint" title="Join opens 10 min before start">⏳</span>
             }
           </div>
         </div>

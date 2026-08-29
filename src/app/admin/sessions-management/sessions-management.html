@@ -105,28 +105,15 @@
 
         <section class="permission-panel">
           <h3>Default permissions for participants</h3>
-          <div class="permission-row">
-            <label class="check-option">
-              <input type="radio" name="permission" [checked]="formPermission() === 'audio'" (change)="setPermission('audio')" />
-              Audio
-            </label>
-            <label class="check-option">
-              <input type="radio" name="permission" [checked]="formPermission() === 'audio_video'" (change)="setPermission('audio_video')" />
-              Audio &amp; Video
-            </label>
-            <label class="check-option">
-              <input type="radio" name="permission" [checked]="formPermission() === 'writing'" (change)="setPermission('writing')" />
-              Writing
-            </label>
+          <div class="perm-icon-row">
+            <button type="button" class="perm-icon-btn" [class.active]="formPermission() === 'audio'" (click)="setPermission('audio')" title="Audio only" aria-label="Audio only">🎤</button>
+            <button type="button" class="perm-icon-btn" [class.active]="formPermission() === 'audio_video'" (click)="setPermission('audio_video')" title="Audio and video" aria-label="Audio and video">📹</button>
+            <button type="button" class="perm-icon-btn" [class.active]="formPermission() === 'writing'" (click)="setPermission('writing')" title="Writing only" aria-label="Writing only">✎</button>
           </div>
-          <label class="check-option block">
-            <input type="checkbox" [ngModel]="formAllowGuestJoin()" (ngModelChange)="formAllowGuestJoin.set($event)" />
-            Allow participants to enter without signing up
-          </label>
-          <label class="check-option block">
-            <input type="checkbox" [ngModel]="formIsolateStudents()" (ngModelChange)="formIsolateStudents.set($event)" />
-            Prevent participants from seeing or hearing each other
-          </label>
+          <div class="perm-toggle-row">
+            <button type="button" class="perm-toggle-btn" [class.active]="formAllowGuestJoin()" (click)="formAllowGuestJoin.set(!formAllowGuestJoin())" title="Allow guest join" aria-label="Allow guest join">👤</button>
+            <button type="button" class="perm-toggle-btn" [class.active]="formIsolateStudents()" (click)="formIsolateStudents.set(!formIsolateStudents())" title="Isolate participants" aria-label="Isolate participants">🔇</button>
+          </div>
         </section>
 
         <div class="modal-actions">

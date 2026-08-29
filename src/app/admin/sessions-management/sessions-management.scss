@@ -213,6 +213,28 @@
   margin-bottom: 12px;
 }
 
+.perm-icon-row, .perm-toggle-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.perm-icon-btn, .perm-toggle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+
+  &.active {
+    background: rgba(139, 111, 190, 0.15);
+    border-color: rgba(139, 111, 190, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(139, 111, 190, 0.25);
+  }
+}
+
 .check-option {
   display: inline-flex;
   align-items: center;

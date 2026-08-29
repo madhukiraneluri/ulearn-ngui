@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, computed } from '@angular/core';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd, NavigationError } from '@angular/router';
 import { filter, map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Navbar } from './shared/components/navbar/navbar';
@@ -66,10 +66,36 @@ export class App implements OnInit {
   ngOnInit(): void {
     this.paymentService.unlockPageScroll();
     this.router.events.subscribe(evt => {
+      if (evt instanceof NavigationError) {
+        const message = String(evt.error?.message ?? evt.error ?? '');
+        if (this.isStaleChunkError(message)) {
+          this.reloadForStaleBundle(evt.url);
+        }
+        return;
+      }
+
       if (evt instanceof NavigationEnd) {
+        sessionStorage.removeItem('ulearn-chunk-reload');
         this.paymentService.unlockPageScroll();
         setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 0);
       }
     });
+  }
+
+  private isStaleChunkError(message: string): boolean {
+    const lower = message.toLowerCase();
+    return (
+      lower.includes('failed to fetch dynamically imported module') ||
+      lower.includes('loading chunk') ||
+      lower.includes('chunkloaderror')
+    );
+  }
+
+  private reloadForStaleBundle(targetUrl: string): void {
+    const key = 'ulearn-chunk-reload';
+    if (sessionStorage.getItem(key)) return;
+
+    sessionStorage.setItem(key, '1');
+    window.location.assign(targetUrl || window.location.href);
   }
 }

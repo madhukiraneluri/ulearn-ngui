@@ -76,20 +76,21 @@
   }
 }
 
-.btn-join {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 8px;
+.btn-join-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   background: var(--purple);
   color: #fff;
   text-decoration: none;
-  font-weight: 700;
-  font-size: 0.85rem;
+  font-weight: 800;
+  font-size: 0.95rem;
 }
 
 .join-hint {
-  font-size: 0.78rem;
+  font-size: 1rem;
   color: var(--muted);
-  text-align: right;
-  max-width: 160px;
 }
