@@ -67,14 +67,14 @@ export class Home implements OnInit, OnDestroy {
 
   readonly stats = [
     { value: '80K+', label: 'Learners',  color: 'var(--purple)' },
-    { value: '50+',  label: 'Courses',   color: 'var(--green)'  },
+    { value: '25+',  label: 'Courses',   color: 'var(--green)'  },
     { value: '200+', label: 'Mentors',   color: 'var(--orange)' },
-    { value: '81%',  label: 'Placement', color: 'var(--blue)'   },
+    { value: '4.8★',  label: 'Average Rating', color: 'var(--blue)'   },
   ];
 
   // ── About section ─────────────────────────────────────────────────────────
   readonly aboutStats = [
-    { icon: '🎓', value: '20+',  label: 'Courses',         color: 'var(--purple)' },
+    { icon: '🎓', value: '25+',  label: 'Courses',         color: 'var(--purple)' },
     { icon: '👨‍🏫', value: '200+', label: 'Expert Mentors',  color: 'var(--green)'  },
     { icon: '💼', value: '65000+', label: 'Placed Students', color: 'var(--orange)' },
     { icon: '🏆', value: '4.8★', label: 'Avg Rating',      color: 'var(--blue)'   },
