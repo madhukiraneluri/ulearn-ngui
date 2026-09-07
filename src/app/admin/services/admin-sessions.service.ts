@@ -4,13 +4,22 @@ import type {
   LiveSession,
   LiveSessionStatus,
   SessionInvite,
+  SessionPlace,
+  SessionRecurrenceConfig,
   SessionRole,
-  SessionStudentPermission
+  SessionStudentPermission,
+  SessionType
 } from '../../models';
 
 export interface AdminSessionRow extends LiveSession {
   batchName: string;
   courseTitle: string;
+}
+
+export interface SessionHostOption {
+  id: string;
+  name: string;
+  email: string | null;
 }
 
 export interface SessionInviteLink {
@@ -30,6 +39,17 @@ export interface SessionUpsertInput {
   defaultStudentPermission?: SessionStudentPermission;
   allowGuestJoin?: boolean;
   isolateStudents?: boolean;
+  sessionType?: SessionType;
+  sessionPlace?: SessionPlace;
+  timezone?: string;
+  recurrenceConfig?: SessionRecurrenceConfig | null;
+  /** @deprecated Use one session row per permanent series; room names must stay unique. */
+  livekitRoomName?: string;
+}
+
+export interface SessionCreateManyResult {
+  created: AdminSessionRow[];
+  errors: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -109,6 +129,43 @@ export class AdminSessionsService {
     }));
   }
 
+  async listHostCandidates(): Promise<SessionHostOption[]> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .eq('role', 'ADMIN')
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      console.error('AdminSessionsService.listHostCandidates:', error);
+      return [];
+    }
+
+    return (data ?? []).map((row) => ({
+      id: String(row.id),
+      name: String(row.full_name ?? row.email ?? 'Instructor'),
+      email: (row.email as string | null) ?? null
+    }));
+  }
+
+  async createMany(inputs: SessionUpsertInput[]): Promise<SessionCreateManyResult> {
+    const created: AdminSessionRow[] = [];
+    const errors: string[] = [];
+
+    for (const input of inputs) {
+      try {
+        const row = await this.create(input);
+        if (row) created.push(row);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not create session';
+        errors.push(msg);
+        console.error('AdminSessionsService.createMany:', err);
+      }
+    }
+
+    return { created, errors };
+  }
+
   async create(input: SessionUpsertInput): Promise<AdminSessionRow | null> {
     const batch = await this.getBatchCourse(input.batchId);
     if (!batch) {
@@ -116,7 +173,7 @@ export class AdminSessionsService {
     }
 
     const sessionId = crypto.randomUUID();
-    const roomName = `ulearn-${sessionId.replace(/-/g, '')}`;
+    const roomName = input.livekitRoomName ?? `ulearn-${sessionId.replace(/-/g, '')}`;
     const createdBy = await this.resolveCreatedBy();
     const permission = input.defaultStudentPermission ?? 'audio_video';
     const { allowMic, allowCam } = this.permissionToRoomFlags(permission);
@@ -141,7 +198,11 @@ export class AdminSessionsService {
         isolate_students: input.isolateStudents ?? false,
         allow_student_mic: allowMic,
         allow_student_camera: allowCam,
-        allow_student_unmute: true
+        allow_student_unmute: true,
+        session_type: input.sessionType ?? 'one_time',
+        session_place: input.sessionPlace ?? 'virtual',
+        timezone: input.timezone ?? 'Asia/Kolkata',
+        recurrence_config: input.recurrenceConfig ?? null
       })
       .select('*, batches(id, name), courses(id, title)')
       .single();
@@ -298,8 +359,25 @@ export class AdminSessionsService {
       allowStudentMic: row['allow_student_mic'] !== false,
       allowStudentCamera: row['allow_student_camera'] !== false,
       allowStudentUnmute: row['allow_student_unmute'] !== false,
+      sessionType: (row['session_type'] as SessionType) ?? 'one_time',
+      sessionPlace: (row['session_place'] as SessionPlace) ?? 'virtual',
+      timezone: String(row['timezone'] ?? 'Asia/Kolkata'),
+      recurrenceConfig: this.mapRecurrenceConfig(row['recurrence_config']),
       createdAt: String(row['created_at']),
       updatedAt: String(row['updated_at'])
+    };
+  }
+
+  private mapRecurrenceConfig(raw: unknown): SessionRecurrenceConfig | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const value = raw as Record<string, unknown>;
+    if (!Array.isArray(value['repeatDays']) || typeof value['endDate'] !== 'string') {
+      return null;
+    }
+    return {
+      enabled: value['enabled'] !== false,
+      repeatDays: value['repeatDays'].map((day) => Boolean(day)),
+      endDate: String(value['endDate'])
     };
   }
 

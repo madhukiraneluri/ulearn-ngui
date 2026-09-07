@@ -1,0 +1,300 @@
+<div class="schedule-page">
+  <header class="page-header">
+    <a routerLink="/admin/sessions" class="back-link">← Sessions</a>
+    <h1>Schedule a Session</h1>
+  </header>
+
+  @if (isLoading()) {
+    <p class="loading">Loading…</p>
+  } @else {
+    <div class="schedule-layout">
+      <div class="schedule-main">
+        <section class="card card-title">
+          <input
+            type="text"
+            class="title-input"
+            maxlength="70"
+            placeholder="Session title"
+            [ngModel]="formTitle()"
+            (ngModelChange)="formTitle.set($event)"
+          />
+          <div class="title-meta">
+            <button type="button" class="text-link" (click)="toggleDescription()">
+              {{ showDescription() ? 'Hide description' : 'Add description' }}
+            </button>
+            <span class="char-count">{{ formTitle().length }}/70</span>
+          </div>
+          @if (showDescription()) {
+            <textarea
+              class="form-input description-input"
+              rows="2"
+              placeholder="Optional description"
+              [ngModel]="formDescription()"
+              (ngModelChange)="formDescription.set($event)"
+            ></textarea>
+          }
+        </section>
+
+        <section class="card">
+          <h2 class="card-heading">Session type</h2>
+          <div class="pill-group">
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="formSessionType() === 'one_time'"
+              (click)="setSessionType('one_time')"
+            >
+              One-time
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="formSessionType() === 'permanent'"
+              (click)="setSessionType('permanent')"
+            >
+              Permanent
+            </button>
+          </div>
+          <p class="hint-box">{{ sessionTypeHint() }}</p>
+        </section>
+
+        <section class="card">
+          <h2 class="card-heading">Date &amp; time</h2>
+          <div class="field-grid">
+            <div class="form-field">
+              <label>Start date</label>
+              <input type="date" class="form-input" [ngModel]="formStartDate()" (ngModelChange)="formStartDate.set($event)" />
+            </div>
+            <div class="form-field">
+              <label>Start time</label>
+              <input type="time" class="form-input" [ngModel]="formStartTime()" (ngModelChange)="formStartTime.set($event)" />
+            </div>
+            <div class="form-field">
+              <label>Duration</label>
+              <select class="form-input" [ngModel]="formDuration()" (ngModelChange)="formDuration.set(+$event)">
+                @for (minutes of durationOptions; track minutes) {
+                  <option [value]="minutes">{{ minutes }} min</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Timezone</label>
+              <select class="form-input" [ngModel]="formTimezone()" (ngModelChange)="formTimezone.set($event)">
+                @for (tz of timezoneOptions; track tz.value) {
+                  <option [value]="tz.value">{{ tz.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          @if (formSessionType() === 'permanent') {
+            <div class="sub-block">
+              <label class="inline-check">
+                <input type="checkbox" [ngModel]="formRepeatEnabled()" (ngModelChange)="formRepeatEnabled.set($event)" />
+                <span>Repeat weekly on</span>
+              </label>
+              <div class="weekday-row">
+                @for (day of weekdays; track $index) {
+                  <button
+                    type="button"
+                    class="weekday-btn"
+                    [class.active]="formRepeatDays()[$index]"
+                    (click)="toggleRepeatDay($index)"
+                  >
+                    {{ day }}
+                  </button>
+                }
+              </div>
+              <div class="form-field compact">
+                <label>Series end date</label>
+                <input
+                  type="date"
+                  class="form-input"
+                  [ngModel]="formRecurrenceEndDate()"
+                  (ngModelChange)="formRecurrenceEndDate.set($event)"
+                />
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="card">
+          <h2 class="card-heading">Session place</h2>
+          <div class="pill-group">
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="formSessionPlace() === 'virtual'"
+              (click)="setSessionPlace('virtual')"
+            >
+              Virtual classroom
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="formSessionPlace() === 'external'"
+              (click)="setSessionPlace('external')"
+            >
+              External
+            </button>
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="formSessionPlace() === 'in_person'"
+              (click)="setSessionPlace('in_person')"
+            >
+              In-person
+            </button>
+          </div>
+        </section>
+
+        <section class="card card-settings">
+          <button type="button" class="card-toggle" (click)="showSettingsPanel.set(!showSettingsPanel())">
+            <h2 class="card-heading">Room settings</h2>
+            <span class="chevron" [class.open]="showSettingsPanel()"></span>
+          </button>
+
+          @if (showSettingsPanel()) {
+            <div class="settings-body">
+              <div class="field-grid">
+                <div class="form-field">
+                  <label>Classroom layout</label>
+                  <select class="form-input"><option>Classroom</option></select>
+                </div>
+                <div class="form-field">
+                  <label>Max participants</label>
+                  <input
+                    type="number"
+                    min="0"
+                    class="form-input"
+                    placeholder="Unlimited"
+                    [ngModel]="formMaxParticipants()"
+                    (ngModelChange)="formMaxParticipants.set($event === '' || $event == null ? null : +$event)"
+                  />
+                </div>
+              </div>
+
+              <div class="perm-block">
+                <p class="perm-title">Default participant permissions</p>
+                <div class="perm-grid">
+                  <div class="toggle-row">
+                    <span class="toggle-label">Audio</span>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      [class.on]="formPermission() === 'audio'"
+                      (click)="setPermission('audio')"
+                      role="switch"
+                      [attr.aria-checked]="formPermission() === 'audio'"
+                    ></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Audio &amp; video</span>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      [class.on]="formPermission() === 'audio_video'"
+                      (click)="setPermission('audio_video')"
+                      role="switch"
+                      [attr.aria-checked]="formPermission() === 'audio_video'"
+                    ></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Writing only</span>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      [class.on]="formPermission() === 'writing'"
+                      (click)="setPermission('writing')"
+                      role="switch"
+                      [attr.aria-checked]="formPermission() === 'writing'"
+                    ></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Guest join without signup</span>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      [class.on]="formAllowGuestJoin()"
+                      (click)="formAllowGuestJoin.set(!formAllowGuestJoin())"
+                      role="switch"
+                      [attr.aria-checked]="formAllowGuestJoin()"
+                    ></button>
+                  </div>
+                  <div class="toggle-row">
+                    <span class="toggle-label">Isolate participants</span>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      [class.on]="formIsolateStudents()"
+                      (click)="formIsolateStudents.set(!formIsolateStudents())"
+                      role="switch"
+                      [attr.aria-checked]="formIsolateStudents()"
+                    ></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+
+      <aside class="schedule-side">
+        <section class="card side-card">
+          <div class="side-card-head">
+            <h2 class="card-heading">Batches</h2>
+            <button type="button" class="btn-text" (click)="toggleBatchPicker()">
+              {{ showBatchPicker() ? 'Done' : 'Assign' }}
+            </button>
+          </div>
+
+          @if (assignedBatches().length === 0) {
+            <p class="side-empty">No batch assigned yet.</p>
+          } @else {
+            <div class="chip-row">
+              @for (batch of assignedBatches(); track batch.id) {
+                <span class="batch-chip">
+                  {{ batch.name }}
+                  <button type="button" class="chip-remove" (click)="removeBatch(batch.id)" aria-label="Remove">×</button>
+                </span>
+              }
+            </div>
+          }
+
+          @if (showBatchPicker()) {
+            <div class="batch-picker">
+              @for (batch of batches(); track batch.id) {
+                <label class="batch-option">
+                  <input type="checkbox" [checked]="isBatchSelected(batch.id)" (change)="toggleBatch(batch.id)" />
+                  <span>
+                    <strong>{{ batch.name }}</strong>
+                    <small>{{ batch.courseTitle }}</small>
+                  </span>
+                </label>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="card side-card">
+          <h2 class="card-heading">Instructor</h2>
+          <div class="form-field">
+            <select class="form-input" [ngModel]="formHostUserId()" (ngModelChange)="formHostUserId.set($event)">
+              <option value="">Select instructor…</option>
+              @for (host of hosts(); track host.id) {
+                <option [value]="host.id">{{ host.name }}</option>
+              }
+            </select>
+          </div>
+        </section>
+
+        <div class="side-actions">
+          <button type="button" class="btn-primary" [disabled]="isSaving()" (click)="save()">
+            {{ isSaving() ? 'Scheduling…' : 'Schedule and continue' }}
+          </button>
+          <a routerLink="/admin/sessions" class="btn-ghost">Cancel</a>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

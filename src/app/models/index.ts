@@ -348,6 +348,14 @@ export interface StudentBatchSummary {
 export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
 export type SessionRole = 'instructor' | 'moderator' | 'student';
 export type SessionStudentPermission = 'audio' | 'audio_video' | 'writing';
+export type SessionType = 'one_time' | 'permanent';
+export type SessionPlace = 'virtual' | 'external' | 'in_person';
+
+export interface SessionRecurrenceConfig {
+  enabled: boolean;
+  repeatDays: boolean[];
+  endDate: string;
+}
 
 export interface LiveSession {
   id: string;
@@ -370,6 +378,10 @@ export interface LiveSession {
   allowStudentMic: boolean;
   allowStudentCamera: boolean;
   allowStudentUnmute: boolean;
+  sessionType: SessionType;
+  sessionPlace: SessionPlace;
+  timezone: string;
+  recurrenceConfig: SessionRecurrenceConfig | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -379,6 +391,22 @@ export interface SessionRoomSettings {
   allowStudentCamera: boolean;
   allowStudentUnmute: boolean;
   isolateStudents: boolean;
+}
+
+export interface ExcalidrawPersistedScene {
+  elements: unknown[];
+  appState: Record<string, unknown>;
+  files?: Record<string, unknown>;
+}
+
+export interface SessionBoardRow {
+  id: string;
+  sessionId: string;
+  boardKey: string;
+  scene: ExcalidrawPersistedScene;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SessionInvite {

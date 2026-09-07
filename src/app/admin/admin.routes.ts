@@ -86,6 +86,11 @@ export const adminRoutes: Routes = [
           import('./sessions-management/sessions-management').then(m => m.SessionsManagement)
       },
       {
+        path: 'sessions/schedule',
+        loadComponent: () =>
+          import('./schedule-session/schedule-session').then(m => m.ScheduleSession)
+      },
+      {
         path: 'sessions/:sessionId',
         loadComponent: () =>
           import('./session-detail/session-detail').then(m => m.SessionDetail)

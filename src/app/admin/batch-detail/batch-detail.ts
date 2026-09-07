@@ -260,7 +260,7 @@ export class BatchDetail implements OnInit {
   openScheduleSession(): void {
     const batch = this.batch();
     if (!batch) return;
-    void this.router.navigate(['/admin/sessions'], {
+    void this.router.navigate(['/admin/sessions/schedule'], {
       queryParams: { batchId: batch.id }
     });
   }

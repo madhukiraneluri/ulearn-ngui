@@ -1,0 +1,8 @@
+<div class="whiteboard-shell">
+  @if (enabled()) {
+    @if (loading()) {
+      <div class="wb-loading">Loading whiteboard…</div>
+    }
+    <div #host class="excalidraw-host" [class.ready]="!loading()"></div>
+  }
+</div>

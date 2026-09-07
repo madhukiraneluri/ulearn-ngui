@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { supabase } from '../../core/supabase.client';
+import { invokeAuthedFunction } from '../../core/supabase.client';
 import type { SessionRoomSettings } from '../../models';
 
 export type SessionRoomControlAction =
@@ -46,9 +46,9 @@ export class SessionRoomControlService {
   }
 
   private async invoke(body: Record<string, unknown>): Promise<SessionRoomControlResult> {
-    const { data, error } = await supabase.functions.invoke<SessionRoomControlResult>(
+    const { data, error } = await invokeAuthedFunction<SessionRoomControlResult>(
       'session-room-control',
-      { body }
+      body
     );
 
     if (error) {

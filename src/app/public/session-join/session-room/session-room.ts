@@ -4,7 +4,7 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
-  afterNextRender,
+  effect,
   inject,
   input,
   output,
@@ -16,17 +16,21 @@ import {
   Room,
   RoomEvent,
   Track,
+  VideoPresets,
   type LocalParticipant,
+  type LocalTrackPublication,
   type Participant,
   type RemoteParticipant,
   type RemoteTrack,
   type RemoteTrackPublication
 } from 'livekit-client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { supabase } from '../../../core/supabase.client';
+import { supabase, invokeAuthedFunction } from '../../../core/supabase.client';
 import { ToastService } from '../../../core/services/toast';
 import { SessionRoomControlService } from '../../../shared/services/session-room-control.service';
 import type { LiveSessionStatus, SessionRole, SessionRoomSettings } from '../../../models';
+import { SessionWhiteboard } from '../session-whiteboard/session-whiteboard';
+import { isWhiteboardSyncMessage, type WhiteboardSyncMessage } from '../session-whiteboard/whiteboard-sync.types';
 
 interface LiveKitTokenResponse {
   token: string;
@@ -70,13 +74,25 @@ interface ChatMessage {
   text: string;
 }
 
+interface BoardTab {
+  id: string;
+  label: string;
+}
+
+interface SessionApplication {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
 type SessionPhase = 'connecting' | 'waiting' | 'prelive' | 'live' | 'error';
 
 @Component({
   selector: 'app-session-room',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, SessionWhiteboard],
   templateUrl: './session-room.html',
   styleUrl: './session-room.scss'
 })
@@ -94,6 +110,18 @@ export class SessionRoom implements OnInit, OnDestroy {
   readonly screenShareStage = viewChild<ElementRef<HTMLDivElement>>('screenShareStage');
   readonly remoteVideos = viewChild<ElementRef<HTMLDivElement>>('remoteVideos');
   readonly localVideo = viewChild<ElementRef<HTMLDivElement>>('localVideo');
+
+  readonly applications: SessionApplication[] = [
+    { id: 'board', icon: 'B', title: 'Board', description: 'Open a new board' },
+    { id: 'drive', icon: 'D', title: 'Drive', description: 'Share ppt, pdf, doc, audio or video files' },
+    { id: 'screen', icon: 'S', title: 'Screen', description: 'Share your screen' },
+    { id: 'camera', icon: 'C', title: 'Second camera', description: 'Share a second camera as content' },
+    { id: 'youtube', icon: 'Y', title: 'YouTube', description: 'Play a YouTube video synchronously' },
+    { id: 'docs', icon: 'G', title: 'Google Docs', description: 'Collaborate with Google Docs' },
+    { id: 'quiz', icon: 'Q', title: 'Quiz', description: 'Share polls, questions, and quizzes' },
+    { id: 'images', icon: 'I', title: 'Image library', description: 'Share images from the library' },
+    { id: 'courses', icon: 'E', title: 'Courses', description: 'Bring course content to the board' }
+  ];
 
   readonly sessionPhase = signal<SessionPhase>('connecting');
   readonly isConnecting = signal(true);
@@ -117,14 +145,23 @@ export class SessionRoom implements OnInit, OnDestroy {
   readonly controlBusy = signal(false);
   readonly chatMessages = signal<ChatMessage[]>([]);
   readonly chatDraft = signal('');
+  readonly showAppsPanel = signal(false);
+  readonly showSettingsPanel = signal(false);
+  readonly activeRailPanel = signal<'chat' | 'participants' | 'apps' | 'settings' | 'none'>('none');
+  readonly boardTabs = signal<BoardTab[]>([{ id: 'board-1', label: 'Board-1' }]);
+  readonly activeBoardId = signal('board-1');
+  readonly participantId = signal('');
+  readonly lastWhiteboardSync = signal<WhiteboardSyncMessage | null>(null);
 
   private room: Room | null = null;
   private screenShareIdentity: string | null = null;
   private statusPollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    afterNextRender(() => {
-      this.attachLocalVideo(this.room?.localParticipant);
+    effect(() => {
+      if (this.sessionLive() && this.camEnabled()) {
+        this.scheduleAttachLocalVideo();
+      }
     });
   }
 
@@ -144,6 +181,94 @@ export class SessionRoom implements OnInit, OnDestroy {
 
   dismissGoLiveModal(): void {
     this.showGoLiveModal.set(false);
+  }
+
+  toggleAppsPanel(): void {
+    this.toggleRailPanel('apps');
+  }
+
+  toggleSettingsPanel(): void {
+    if (!this.isInstructorOrModerator()) return;
+    this.toggleRailPanel('settings');
+  }
+
+  toggleRailPanel(panel: 'chat' | 'participants' | 'apps' | 'settings'): void {
+    this.activeRailPanel.update((current) => (current === panel ? 'none' : panel));
+    this.showAppsPanel.set(panel === 'apps' && this.activeRailPanel() === 'apps');
+    this.showSettingsPanel.set(panel === 'settings' && this.activeRailPanel() === 'settings');
+  }
+
+  closeRailPanels(): void {
+    this.activeRailPanel.set('none');
+    this.showAppsPanel.set(false);
+    this.showSettingsPanel.set(false);
+  }
+
+  toggleFullscreen(): void {
+    this.enterFullscreen();
+  }
+
+  isRailPanelOpen(panel: 'chat' | 'participants' | 'apps' | 'settings'): boolean {
+    return this.activeRailPanel() === panel;
+  }
+
+  showChatDock(): boolean {
+    return !this.sessionLive() || this.activeRailPanel() === 'chat';
+  }
+
+  closePanels(): void {
+    this.closeRailPanels();
+  }
+
+  selectBoard(boardId: string): void {
+    this.activeBoardId.set(boardId);
+    this.lastWhiteboardSync.set(null);
+  }
+
+  canDrawOnBoard(): boolean {
+    return this.sessionLive();
+  }
+
+  onWhiteboardSync(message: WhiteboardSyncMessage): void {
+    const room = this.room;
+    if (!room || !this.sessionLive()) return;
+
+    const destinationIdentities = Array.from(room.remoteParticipants.values()).map(
+      (participant) => participant.identity
+    );
+
+    if (destinationIdentities.length === 0) {
+      return;
+    }
+
+    void room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(message)), {
+      reliable: message.type !== 'EX_SCENE',
+      destinationIdentities
+    });
+  }
+
+  runApplication(appId: string): void {
+    switch (appId) {
+      case 'board':
+        this.addBoard();
+        break;
+      case 'screen':
+        void this.toggleScreenShare();
+        this.closePanels();
+        break;
+      default:
+        this.toast.info('This application will be available soon');
+        this.closePanels();
+        break;
+    }
+  }
+
+  addBoard(): void {
+    const nextIndex = this.boardTabs().length + 1;
+    const id = `board-${nextIndex}`;
+    this.boardTabs.update((tabs) => [...tabs, { id, label: `Board-${nextIndex}` }]);
+    this.activeBoardId.set(id);
+    this.closePanels();
   }
 
   async startWithAudio(): Promise<void> {
@@ -172,6 +297,7 @@ export class SessionRoom implements OnInit, OnDestroy {
 
       await this.publishLocalTracks(enableMic, enableCam);
       await this.broadcastSessionLive();
+      this.enterFullscreen();
       this.toast.success('Session is now live');
     } finally {
       this.controlBusy.set(false);
@@ -204,7 +330,19 @@ export class SessionRoom implements OnInit, OnDestroy {
       return;
     }
 
-    await room.localParticipant.setCameraEnabled(next);
+    try {
+      if (next) {
+        await room.localParticipant.setCameraEnabled(true, {
+          facingMode: 'user',
+          resolution: VideoPresets.h720.resolution
+        });
+      } else {
+        await room.localParticipant.setCameraEnabled(false);
+      }
+    } catch {
+      this.toast.error('Could not access camera');
+      return;
+    }
     this.camEnabled.set(next);
     this.scheduleAttachLocalVideo();
     this.refreshParticipants();
@@ -252,6 +390,26 @@ export class SessionRoom implements OnInit, OnDestroy {
     await this.runControl(() =>
       this.roomControl.updateSettings(this.sessionId(), {
         allowStudentCamera: !current.allowStudentCamera
+      })
+    );
+  }
+
+  async toggleAllowUnmute(): Promise<void> {
+    if (!this.isInstructorOrModerator()) return;
+    const current = this.roomSettings();
+    if (current.allowStudentUnmute) {
+      await this.runControl(() => this.roomControl.disallowUnmute(this.sessionId()));
+    } else {
+      await this.runControl(() => this.roomControl.allowUnmute(this.sessionId()));
+    }
+  }
+
+  async toggleIsolateStudents(): Promise<void> {
+    if (!this.isInstructorOrModerator()) return;
+    const current = this.roomSettings();
+    await this.runControl(() =>
+      this.roomControl.updateSettings(this.sessionId(), {
+        isolateStudents: !current.isolateStudents
       })
     );
   }
@@ -376,8 +534,8 @@ export class SessionRoom implements OnInit, OnDestroy {
     this.sessionPhase.set('connecting');
 
     try {
-      const { data, error } = await supabase.functions.invoke<LiveKitTokenResponse>('livekit-token', {
-        body: { inviteToken: this.inviteToken() }
+      const { data, error } = await invokeAuthedFunction<LiveKitTokenResponse>('livekit-token', {
+        inviteToken: this.inviteToken()
       });
 
       if (error) {
@@ -403,17 +561,30 @@ export class SessionRoom implements OnInit, OnDestroy {
       const isLive = data.sessionStatus === 'live';
       this.sessionLive.set(isLive);
 
-      const room = new Room({ adaptiveStream: true, dynacast: true });
+      const room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: {
+          facingMode: 'user',
+          resolution: VideoPresets.h720.resolution
+        },
+        audioCaptureDefaults: {
+          echoCancellation: true,
+          noiseSuppression: true
+        }
+      });
       this.room = room;
       this.wireRoomEvents(room);
 
       await room.connect(data.wsUrl, data.token);
+      this.participantId.set(room.localParticipant.identity);
 
       if (this.isInstructorOrModerator() && !isLive) {
         this.sessionPhase.set('prelive');
         this.showGoLiveModal.set(true);
       } else if (isLive) {
         this.sessionPhase.set('live');
+        this.enterFullscreen();
         const mic = this.initialMic() && this.canPublishMic(data.role, data.roomSettings);
         const cam = this.initialCam() && this.canPublishCam(data.role, data.roomSettings);
         await this.publishLocalTracks(mic, cam);
@@ -448,9 +619,12 @@ export class SessionRoom implements OnInit, OnDestroy {
         this.scheduleAttachLocalVideo();
         this.refreshParticipants();
       })
-      .on(RoomEvent.LocalTrackUnpublished, (pub) => {
+      .on(RoomEvent.LocalTrackUnpublished, (pub: LocalTrackPublication) => {
         if (pub.source === Track.Source.ScreenShare) {
           this.clearScreenShare(room.localParticipant.identity);
+        }
+        if (pub.source === Track.Source.Camera) {
+          this.scheduleAttachLocalVideo();
         }
         this.refreshParticipants();
       })
@@ -468,17 +642,43 @@ export class SessionRoom implements OnInit, OnDestroy {
     const room = this.room;
     if (!room) return;
 
-    await room.localParticipant.setMicrophoneEnabled(mic);
-    await room.localParticipant.setCameraEnabled(cam);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(mic);
+    } catch {
+      this.toast.error('Could not access microphone');
+      mic = false;
+    }
+
+    try {
+      if (cam) {
+        await room.localParticipant.setCameraEnabled(true, {
+          facingMode: 'user',
+          resolution: VideoPresets.h720.resolution
+        });
+      } else {
+        await room.localParticipant.setCameraEnabled(false);
+      }
+    } catch {
+      this.toast.error('Could not access camera. Check browser permissions and close other apps using it.');
+      cam = false;
+      await room.localParticipant.setCameraEnabled(false).catch(() => undefined);
+    }
+
     this.micEnabled.set(mic);
     this.camEnabled.set(cam);
     this.scheduleAttachLocalVideo();
   }
 
   private scheduleAttachLocalVideo(): void {
-    queueMicrotask(() => {
-      this.attachLocalVideo(this.room?.localParticipant);
-    });
+    const attempt = (retries = 0): void => {
+      const host = this.localVideo()?.nativeElement;
+      if (host || retries >= 30) {
+        this.attachLocalVideo(this.room?.localParticipant);
+        return;
+      }
+      requestAnimationFrame(() => attempt(retries + 1));
+    };
+    queueMicrotask(() => attempt());
   }
 
   private canPublishMic(role: SessionRole, settings: SessionRoomSettings): boolean {
@@ -552,21 +752,30 @@ export class SessionRoom implements OnInit, OnDestroy {
 
   private handleDataMessage(payload: Uint8Array): void {
     try {
-      const message = JSON.parse(new TextDecoder().decode(payload)) as
-        | RoomStateMessage
-        | ChatMessagePayload
-        | SessionLiveMessage;
+      const message = JSON.parse(new TextDecoder().decode(payload)) as unknown;
 
-      if (message.type === 'ROOM_STATE' && 'settings' in message && message.settings) {
-        this.applyRoomSettings(message.settings);
-      } else if (message.type === 'CHAT' && 'text' in message) {
+      if (isWhiteboardSyncMessage(message)) {
+        const localIdentity = this.room?.localParticipant.identity.trim();
+        const senderId = message.senderId.trim();
+        if (localIdentity && senderId === localIdentity) return;
+        if (!message.syncId) return;
+        this.lastWhiteboardSync.set(message);
+        return;
+      }
+
+      const typed = message as RoomStateMessage | ChatMessagePayload | SessionLiveMessage;
+
+      if (typed.type === 'ROOM_STATE' && 'settings' in typed && typed.settings) {
+        this.applyRoomSettings(typed.settings);
+      } else if (typed.type === 'CHAT' && 'text' in typed) {
         this.chatMessages.update((list) => [
           ...list,
-          { id: crypto.randomUUID(), from: message.from, text: message.text }
+          { id: crypto.randomUUID(), from: typed.from, text: typed.text }
         ]);
-      } else if (message.type === 'SESSION_LIVE') {
+      } else if (typed.type === 'SESSION_LIVE') {
         this.sessionLive.set(true);
         this.sessionPhase.set('live');
+        this.enterFullscreen();
         if (!this.isInstructorOrModerator() && this.room) {
           void this.publishLocalTracks(this.initialMic(), this.initialCam());
         }
@@ -633,15 +842,26 @@ export class SessionRoom implements OnInit, OnDestroy {
   private attachLocalVideo(participant: LocalParticipant | undefined): void {
     if (!participant) return;
 
-    const el = this.localVideo()?.nativeElement;
-    if (!el) return;
+    const host = this.localVideo()?.nativeElement;
+    if (!host) return;
 
-    el.innerHTML = '';
-    for (const pub of participant.videoTrackPublications.values()) {
-      if (pub.track && pub.source === Track.Source.Camera) {
-        el.appendChild(pub.track.attach());
-      }
+    host.innerHTML = '';
+
+    const camPub = participant.getTrackPublication(Track.Source.Camera);
+    if (!camPub?.track || camPub.isMuted || !this.camEnabled()) {
+      return;
     }
+
+    const videoEl = camPub.track.attach() as HTMLVideoElement;
+    videoEl.playsInline = true;
+    videoEl.autoplay = true;
+    videoEl.muted = true;
+    videoEl.style.width = '100%';
+    videoEl.style.height = '100%';
+    videoEl.style.objectFit = 'cover';
+    videoEl.style.transform = 'scaleX(-1)';
+    void videoEl.play().catch(() => undefined);
+    host.appendChild(videoEl);
   }
 
   private attachRemoteTrack(pub: RemoteTrackPublication, participant: RemoteParticipant): void {
@@ -716,6 +936,13 @@ export class SessionRoom implements OnInit, OnDestroy {
       }
     }
     return error instanceof Error ? error.message : 'Could not join session';
+  }
+
+  private enterFullscreen(): void {
+    const root = document.documentElement;
+    if (typeof root.requestFullscreen === 'function') {
+      void root.requestFullscreen().catch(() => undefined);
+    }
   }
 
   private async disconnect(): Promise<void> {

@@ -21,7 +21,7 @@ interface InviteRow {
   id: string;
   role: SessionRole;
   revoked: boolean;
-  live_sessions: SessionRow;
+  live_sessions: SessionRow | SessionRow[];
 }
 
 function livekitHttpUrl(wsUrl: string): string {
@@ -67,24 +67,20 @@ function roleGrants(
 
 async function requireUser(req: Request) {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return { ok: false as const, response: json({ error: 'Unauthorized' }, 401) };
   }
 
+  const token = authHeader.replace(/^Bearer\s+/i, '');
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } }
-  });
-
-  const { data: authData, error: authErr } = await userClient.auth.getUser();
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data: authData, error: authErr } = await adminClient.auth.getUser(token);
   if (authErr || !authData.user) {
     return { ok: false as const, response: json({ error: 'Unauthorized' }, 401) };
   }
 
-  const adminClient = createClient(supabaseUrl, serviceKey);
   const { data: profile } = await adminClient
     .from('profiles')
     .select('role, full_name')
@@ -103,6 +99,27 @@ async function requireUser(req: Request) {
   };
 }
 
+async function listRoomParticipants(
+  roomService: RoomServiceClient,
+  roomName: string
+): Promise<number> {
+  try {
+    const participants = await roomService.listParticipants(roomName);
+    return participants.length;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+    if (
+      msg.includes('not found') ||
+      msg.includes('does not exist') ||
+      msg.includes('not_exist') ||
+      msg.includes('404')
+    ) {
+      return 0;
+    }
+    throw err;
+  }
+}
+
 async function checkCapacity(
   roomService: RoomServiceClient,
   roomName: string,
@@ -110,11 +127,17 @@ async function checkCapacity(
 ): Promise<string | null> {
   if (!maxParticipants || maxParticipants <= 0) return null;
 
-  const participants = await roomService.listParticipants(roomName);
-  if (participants.length >= maxParticipants) {
+  const count = await listRoomParticipants(roomService, roomName);
+  if (count >= maxParticipants) {
     return 'This session has reached the maximum number of participants';
   }
   return null;
+}
+
+function resolveSession(sessionRaw: SessionRow | SessionRow[] | null | undefined): SessionRow | null {
+  if (!sessionRaw) return null;
+  if (Array.isArray(sessionRaw)) return sessionRaw[0] ?? null;
+  return sessionRaw;
 }
 
 Deno.serve(async (req) => {
@@ -161,9 +184,13 @@ Deno.serve(async (req) => {
       return json({ error: 'This invite link has been revoked' }, 403);
     }
 
-    const session = row.live_sessions;
+    const session = resolveSession(row.live_sessions);
     if (!session) {
       return json({ error: 'Session not found' }, 404);
+    }
+
+    if (!session.livekit_room_name?.trim()) {
+      return json({ error: 'Session room is not configured' }, 500);
     }
 
     if (session.status === 'cancelled') {
@@ -202,7 +229,11 @@ Deno.serve(async (req) => {
       }
     } else if (role === 'instructor') {
       const isHost = session.host_user_id === auth.userId;
-      if (!auth.isAdmin && !isHost) {
+      if (auth.isAdmin) {
+        // Admins may always use the instructor link.
+      } else if (!session.host_user_id) {
+        return json({ error: 'No instructor is assigned to this session yet' }, 403);
+      } else if (!isHost) {
         return json({ error: 'Only the assigned instructor or admin can use this link' }, 403);
       }
     } else if (role === 'moderator') {
@@ -247,7 +278,7 @@ Deno.serve(async (req) => {
     const token = await at.toJwt();
 
     if (session.status === 'live') {
-      await auth.adminClient.from('session_attendance').upsert(
+      const { error: attendanceErr } = await auth.adminClient.from('session_attendance').upsert(
         {
           session_id: session.id,
           user_id: auth.userId,
@@ -257,6 +288,9 @@ Deno.serve(async (req) => {
         },
         { onConflict: 'session_id,user_id' }
       );
+      if (attendanceErr) {
+        console.error('session_attendance upsert failed:', attendanceErr);
+      }
     }
 
     return json({

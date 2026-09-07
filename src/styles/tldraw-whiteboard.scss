@@ -1,0 +1,239 @@
+/* Global tldraw whiteboard overrides (React-rendered DOM lives outside Angular encapsulation). */
+
+.merithub-tldraw {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  .tldraw-board-root,
+  .tl-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .tl-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .merithub-toolbar,
+  .merithub-style-panel,
+  .merithub-nav-panel {
+    color: #1e293b;
+    pointer-events: all;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  .merithub-toolbar {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.14);
+    padding: 8px 6px;
+  }
+
+  .mh-toolbar-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mh-tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(15, 23, 42, 0.06);
+    }
+
+    &.is-active {
+      background: rgba(37, 99, 235, 0.12);
+      color: #2563eb;
+    }
+
+    &.is-disabled,
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  .mh-icon {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .mh-insert-wrap {
+    position: relative;
+  }
+
+  .mh-insert-menu {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 0;
+    z-index: 1001;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    min-width: 200px;
+    padding: 8px;
+    border-radius: 14px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: #fff;
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.14);
+  }
+
+  .mh-insert-item {
+    padding: 8px 10px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(37, 99, 235, 0.08);
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+  }
+
+  .merithub-style-panel {
+    position: absolute;
+    top: 108px;
+    left: 76px;
+    z-index: 1000;
+    max-width: min(300px, calc(100% - 96px));
+  }
+
+  .mh-style-panel-inner {
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+    background: #fff;
+  }
+
+  .mh-style-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .mh-size-row {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .mh-color-swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+
+    &.is-active {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+    }
+  }
+
+  .mh-size-btn {
+    min-width: 32px;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.is-active {
+      background: rgba(37, 99, 235, 0.12);
+      border-color: #2563eb;
+      color: #2563eb;
+    }
+  }
+
+  .merithub-nav-panel {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 1000;
+  }
+
+  .mh-nav-panel-inner {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  }
+
+  .mh-nav-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #334155;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+  }
+
+  .mh-nav-fit {
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 4px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .mh-zoom-label {
+    min-width: 44px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+  }
+}

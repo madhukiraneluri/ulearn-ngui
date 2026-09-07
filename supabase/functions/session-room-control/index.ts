@@ -29,24 +29,20 @@ function mapSettings(session: SessionRow) {
 
 async function requireUser(req: Request) {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return { ok: false as const, response: json({ error: 'Unauthorized' }, 401) };
   }
 
+  const token = authHeader.replace(/^Bearer\s+/i, '');
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } }
-  });
-
-  const { data: authData, error: authErr } = await userClient.auth.getUser();
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data: authData, error: authErr } = await adminClient.auth.getUser(token);
   if (authErr || !authData.user) {
     return { ok: false as const, response: json({ error: 'Unauthorized' }, 401) };
   }
 
-  const adminClient = createClient(supabaseUrl, serviceKey);
   const { data: profile } = await adminClient
     .from('profiles')
     .select('role')

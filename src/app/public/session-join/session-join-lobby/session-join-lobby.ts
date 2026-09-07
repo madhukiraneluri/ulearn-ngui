@@ -105,13 +105,16 @@ export class SessionJoinLobby implements OnDestroy {
   }
 
   onJoinSession(): void {
-    this.joinSession.emit({
+    const choice = {
       enableMic: this.micEnabled(),
       enableCam: this.camEnabled()
-    });
+    };
+    this.stopPreview();
+    this.joinSession.emit(choice);
   }
 
   onJoinWithoutDevices(): void {
+    this.stopPreview();
     this.joinWithoutDevices.emit();
   }
 

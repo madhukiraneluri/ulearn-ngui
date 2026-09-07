@@ -16,13 +16,13 @@ import { SessionTimeoutService } from './core/services/session-timeout.service';
   standalone: true,
   imports: [RouterOutlet, Navbar, Footer, ContactFab, LegalModal, ToastComponent, ConfirmDialog],
   template: `
-    @if (!isAdminShell()) {
+    @if (!isAdminShell() && !isSessionJoinShell()) {
       <app-navbar />
     }
-    <main [class.admin-main-shell]="isAdminShell()">
+    <main [class.admin-main-shell]="isAdminShell()" [class.session-join-shell]="isSessionJoinShell()">
       <router-outlet />
     </main>
-    @if (!isAdminShell()) {
+    @if (!isAdminShell() && !isSessionJoinShell()) {
       <app-footer />
       <app-contact-fab />
     }
@@ -34,7 +34,8 @@ import { SessionTimeoutService } from './core/services/session-timeout.service';
     main {
       min-height: calc(100vh - 68px - 280px);
     }
-    main.admin-main-shell {
+    main.admin-main-shell,
+    main.session-join-shell {
       min-height: 100vh;
     }
     @media (max-width: 480px) {
@@ -62,6 +63,8 @@ export class App implements OnInit {
     const url = this.currentUrl();
     return url.startsWith('/admin') || url.startsWith('/auth/admin');
   });
+
+  readonly isSessionJoinShell = computed(() => this.currentUrl().startsWith('/s/join'));
 
   ngOnInit(): void {
     this.paymentService.unlockPageScroll();
