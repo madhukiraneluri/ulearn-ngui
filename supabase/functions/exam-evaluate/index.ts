@@ -8,16 +8,14 @@ const corsHeaders = {
 const JUDGE0_URL = Deno.env.get('JUDGE0_CE_URL')?.trim() ?? 'https://ce.judge0.com';
 
 const LANGUAGE_IDS: Record<string, number> = {
+  c: 50,
+  cpp: 54,
+  'c++': 54,
+  java: 62,
   javascript: 63,
   js: 63,
   python: 71,
-  py: 71,
-  java: 62,
-  cpp: 54,
-  'c++': 54,
-  c: 50,
-  typescript: 74,
-  ts: 74
+  py: 71
 };
 
 Deno.serve(async (req) => {
@@ -111,8 +109,10 @@ export async function evaluateAttempt(
       const payload = q.payload as CodingPayload;
       const marks = Number(payload.marks ?? 0);
       codingMax += marks;
-      const code = String(answerByQ.get(String(q.id))?.code ?? '');
-      const languageId = LANGUAGE_IDS[String(payload.language ?? 'javascript').toLowerCase()] ?? 63;
+      const answer = answerByQ.get(String(q.id));
+      const code = String(answer?.code ?? '');
+      const langKey = String(answer?.language ?? payload.language ?? 'javascript').toLowerCase();
+      const languageId = LANGUAGE_IDS[langKey] ?? LANGUAGE_IDS.javascript;
       const allTests = [
         ...(payload.publicTestCases ?? []),
         ...(payload.hiddenTestCases ?? [])

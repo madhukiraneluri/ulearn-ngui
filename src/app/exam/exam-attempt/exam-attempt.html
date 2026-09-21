@@ -1,5 +1,16 @@
 @if (!loading()) {
-  <div #attemptShell class="exam-attempt-shell">
+  <div
+    #attemptShell
+    class="exam-attempt-shell"
+    [class.coding-mode]="isCodingQuestion()"
+    [class.fullscreen-exited]="fullscreenExited()"
+  >
+    @if (fullscreenExited()) {
+      <div class="fullscreen-banner">
+        Fullscreen is required. Return to fullscreen — warnings are recorded every few seconds until you do.
+      </div>
+    }
+
     <header class="attempt-header">
       <div class="timer" [class.urgent]="remainingSeconds() <= 300">
         Time left: {{ formatTime(remainingSeconds()) }}
@@ -10,15 +21,20 @@
       </div>
     </header>
 
+    <section class="summary-bar">
+      <span class="summary-chip answered">Answered: {{ questionSummary().answered }}</span>
+      <span class="summary-chip visited">Visited, not answered: {{ questionSummary().visitedNotAnswered }}</span>
+      <span class="summary-chip unanswered">Unanswered: {{ questionSummary().unanswered }}</span>
+    </section>
+
     @if (currentQuestion(); as question) {
-      <section class="question-panel">
+      <section class="question-panel" [class.coding-panel]="question.type === 'coding'">
         <div class="q-nav">
           @for (q of questions(); track q.id; let i = $index) {
             <button
               type="button"
               class="q-dot"
-              [class.active]="currentIndex() === i"
-              [class.answered]="q.type === 'mcq' ? mcqSelections[q.id] !== undefined : !!codingAnswers[q.id]?.trim()"
+              [ngClass]="questionDotClass(q, i)"
               (click)="goTo(i)"
             >
               {{ i + 1 }}
@@ -51,7 +67,23 @@
           @let coding = asCoding(question.payload);
           <h2>{{ coding.title }}</h2>
           <p class="desc">{{ coding.description }}</p>
-          <p class="lang">Language: {{ coding.language }}</p>
+
+          <label class="lang-picker">
+            <span>Language</span>
+            <select
+              [ngModel]="codingLanguagesByQuestion[question.id]"
+              (ngModelChange)="onLanguageChange(question.id, $event)"
+            >
+              @for (lang of codingLanguages; track lang.id) {
+                <option [value]="lang.id">{{ lang.label }}</option>
+              }
+            </select>
+          </label>
+
+          @if (isCodeSubmitted(question.id)) {
+            <p class="submitted-badge">Code submitted for grading</p>
+          }
+
           <textarea
             class="code-input"
             [ngModel]="codingAnswers[question.id]"
@@ -59,19 +91,45 @@
             rows="16"
             spellcheck="false"
           ></textarea>
-          <button
-            type="button"
-            class="run-tests"
-            [disabled]="runningTests()"
-            (click)="runPublicTests(question.id)"
-          >
-            {{ runningTests() ? 'Running...' : 'Run public test cases' }}
-          </button>
+
+          <div class="coding-actions">
+            <button
+              type="button"
+              class="run-tests"
+              [disabled]="runningTests()"
+              (click)="runPublicTests(question.id)"
+            >
+              {{ runningTests() ? 'Running...' : 'Run public test cases' }}
+            </button>
+            <button
+              type="button"
+              class="submit-code"
+              [disabled]="submittingCode()"
+              (click)="submitCode(question.id)"
+            >
+              {{ submittingCode() ? 'Submitting...' : 'Submit code' }}
+            </button>
+          </div>
+
           @if (testResults().length > 0) {
             <ul class="test-results">
               @for (tr of testResults(); track $index) {
                 <li [class.pass]="tr.passed" [class.fail]="!tr.passed">
-                  {{ tr.passed ? 'PASS' : 'FAIL' }} — input: {{ tr.input || '(empty)' }}
+                  <div class="test-head">
+                    {{ tr.passed ? 'PASS' : 'FAIL' }} — input: {{ formatTestInput(tr.input) }}
+                  </div>
+                  @if (!tr.passed) {
+                    <div class="test-detail">
+                      <span><strong>Expected:</strong> {{ tr.expectedOutput || '(empty)' }}</span>
+                      <span><strong>Actual:</strong> {{ tr.actualOutput || '(empty)' }}</span>
+                    </div>
+                    @if (tr.compileOutput) {
+                      <pre class="test-error">{{ tr.compileOutput }}</pre>
+                    }
+                    @if (tr.stderr) {
+                      <pre class="test-error">{{ tr.stderr }}</pre>
+                    }
+                  }
                 </li>
               }
             </ul>

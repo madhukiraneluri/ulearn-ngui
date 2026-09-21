@@ -2,6 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { ExamService } from './exam.service';
 import { ToastService } from '../../core/services/toast';
 
+const FULLSCREEN_WARNING_DEBOUNCE_MS = 5000;
+
 @Injectable({ providedIn: 'root' })
 export class ExamProctoringService {
   private readonly examService = inject(ExamService);
@@ -9,10 +11,15 @@ export class ExamProctoringService {
 
   private mediaStream: MediaStream | null = null;
   private snapshotTimer: ReturnType<typeof setInterval> | null = null;
+  private fullscreenPollTimer: ReturnType<typeof setInterval> | null = null;
   private videoEl: HTMLVideoElement | null = null;
+  private warningInFlight = false;
+  private hasEnteredFullscreenOnce = false;
+  private lastWarningAt = 0;
 
   readonly warningCount = signal(0);
   readonly mediaReady = signal(false);
+  readonly fullscreenExited = signal(false);
 
   async requestMedia(): Promise<boolean> {
     try {
@@ -44,18 +51,32 @@ export class ExamProctoringService {
 
   async enterFullscreen(element: HTMLElement): Promise<void> {
     if (document.fullscreenElement) return;
-    await element.requestFullscreen();
+    try {
+      await element.requestFullscreen();
+      this.hasEnteredFullscreenOnce = true;
+      this.fullscreenExited.set(false);
+    } catch {
+      // Browser may block until user gesture; polling will retry.
+    }
   }
 
   bindFullscreenWarnings(attemptId: string, onWarning?: (count: number) => void): () => void {
-    const handler = async (): Promise<void> => {
-      if (document.fullscreenElement) return;
+    const recordExitWarning = async (): Promise<void> => {
+      if (document.fullscreenElement || this.warningInFlight) return;
+      if (!this.hasEnteredFullscreenOnce) return;
+
+      const now = Date.now();
+      if (now - this.lastWarningAt < FULLSCREEN_WARNING_DEBOUNCE_MS) return;
+
+      this.warningInFlight = true;
+      this.lastWarningAt = now;
+      this.fullscreenExited.set(true);
 
       try {
         const count = await this.examService.incrementFullscreenExit(attemptId);
         this.warningCount.set(count);
         onWarning?.(count);
-        this.toast.warning(`Fullscreen exited. Warning ${count} recorded.`);
+        this.toast.warning(`Fullscreen exited. Warning ${count} recorded. Return to fullscreen now.`);
 
         const shell = document.querySelector('.exam-attempt-shell') as HTMLElement | null;
         if (shell) {
@@ -63,11 +84,38 @@ export class ExamProctoringService {
         }
       } catch {
         this.toast.error('Could not record fullscreen warning.');
+      } finally {
+        this.warningInFlight = false;
       }
     };
 
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+    const onFullscreenChange = (): void => {
+      if (document.fullscreenElement) {
+        this.hasEnteredFullscreenOnce = true;
+        this.fullscreenExited.set(false);
+        return;
+      }
+      void recordExitWarning();
+    };
+
+    this.fullscreenPollTimer = setInterval(() => {
+      if (document.fullscreenElement) {
+        this.hasEnteredFullscreenOnce = true;
+        this.fullscreenExited.set(false);
+        return;
+      }
+      void recordExitWarning();
+    }, FULLSCREEN_WARNING_DEBOUNCE_MS);
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      if (this.fullscreenPollTimer) {
+        clearInterval(this.fullscreenPollTimer);
+        this.fullscreenPollTimer = null;
+      }
+    };
   }
 
   startSnapshotLoop(userId: string, attemptId: string, intervalMs = 60000): void {
@@ -110,9 +158,15 @@ export class ExamProctoringService {
 
   stopMedia(): void {
     this.stopSnapshotLoop();
+    if (this.fullscreenPollTimer) {
+      clearInterval(this.fullscreenPollTimer);
+      this.fullscreenPollTimer = null;
+    }
     this.mediaStream?.getTracks().forEach((track) => track.stop());
     this.mediaStream = null;
     this.videoEl = null;
     this.mediaReady.set(false);
+    this.fullscreenExited.set(false);
+    this.hasEnteredFullscreenOnce = false;
   }
 }

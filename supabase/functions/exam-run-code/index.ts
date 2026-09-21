@@ -8,17 +8,22 @@ const corsHeaders = {
 const JUDGE0_URL = Deno.env.get('JUDGE0_CE_URL')?.trim() ?? 'https://ce.judge0.com';
 
 const LANGUAGE_IDS: Record<string, number> = {
+  c: 50,
+  cpp: 54,
+  'c++': 54,
+  java: 62,
   javascript: 63,
   js: 63,
   python: 71,
-  py: 71,
-  java: 62,
-  cpp: 54,
-  'c++': 54,
-  c: 50,
-  typescript: 74,
-  ts: 74
+  py: 71
 };
+
+interface Judge0RunResult {
+  passed: boolean;
+  actualOutput: string;
+  stderr?: string;
+  compileOutput?: string;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -31,6 +36,7 @@ Deno.serve(async (req) => {
     const attemptId = String(body?.attemptId ?? '').trim();
     const questionId = String(body?.questionId ?? '').trim();
     const code = String(body?.code ?? '');
+    const language = String(body?.language ?? '').trim().toLowerCase();
 
     if (!attemptId || !questionId || !code.trim()) {
       return json({ error: 'attemptId, questionId, and code are required' }, 400);
@@ -56,13 +62,21 @@ Deno.serve(async (req) => {
     if (!question || question.type !== 'coding') return json({ error: 'Question not found' }, 404);
 
     const payload = question.payload as CodingPayload;
-    const languageId = LANGUAGE_IDS[String(payload.language ?? 'javascript').toLowerCase()] ?? 63;
+    const langKey = language || String(payload.language ?? 'javascript').toLowerCase();
+    const languageId = LANGUAGE_IDS[langKey] ?? LANGUAGE_IDS.javascript;
     const testCases = payload.publicTestCases ?? [];
 
     const results = [];
     for (const tc of testCases) {
-      const passed = await judge0Run(code, languageId, tc.input ?? '', tc.expectedOutput ?? '');
-      results.push({ input: tc.input, expectedOutput: tc.expectedOutput, passed });
+      const run = await judge0Run(code, languageId, tc.input ?? '', tc.expectedOutput ?? '');
+      results.push({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        actualOutput: run.actualOutput,
+        passed: run.passed,
+        stderr: run.stderr,
+        compileOutput: run.compileOutput
+      });
     }
 
     const passedCount = results.filter((r) => r.passed).length;
@@ -82,7 +96,7 @@ async function judge0Run(
   languageId: number,
   stdin: string,
   expectedOutput: string
-): Promise<boolean> {
+): Promise<Judge0RunResult> {
   const res = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=false&wait=true`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -94,9 +108,17 @@ async function judge0Run(
     })
   });
 
-  if (!res.ok) return false;
+  if (!res.ok) {
+    return { passed: false, actualOutput: '', stderr: await res.text() };
+  }
+
   const data = await res.json();
-  return data?.status?.id === 3;
+  const actualOutput = String(data?.stdout ?? '').trimEnd();
+  const stderr = String(data?.stderr ?? '').trim() || undefined;
+  const compileOutput = String(data?.compile_output ?? '').trim() || undefined;
+  const passed = data?.status?.id === 3;
+
+  return { passed, actualOutput, stderr, compileOutput };
 }
 
 async function requireUser(req: Request): Promise<

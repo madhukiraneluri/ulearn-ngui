@@ -334,13 +334,32 @@ export class ExamService {
   async runPublicTests(
     attemptId: string,
     questionId: string,
-    code: string
-  ): Promise<{ results: Array<{ input: string; expectedOutput: string; passed: boolean }>; passedCount: number; total: number }> {
+    code: string,
+    language: string
+  ): Promise<{
+    results: Array<{
+      input: string;
+      expectedOutput: string;
+      actualOutput: string;
+      passed: boolean;
+      stderr?: string;
+      compileOutput?: string;
+    }>;
+    passedCount: number;
+    total: number;
+  }> {
     const { data, error } = await invokeAuthedFunction<{
-      results: Array<{ input: string; expectedOutput: string; passed: boolean }>;
+      results: Array<{
+        input: string;
+        expectedOutput: string;
+        actualOutput: string;
+        passed: boolean;
+        stderr?: string;
+        compileOutput?: string;
+      }>;
       passedCount: number;
       total: number;
-    }>('exam-run-code', { attemptId, questionId, code });
+    }>('exam-run-code', { attemptId, questionId, code, language });
 
     if (error) throw new Error(error instanceof Error ? error.message : 'Run failed');
     if (!data) throw new Error('Run failed');
