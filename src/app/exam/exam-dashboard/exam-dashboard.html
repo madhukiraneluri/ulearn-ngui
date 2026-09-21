@@ -29,7 +29,13 @@
             </ul>
           }
 
-          @if (canStart(item)) {
+          @if (isExamFinished(item)) {
+            <span class="submission-badge" [class.is-completed]="submissionLabel(item) === 'Completed'">
+              {{ submissionLabel(item) }}
+            </span>
+          } @else if (hasInProgressAttempt(item)) {
+            <a class="start-btn" [routerLink]="['/exam', item.examId, 'attempt', inProgressAttemptId(item)!]">Continue exam</a>
+          } @else if (canStart(item)) {
             <a class="start-btn" [routerLink]="['/exam', item.examId, 'start']">Start exam</a>
           } @else if (isBeforeStart(item)) {
             <div class="countdown-box">

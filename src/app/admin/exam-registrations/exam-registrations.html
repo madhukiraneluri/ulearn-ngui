@@ -197,7 +197,7 @@
 
   <section class="role-guide">
     <h3>Role exam configuration</h3>
-    <p class="hint">Applicants listing multiple roles (or duplicate rows) are assigned to <strong>Research Analyst</strong> only.</p>
+    <p class="hint">Duplicate rows or multiple roles for the same email create a separate exam assignment for each role.</p>
     <ul>
       @for (role of roleOptions; track role.slug) {
         <li>
@@ -231,7 +231,7 @@
           {{ importFailedCount() }} failed
         </p>
         @if (importMultiRoleCount() > 0) {
-          <p class="import-note">{{ importMultiRoleCount() }} multi-role applicant(s) assigned to Research Analyst</p>
+          <p class="import-note">{{ importMultiRoleCount() }} applicant(s) assigned to multiple role exams</p>
         }
         @if (importPhase() === 'success') {
           <button type="button" class="primary-btn" (click)="closeImportModal()">Done</button>

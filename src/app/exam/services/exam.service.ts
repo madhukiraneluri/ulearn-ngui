@@ -219,6 +219,25 @@ export class ExamService {
     return data ? mapAttempt(data as ExamAttemptRow) : null;
   }
 
+  /** Latest attempt per exam for this user (for dashboard status). */
+  async listLatestAttemptsByExam(userId: string): Promise<Record<string, ExamAttempt>> {
+    const { data, error } = await supabase
+      .from('exam_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const map: Record<string, ExamAttempt> = {};
+    for (const row of (data ?? []) as ExamAttemptRow[]) {
+      if (!map[row.exam_id]) {
+        map[row.exam_id] = mapAttempt(row);
+      }
+    }
+    return map;
+  }
+
   async startExam(examId: string): Promise<StartExamResult> {
     const { data, error } = await invokeAuthedFunction<StartExamResult>('exam-start-slot', { examId });
 

@@ -14,7 +14,7 @@ import { interval } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ExamService } from '../services/exam.service';
 import { ExamRegistrationService } from '../../admin/services/exam-registration.service';
-import type { ExamCandidate, ExamResultRow } from '../../models/index';
+import type { ExamAttempt, ExamCandidate, ExamResultRow } from '../../models/index';
 
 @Component({
   selector: 'app-exam-dashboard',
@@ -33,6 +33,7 @@ export class ExamDashboard implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly assignments = signal<ExamCandidate[]>([]);
+  readonly attempts = signal<Record<string, ExamAttempt>>({});
   readonly results = signal<Record<string, ExamResultRow | null>>({});
   readonly now = signal(Date.now());
 
@@ -57,6 +58,7 @@ export class ExamDashboard implements OnInit {
       }
       const rows = await this.examService.listMyExams(userId);
       this.assignments.set(rows);
+      this.attempts.set(await this.examService.listLatestAttemptsByExam(userId));
 
       const resultMap: Record<string, ExamResultRow | null> = {};
       for (const row of rows) {
@@ -71,6 +73,9 @@ export class ExamDashboard implements OnInit {
   }
 
   examStatusLabel(candidate: ExamCandidate): string {
+    const submission = this.submissionLabel(candidate);
+    if (submission) return submission;
+
     const exam = candidate.exam;
     if (!exam) return 'Unknown';
     const now = this.now();
@@ -79,6 +84,30 @@ export class ExamDashboard implements OnInit {
     if (now < start) return 'Scheduled';
     if (now > end) return 'Closed';
     return 'Open';
+  }
+
+  submissionLabel(candidate: ExamCandidate): string | null {
+    const attempt = this.attempts()[candidate.examId];
+    if (!attempt) return null;
+    if (attempt.status === 'submitted') return 'Submitted';
+    if (attempt.status === 'auto_submitted') return 'Completed';
+    if (attempt.status === 'in_progress') return 'In progress';
+    if (attempt.status === 'blocked') return 'Blocked';
+    return null;
+  }
+
+  isExamFinished(candidate: ExamCandidate): boolean {
+    const status = this.attempts()[candidate.examId]?.status;
+    return status === 'submitted' || status === 'auto_submitted';
+  }
+
+  hasInProgressAttempt(candidate: ExamCandidate): boolean {
+    return this.attempts()[candidate.examId]?.status === 'in_progress';
+  }
+
+  inProgressAttemptId(candidate: ExamCandidate): string | null {
+    const attempt = this.attempts()[candidate.examId];
+    return attempt?.status === 'in_progress' ? attempt.id : null;
   }
 
   isBeforeStart(candidate: ExamCandidate): boolean {
@@ -102,6 +131,8 @@ export class ExamDashboard implements OnInit {
   }
 
   canStart(candidate: ExamCandidate): boolean {
+    if (this.isExamFinished(candidate) || this.hasInProgressAttempt(candidate)) return false;
+
     const exam = candidate.exam;
     if (!exam || exam.status !== 'published') return false;
     const now = this.now();

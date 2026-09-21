@@ -63,6 +63,23 @@
   font-weight: 700;
 }
 
+.submission-badge {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  background: rgba($purple, 0.12);
+  color: $purple;
+  border: 1px solid rgba($purple, 0.25);
+
+  &.is-completed {
+    background: rgba($green, 0.12);
+    color: darken($green, 8%);
+    border-color: rgba($green, 0.35);
+  }
+}
+
 .locked,
 .muted {
   color: $muted;

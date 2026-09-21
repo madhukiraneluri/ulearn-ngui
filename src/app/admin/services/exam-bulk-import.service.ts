@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
-import { EXAM_ROLE_DEFINITIONS } from '../exam-portal/exam-role.config';
+import {
+  EXAM_ROLE_DEFINITIONS,
+  resolveRoleFromExcelText
+} from '../exam-portal/exam-role.config';
 
 export interface ParsedExamRegistrationRow {
   email: string;
@@ -12,8 +15,6 @@ export interface NormalizedImportResult {
   rows: ParsedExamRegistrationRow[];
   multiRoleReassigned: number;
 }
-
-const MULTI_ROLE_RESEARCH_ANALYST = 'Research Analyst';
 
 @Injectable({ providedIn: 'root' })
 export class ExamBulkImportService {
@@ -66,7 +67,7 @@ export class ExamBulkImportService {
     };
   }
 
-  /** Collapse duplicate emails and multi-role applicants → Research Analyst only. */
+  /** Merge duplicate emails and assign one import row per distinct role exam. */
   normalizeMultiRoleApplicants(rows: ParsedExamRegistrationRow[]): NormalizedImportResult {
     const byEmail = new Map<string, ParsedExamRegistrationRow[]>();
 
@@ -83,38 +84,68 @@ export class ExamBulkImportService {
 
     for (const group of byEmail.values()) {
       const primary = group[0];
-      const multipleRows = group.length > 1;
-      const multipleRolesInField = group.some((r) => this.roleFieldHasMultiple(r.roleInterested));
-      const distinctRoles = new Set(
-        group.map((r) => r.roleInterested.trim().toLowerCase()).filter(Boolean)
-      );
+      const roleSlugs = new Set<string>();
 
-      if (multipleRows || multipleRolesInField || distinctRoles.size > 1) {
+      for (const row of group) {
+        for (const slug of this.resolveRolesFromText(row.roleInterested)) {
+          roleSlugs.add(slug);
+        }
+      }
+
+      if (roleSlugs.size === 0) {
+        normalized.push(primary);
+        continue;
+      }
+
+      if (roleSlugs.size > 1 || group.length > 1) {
+        multiRoleReassigned++;
+      }
+
+      const fullName = group.map((row) => row.fullName.trim()).find(Boolean) ?? primary.fullName;
+
+      for (const slug of roleSlugs) {
+        const roleDef = EXAM_ROLE_DEFINITIONS.find((role) => role.slug === slug);
         normalized.push({
           email: primary.email,
-          fullName: primary.fullName,
-          roleInterested: MULTI_ROLE_RESEARCH_ANALYST
+          fullName,
+          roleInterested: roleDef?.name ?? slug
         });
-        multiRoleReassigned++;
-      } else {
-        normalized.push(primary);
       }
     }
 
     return { rows: normalized, multiRoleReassigned };
   }
 
-  private roleFieldHasMultiple(roleInterested: string): boolean {
+  private resolveRolesFromText(roleInterested: string): string[] {
     const text = roleInterested.trim();
-    if (!text) return false;
-    if (/[,;/|]|\band\b|\&/i.test(text)) return true;
+    if (!text) return [];
 
-    let matchCount = 0;
-    for (const role of EXAM_ROLE_DEFINITIONS) {
-      const matched = role.matchTerms.some((term) => text.toLowerCase().includes(term));
-      if (matched) matchCount++;
-      if (matchCount > 1) return true;
+    if (/^multiple roles?$/i.test(text)) {
+      return EXAM_ROLE_DEFINITIONS.map((role) => role.slug);
     }
-    return false;
+
+    const parts = text
+      .split(/[,;/|]+|\band\b|\&/i)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const slugs = new Set<string>();
+    for (const part of parts.length > 0 ? parts : [text]) {
+      for (const role of EXAM_ROLE_DEFINITIONS) {
+        const lower = part.toLowerCase();
+        if (role.matchTerms.some((term) => lower.includes(term))) {
+          slugs.add(role.slug);
+        } else if (lower.includes(role.slug.replace(/-/g, ' '))) {
+          slugs.add(role.slug);
+        }
+      }
+    }
+
+    if (slugs.size === 0) {
+      const single = resolveRoleFromExcelText(text);
+      if (single) slugs.add(single.slug);
+    }
+
+    return [...slugs];
   }
 }

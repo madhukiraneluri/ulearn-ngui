@@ -48,6 +48,19 @@ Deno.serve(async (req) => {
       return json({ attemptId: existing.id, endsAt: existing.ends_at });
     }
 
+    const { data: submittedAttempt } = await userClient
+      .from('exam_attempts')
+      .select('id')
+      .eq('exam_id', examId)
+      .eq('user_id', userId)
+      .in('status', ['submitted', 'auto_submitted'])
+      .limit(1)
+      .maybeSingle();
+
+    if (submittedAttempt) {
+      return json({ error: 'You have already submitted this exam.' }, 400);
+    }
+
     const { data: candidate, error: candErr } = await userClient
       .from('exam_candidates')
       .select('exam_role_id')
