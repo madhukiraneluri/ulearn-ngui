@@ -2,7 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -35,6 +36,7 @@ export class ExamLogin implements OnInit {
   returnUrl = '/exam/dashboard';
 
   readonly isLoading = this.auth.isLoading;
+  readonly submitting = signal(false);
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -73,19 +75,24 @@ export class ExamLogin implements OnInit {
 
   async onSubmit(): Promise<void> {
     this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.submitting()) return;
 
-    const { email, password } = this.form.value;
-    const success = await this.auth.signIn(email, password, { silent: true });
-    if (!success) return;
+    this.submitting.set(true);
+    try {
+      const { email, password } = this.form.value;
+      const success = await this.auth.signIn(email, password, { silent: true });
+      if (!success) return;
 
-    if (!this.auth.isExamOnly()) {
-      await this.auth.signOut('/exam/login');
-      this.toast.error('This login is for exam candidates only.');
-      return;
+      if (!this.auth.isExamOnly()) {
+        await this.auth.signOut('/exam/login');
+        this.toast.error('This login is for exam candidates only.');
+        return;
+      }
+
+      await this.router.navigateByUrl(this.examLandingUrl(), { replaceUrl: true });
+    } finally {
+      this.submitting.set(false);
     }
-
-    await this.router.navigateByUrl(this.examLandingUrl(), { replaceUrl: true });
   }
 
   isFieldInvalid(fieldName: string): boolean {

@@ -67,12 +67,14 @@ export class AuthService {
 
       if (wasRemoteSignOut) {
         this.toast.info('You were signed in on another device. Please sign in again.');
-        await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
+        const loginPath = this.router.url.startsWith('/exam') ? '/exam/login' : '/auth/login';
+        await this.router.navigateByUrl(loginPath, { replaceUrl: true });
         return;
       }
 
       if (event === 'SIGNED_OUT' && this.isProtectedUrl(this.router.url)) {
-        await this.router.navigateByUrl('/auth/login', { replaceUrl: true });
+        const loginPath = this.router.url.startsWith('/exam') ? '/exam/login' : '/auth/login';
+        await this.router.navigateByUrl(loginPath, { replaceUrl: true });
       }
     });
   }
@@ -203,7 +205,7 @@ export class AuthService {
         this.isAuthenticatedSignal.set(true);
         await this.ensureProfile(data.user);
         await this.loadProfile(data.user.id);
-        await supabase.auth.signOut({ scope: 'others' });
+        void supabase.auth.signOut({ scope: 'others' }).catch(() => undefined);
         if (!options?.silent) {
           this.toast.success('Welcome back!');
         }

@@ -29,8 +29,8 @@
         </button>
       </div>
 
-      <button type="submit" class="submit-btn" [disabled]="form.invalid || isLoading()">
-        @if (isLoading()) {
+      <button type="submit" class="submit-btn" [disabled]="form.invalid || isLoading() || submitting()">
+        @if (isLoading() || submitting()) {
           Signing in...
         } @else {
           Enter exam portal

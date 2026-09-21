@@ -15,7 +15,10 @@ export const examAuthGuard: CanActivateFn = async (_route, state) => {
   }
 
   if (auth.mustResetPassword()) {
-    return router.createUrlTree(['/exam/set-password']);
+    const path = state.url.split('?')[0];
+    if (path !== '/exam/set-password') {
+      return router.createUrlTree(['/exam/set-password']);
+    }
   }
 
   if (!auth.isExamOnly() && !auth.isAdmin()) {
@@ -34,7 +37,8 @@ export const blockExamOnlyGuard: CanActivateFn = async () => {
 
   await auth.ensureSessionChecked();
   if (auth.isLoggedIn() && auth.isExamOnly()) {
-    return router.createUrlTree(['/exam/dashboard']);
+    const target = auth.mustResetPassword() ? '/exam/set-password' : '/exam/dashboard';
+    return router.createUrlTree([target]);
   }
 
   return true;
