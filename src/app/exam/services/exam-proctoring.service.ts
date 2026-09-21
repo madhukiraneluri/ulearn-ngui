@@ -22,9 +22,15 @@ export class ExamProctoringService {
   readonly fullscreenExited = signal(false);
 
   async requestMedia(): Promise<boolean> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.toast.error('Camera and microphone are not supported in this browser.');
+      this.mediaReady.set(false);
+      return false;
+    }
+
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: true
       });
       this.mediaReady.set(true);
@@ -40,13 +46,26 @@ export class ExamProctoringService {
     this.videoEl = video;
     if (!this.mediaStream) return;
 
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
     if (video.srcObject !== this.mediaStream) {
       video.srcObject = this.mediaStream;
     }
 
-    void video.play().catch(() => {
-      // Autoplay may require a user gesture in some browsers; preview still works after play().
-    });
+    const play = (): void => {
+      void video.play().catch(() => {
+        // Autoplay may require a user gesture in some browsers.
+      });
+    };
+
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      play();
+      return;
+    }
+
+    video.onloadedmetadata = () => play();
   }
 
   async enterFullscreen(element: HTMLElement): Promise<void> {

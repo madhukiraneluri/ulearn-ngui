@@ -644,6 +644,22 @@ export interface ExamRegistration {
   examTitle?: string;
 }
 
+export interface ExamMcqBreakdownItem {
+  questionId: string;
+  selectedIndex?: number | null;
+  correctIndex: number;
+  marks: number;
+  earned: number;
+}
+
+export interface ExamCodingBreakdownItem {
+  questionId: string;
+  passedTests: number;
+  totalTests: number;
+  marks: number;
+  earned: number;
+}
+
 export interface ExamResultRow {
   id: string;
   attemptId: string;
@@ -661,4 +677,18 @@ export interface ExamResultRow {
   percentage: number;
   fullscreenWarnings: number;
   evaluatedAt: string;
+  mcqBreakdown?: ExamMcqBreakdownItem[];
+  codingBreakdown?: ExamCodingBreakdownItem[];
+}
+
+export interface ExamResultQuestionReview {
+  question: ExamQuestion;
+  answer: Record<string, unknown> | null;
+  mcqBreakdown?: ExamMcqBreakdownItem;
+  codingBreakdown?: ExamCodingBreakdownItem;
+}
+
+export interface ExamResultDetail {
+  result: ExamResultRow;
+  questions: ExamResultQuestionReview[];
 }

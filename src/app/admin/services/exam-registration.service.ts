@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { supabase, invokeAuthedFunction } from '../../core/supabase.client';
-import type { ExamRegistration, ExamResultRow } from '../../models/index';
+import type {
+  ExamAnswer,
+  ExamCodingBreakdownItem,
+  ExamMcqBreakdownItem,
+  ExamQuestion,
+  ExamRegistration,
+  ExamResultDetail,
+  ExamResultQuestionReview,
+  ExamResultRow
+} from '../../models/index';
 
 interface RegistrationRow {
   id: string;
@@ -34,7 +43,26 @@ interface ResultRow {
   total_max: number;
   percentage: number;
   fullscreen_warnings: number;
+  mcq_breakdown?: ExamMcqBreakdownItem[] | null;
+  coding_breakdown?: ExamCodingBreakdownItem[] | null;
   evaluated_at: string;
+}
+
+interface ExamQuestionRow {
+  id: string;
+  exam_role_id: string;
+  type: 'mcq' | 'coding';
+  sort_order: number;
+  payload: ExamQuestion['payload'];
+  created_at: string;
+}
+
+interface ExamAnswerRow {
+  id: string;
+  attempt_id: string;
+  question_id: string;
+  answer: Record<string, unknown>;
+  answered_at: string;
 }
 
 export interface RegistrationListParams {
@@ -83,6 +111,27 @@ function mapRegistration(row: RegistrationRow): ExamRegistration {
   };
 }
 
+function mapQuestion(row: ExamQuestionRow): ExamQuestion {
+  return {
+    id: row.id,
+    examRoleId: row.exam_role_id,
+    type: row.type,
+    sortOrder: row.sort_order,
+    payload: row.payload,
+    createdAt: row.created_at
+  };
+}
+
+function mapAnswer(row: ExamAnswerRow): ExamAnswer {
+  return {
+    id: row.id,
+    attemptId: row.attempt_id,
+    questionId: row.question_id,
+    answer: row.answer,
+    answeredAt: row.answered_at
+  };
+}
+
 function mapResult(row: ResultRow): ExamResultRow {
   return {
     id: row.id,
@@ -100,7 +149,9 @@ function mapResult(row: ResultRow): ExamResultRow {
     totalMax: Number(row.total_max),
     percentage: Number(row.percentage),
     fullscreenWarnings: row.fullscreen_warnings,
-    evaluatedAt: row.evaluated_at
+    evaluatedAt: row.evaluated_at,
+    mcqBreakdown: row.mcq_breakdown ?? undefined,
+    codingBreakdown: row.coding_breakdown ?? undefined
   };
 }
 
@@ -202,5 +253,64 @@ export class ExamRegistrationService {
 
     if (error) throw new Error(error.message);
     return data ? mapResult(data as ResultRow) : null;
+  }
+
+  async getResultDetail(resultId: string): Promise<ExamResultDetail> {
+    const { data: resultRow, error: resultErr } = await supabase
+      .from('exam_results')
+      .select('*')
+      .eq('id', resultId)
+      .single();
+
+    if (resultErr || !resultRow) throw new Error(resultErr?.message ?? 'Result not found');
+
+    const result = mapResult(resultRow as ResultRow);
+
+    const { data: attempt, error: attemptErr } = await supabase
+      .from('exam_attempts')
+      .select('exam_role_id')
+      .eq('id', result.attemptId)
+      .single();
+
+    if (attemptErr || !attempt) throw new Error(attemptErr?.message ?? 'Attempt not found');
+
+    const [{ data: questions, error: questionsErr }, { data: answers, error: answersErr }] =
+      await Promise.all([
+        supabase
+          .from('exam_questions')
+          .select('*')
+          .eq('exam_role_id', attempt.exam_role_id)
+          .order('sort_order', { ascending: true }),
+        supabase.from('exam_answers').select('*').eq('attempt_id', result.attemptId)
+      ]);
+
+    if (questionsErr) throw new Error(questionsErr.message);
+    if (answersErr) throw new Error(answersErr.message);
+
+    const answerByQuestion = new Map<string, Record<string, unknown>>();
+    for (const row of (answers ?? []) as ExamAnswerRow[]) {
+      answerByQuestion.set(row.question_id, row.answer);
+    }
+
+    const mcqByQuestion = new Map(
+      (result.mcqBreakdown ?? []).map((item) => [item.questionId, item] as const)
+    );
+    const codingByQuestion = new Map(
+      (result.codingBreakdown ?? []).map((item) => [item.questionId, item] as const)
+    );
+
+    const reviews: ExamResultQuestionReview[] = ((questions ?? []) as ExamQuestionRow[]).map(
+      (row) => {
+        const question = mapQuestion(row);
+        return {
+          question,
+          answer: answerByQuestion.get(question.id) ?? null,
+          mcqBreakdown: mcqByQuestion.get(question.id),
+          codingBreakdown: codingByQuestion.get(question.id)
+        };
+      }
+    );
+
+    return { result, questions: reviews };
   }
 }

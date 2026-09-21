@@ -4,10 +4,10 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
-  ViewChild,
-  afterNextRender,
+  effect,
   inject,
-  signal
+  signal,
+  viewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -15,6 +15,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
 import { ExamService } from '../services/exam.service';
 import { ExamProctoringService } from '../services/exam-proctoring.service';
+import { isMobileExamDevice } from '../utils/exam-device.util';
 import type { ExamCandidate } from '../../models/index';
 
 @Component({
@@ -26,7 +27,7 @@ import type { ExamCandidate } from '../../models/index';
   styleUrl: './exam-pre-check.scss'
 })
 export class ExamPreCheck implements OnInit, OnDestroy {
-  @ViewChild('previewVideo') previewVideo?: ElementRef<HTMLVideoElement>;
+  private readonly previewVideo = viewChild<ElementRef<HTMLVideoElement>>('previewVideo');
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -40,8 +41,20 @@ export class ExamPreCheck implements OnInit, OnDestroy {
   readonly assignment = signal<ExamCandidate | null>(null);
   readonly consent = signal(false);
   readonly mediaOk = signal(false);
+  readonly isMobile = signal(isMobileExamDevice());
 
   private examId = '';
+
+  constructor() {
+    effect(() => {
+      if (this.loading() || !this.mediaOk() || this.isMobile()) return;
+
+      const video = this.previewVideo()?.nativeElement;
+      if (video) {
+        this.proctoring.attachPreview(video);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.examId = this.route.snapshot.paramMap.get('examId') ?? '';
@@ -74,30 +87,15 @@ export class ExamPreCheck implements OnInit, OnDestroy {
       }
 
       this.assignment.set(assignment);
-      const media = await this.proctoring.requestMedia();
-      this.mediaOk.set(media);
+
+      if (!this.isMobile()) {
+        const media = await this.proctoring.requestMedia();
+        this.mediaOk.set(media);
+      }
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not load exam');
     } finally {
       this.loading.set(false);
-      if (this.mediaOk()) {
-        this.schedulePreviewAttach();
-      }
-    }
-  }
-
-  private schedulePreviewAttach(): void {
-    afterNextRender(() => {
-      const video = this.previewVideo?.nativeElement;
-      if (video && this.mediaOk()) {
-        this.proctoring.attachPreview(video);
-      }
-    });
-  }
-
-  onVideoReady(video: HTMLVideoElement): void {
-    if (this.mediaOk()) {
-      this.proctoring.attachPreview(video);
     }
   }
 
@@ -106,6 +104,11 @@ export class ExamPreCheck implements OnInit, OnDestroy {
   }
 
   async beginExam(): Promise<void> {
+    if (this.isMobile()) {
+      this.toast.error('Mobile screen is not allowed. Please use a laptop or PC to write this exam.');
+      return;
+    }
+
     if (!this.consent() || !this.mediaOk()) {
       this.toast.error('Accept proctoring consent and allow camera/microphone.');
       return;

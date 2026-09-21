@@ -16,7 +16,16 @@ import { ToastService } from '../../core/services/toast';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { EXAM_ROLE_DEFINITIONS } from '../exam-portal/exam-role.config';
 import { downloadAdminTableXlsx } from '../utils/admin-table-export.util';
-import type { Exam, ExamRegistration, ExamResultRow } from '../../models/index';
+import type {
+  Exam,
+  ExamCodingPayload,
+  ExamMcqPayload,
+  ExamRegistration,
+  ExamResultDetail,
+  ExamResultQuestionReview,
+  ExamResultRow,
+  ExamTestCase
+} from '../../models/index';
 
 const IMPORT_BATCH_SIZE = 25;
 
@@ -67,6 +76,9 @@ export class ExamRegistrations implements OnInit {
   readonly emailFilter = signal<'all' | 'sent' | 'pending'>('all');
   readonly examFilter = signal('');
   readonly resultsRoleFilter = signal('');
+  readonly resultDetailOpen = signal(false);
+  readonly resultDetailLoading = signal(false);
+  readonly resultDetail = signal<ExamResultDetail | null>(null);
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
 
@@ -361,6 +373,104 @@ export class ExamRegistrations implements OnInit {
 
   onResultsRoleChange(): void {
     void this.loadResults();
+  }
+
+  async openResultDetail(row: ExamResultRow): Promise<void> {
+    this.resultDetailOpen.set(true);
+    this.resultDetailLoading.set(true);
+    this.resultDetail.set(null);
+
+    try {
+      this.resultDetail.set(await this.registrationService.getResultDetail(row.id));
+    } catch (err) {
+      this.resultDetailOpen.set(false);
+      this.toast.error(err instanceof Error ? err.message : 'Could not load result details');
+    } finally {
+      this.resultDetailLoading.set(false);
+    }
+  }
+
+  closeResultDetail(): void {
+    this.resultDetailOpen.set(false);
+    this.resultDetail.set(null);
+  }
+
+  roleLabel(slug: string): string {
+    return this.roleOptions.find((role) => role.slug === slug)?.name ?? slug;
+  }
+
+  mcqQuestions(detail: ExamResultDetail): ExamResultQuestionReview[] {
+    return detail.questions.filter((item) => item.question.type === 'mcq');
+  }
+
+  codingQuestions(detail: ExamResultDetail): ExamResultQuestionReview[] {
+    return detail.questions.filter((item) => item.question.type === 'coding');
+  }
+
+  mcqPayload(review: ExamResultQuestionReview): ExamMcqPayload {
+    return review.question.payload as ExamMcqPayload;
+  }
+
+  codingPayload(review: ExamResultQuestionReview): ExamCodingPayload {
+    return review.question.payload as ExamCodingPayload;
+  }
+
+  optionLetter(index: number): string {
+    return String.fromCharCode(65 + index);
+  }
+
+  selectedMcqIndex(review: ExamResultQuestionReview): number | null {
+    const fromBreakdown = review.mcqBreakdown?.selectedIndex;
+    if (typeof fromBreakdown === 'number') return fromBreakdown;
+    const fromAnswer = review.answer?.['selectedIndex'];
+    return typeof fromAnswer === 'number' ? fromAnswer : null;
+  }
+
+  correctMcqIndex(review: ExamResultQuestionReview): number {
+    return review.mcqBreakdown?.correctIndex ?? this.mcqPayload(review).correctIndex;
+  }
+
+  mcqEarned(review: ExamResultQuestionReview): number {
+    return review.mcqBreakdown?.earned ?? 0;
+  }
+
+  mcqMarks(review: ExamResultQuestionReview): number {
+    return review.mcqBreakdown?.marks ?? this.mcqPayload(review).marks;
+  }
+
+  codingEarned(review: ExamResultQuestionReview): number {
+    return review.codingBreakdown?.earned ?? 0;
+  }
+
+  codingMarks(review: ExamResultQuestionReview): number {
+    return review.codingBreakdown?.marks ?? this.codingPayload(review).marks;
+  }
+
+  codingPassedTests(review: ExamResultQuestionReview): number {
+    return review.codingBreakdown?.passedTests ?? 0;
+  }
+
+  codingTotalTests(review: ExamResultQuestionReview): number {
+    return review.codingBreakdown?.totalTests ?? this.codingTestCases(review).length;
+  }
+
+  submittedCode(review: ExamResultQuestionReview): string {
+    const code = review.answer?.['code'];
+    return typeof code === 'string' ? code : '';
+  }
+
+  submittedLanguage(review: ExamResultQuestionReview): string {
+    const language = review.answer?.['language'];
+    if (typeof language === 'string' && language.trim()) return language;
+    return this.codingPayload(review).language;
+  }
+
+  codingTestCases(review: ExamResultQuestionReview): Array<ExamTestCase & { kind: 'Public' | 'Hidden' }> {
+    const payload = this.codingPayload(review);
+    return [
+      ...(payload.publicTestCases ?? []).map((testCase) => ({ ...testCase, kind: 'Public' as const })),
+      ...(payload.hiddenTestCases ?? []).map((testCase) => ({ ...testCase, kind: 'Hidden' as const }))
+    ];
   }
 
   exportResults(): void {

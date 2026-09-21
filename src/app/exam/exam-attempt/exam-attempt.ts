@@ -16,6 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast';
 import { ExamService } from '../services/exam.service';
 import { ExamProctoringService } from '../services/exam-proctoring.service';
+import { isMobileExamDevice } from '../utils/exam-device.util';
 import {
   DEFAULT_EXAM_CODING_LANGUAGE,
   EXAM_CODING_LANGUAGES,
@@ -119,6 +120,12 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
 
   private async initAttempt(): Promise<void> {
     try {
+      if (isMobileExamDevice()) {
+        this.toast.error('Mobile screen is not allowed. Please use a laptop or PC to write this exam.');
+        await this.router.navigate(['/exam', this.examId, 'start']);
+        return;
+      }
+
       const userId = this.auth.currentUser()?.id;
       if (!userId) {
         await this.router.navigate(['/exam/login']);
@@ -185,7 +192,7 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
         if (this.attemptShell?.nativeElement) {
           void this.proctoring.enterFullscreen(this.attemptShell.nativeElement);
         }
-      }, 100);
+      }, 0);
 
       this.unbindFullscreen = this.proctoring.bindFullscreenWarnings(
         this.attemptId,

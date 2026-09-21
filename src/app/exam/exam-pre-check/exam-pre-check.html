@@ -14,32 +14,33 @@
         <li>Your attempt will auto-submit when time runs out.</li>
         <li>Fullscreen mode is required. Exiting records a warning.</li>
         <li>Camera and microphone will be monitored during the exam.</li>
+        <li>Use a laptop or desktop computer — mobile devices are not supported.</li>
       </ul>
 
-      <div class="preview-wrap">
-        <p class="label">Camera preview</p>
-        <video
-          #previewVideo
-          autoplay
-          muted
-          playsinline
-          class="preview"
-          (loadedmetadata)="onVideoReady(previewVideo)"
-        ></video>
-        @if (!mediaOk()) {
-          <p class="warn">Allow camera and microphone to continue.</p>
-        }
-      </div>
+      @if (isMobile()) {
+        <div class="mobile-block" role="alert">
+          <strong>Mobile screen is not allowed.</strong>
+          <p>Please use a laptop or PC to write this exam.</p>
+        </div>
+      } @else {
+        <div class="preview-wrap">
+          <p class="label">Camera preview</p>
+          <video #previewVideo autoplay muted playsinline class="preview"></video>
+          @if (!mediaOk()) {
+            <p class="warn">Allow camera and microphone to continue.</p>
+          }
+        </div>
 
-      <label class="consent">
-        <input type="checkbox" [checked]="consent()" (change)="toggleConsent($event)" />
-        I consent to video and audio proctoring for this exam.
-      </label>
+        <label class="consent">
+          <input type="checkbox" [checked]="consent()" (change)="toggleConsent($event)" />
+          I consent to video and audio proctoring for this exam.
+        </label>
+      }
 
       <button
         type="button"
         class="start-btn"
-        [disabled]="!consent() || !mediaOk() || starting()"
+        [disabled]="(!isMobile() && (!consent() || !mediaOk())) || starting()"
         (click)="beginExam()"
       >
         {{ starting() ? 'Starting...' : 'Begin exam' }}
