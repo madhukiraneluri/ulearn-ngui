@@ -1,0 +1,74 @@
+@use '../../../styles/variables' as *;
+
+.exam-shell {
+  min-height: 100vh;
+  background: $bg;
+  display: flex;
+  flex-direction: column;
+}
+
+.exam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 12px 24px;
+  background: $card;
+  border-bottom: 1px solid $border;
+  box-shadow: 0 2px 8px rgba(30, 30, 46, 0.04);
+}
+
+.exam-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: $navy;
+  font-family: $font-heading;
+  font-weight: 600;
+  flex-shrink: 0;
+
+  img {
+    height: 50px;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
+    display: block;
+  }
+}
+
+.logout-btn {
+  border: 1px solid $border;
+  background: $card;
+  color: $text;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: $font-base;
+
+  &:hover {
+    border-color: $purple;
+    color: $purple;
+  }
+}
+
+.exam-main {
+  flex: 1;
+  padding: 24px;
+}
+
+@media (max-width: $bp-mobile) {
+  .exam-header {
+    padding: 10px 16px;
+    min-height: 60px;
+  }
+
+  .exam-brand img {
+    height: 40px;
+    max-width: 120px;
+  }
+
+  .exam-main {
+    padding: 16px;
+  }
+}

@@ -1,0 +1,99 @@
+@if (!loading()) {
+  <div #attemptShell class="exam-attempt-shell">
+    <header class="attempt-header">
+      <div class="timer" [class.urgent]="remainingSeconds() <= 300">
+        Time left: {{ formatTime(remainingSeconds()) }}
+      </div>
+      <div class="meta">
+        <span>Warnings: {{ fullscreenWarnings() }}</span>
+        <video #proctorVideo autoplay muted playsinline class="proctor-pip"></video>
+      </div>
+    </header>
+
+    @if (currentQuestion(); as question) {
+      <section class="question-panel">
+        <div class="q-nav">
+          @for (q of questions(); track q.id; let i = $index) {
+            <button
+              type="button"
+              class="q-dot"
+              [class.active]="currentIndex() === i"
+              [class.answered]="q.type === 'mcq' ? mcqSelections[q.id] !== undefined : !!codingAnswers[q.id]?.trim()"
+              (click)="goTo(i)"
+            >
+              {{ i + 1 }}
+            </button>
+          }
+        </div>
+
+        <p class="q-label">Question {{ currentIndex() + 1 }} of {{ questions().length }}</p>
+
+        @if (question.type === 'mcq') {
+          @let mcq = asMcq(question.payload);
+          <h2>{{ mcq.stem }}</h2>
+          @if (mcq.codeBlock) {
+            <pre class="code-block"><code>{{ mcq.codeBlock }}</code></pre>
+          }
+          <div class="options">
+            @for (option of mcq.options; track option; let i = $index) {
+              <label class="option" [class.selected]="mcqSelections[question.id] === i">
+                <input
+                  type="radio"
+                  [name]="'q-' + question.id"
+                  [checked]="mcqSelections[question.id] === i"
+                  (change)="selectMcq(question.id, i)"
+                />
+                <span>{{ option }}</span>
+              </label>
+            }
+          </div>
+        } @else {
+          @let coding = asCoding(question.payload);
+          <h2>{{ coding.title }}</h2>
+          <p class="desc">{{ coding.description }}</p>
+          <p class="lang">Language: {{ coding.language }}</p>
+          <textarea
+            class="code-input"
+            [ngModel]="codingAnswers[question.id]"
+            (ngModelChange)="onCodingInput(question.id, $event)"
+            rows="16"
+            spellcheck="false"
+          ></textarea>
+          <button
+            type="button"
+            class="run-tests"
+            [disabled]="runningTests()"
+            (click)="runPublicTests(question.id)"
+          >
+            {{ runningTests() ? 'Running...' : 'Run public test cases' }}
+          </button>
+          @if (testResults().length > 0) {
+            <ul class="test-results">
+              @for (tr of testResults(); track $index) {
+                <li [class.pass]="tr.passed" [class.fail]="!tr.passed">
+                  {{ tr.passed ? 'PASS' : 'FAIL' }} — input: {{ tr.input || '(empty)' }}
+                </li>
+              }
+            </ul>
+          }
+        }
+
+        <div class="nav-actions">
+          <button type="button" class="ghost" [disabled]="currentIndex() === 0" (click)="goTo(currentIndex() - 1)">
+            Previous
+          </button>
+          @if (currentIndex() < questions().length - 1) {
+            <button type="button" class="ghost" (click)="goTo(currentIndex() + 1)">Next</button>
+          }
+          <button type="button" class="submit" [disabled]="submitting()" (click)="submitExam()">
+            Submit exam
+          </button>
+        </div>
+      </section>
+    } @else {
+      <p>No questions configured for your role.</p>
+    }
+  </div>
+} @else {
+  <p class="loading">Loading exam...</p>
+}

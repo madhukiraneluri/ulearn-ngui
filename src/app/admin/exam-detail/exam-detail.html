@@ -1,0 +1,101 @@
+<div class="exam-detail-page">
+  <a routerLink="/admin/exams" class="back-link">← Exams</a>
+
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (!exam()) {
+    <p>Exam not found.</p>
+  } @else {
+    <header>
+      <h1>{{ exam()!.title }}</h1>
+      <p>{{ exam()!.status }} · {{ exam()!.durationMinutes }} min · max {{ exam()!.maxConcurrent }}</p>
+    </header>
+
+    <section class="panel">
+      <h2>Exam roles</h2>
+      <p class="hint">Create role tracks (e.g. role-a with coding, role-b MCQ only).</p>
+
+      <form [formGroup]="roleForm" (ngSubmit)="addRole()" class="role-form">
+        <input formControlName="name" placeholder="Role name" />
+        <input formControlName="slug" placeholder="Slug (role-a)" />
+        <label class="toggle-row">
+          <input type="checkbox" formControlName="hasCoding" />
+          Includes coding questions
+        </label>
+        <button type="submit" class="primary-btn">Add role</button>
+      </form>
+
+      @if (roles().length > 0) {
+        <ul class="role-list">
+          @for (role of roles(); track role.id) {
+            <li>
+              <strong>{{ role.name }}</strong>
+              <span>{{ role.slug }}</span>
+              <span>{{ role.hasCoding ? 'MCQ + Coding' : 'MCQ only' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Question paper</h2>
+      <p class="hint">Upload a JSON array of questions for the selected role. MCQ payloads support formatted code blocks.</p>
+
+      @if (roles().length === 0) {
+        <p class="muted">Add at least one role before uploading questions.</p>
+      } @else {
+        <label>
+          Role
+          <select [value]="selectedRoleId()" (change)="onRoleSelect($event)">
+            @for (role of roles(); track role.id) {
+              <option [value]="role.id">{{ role.name }} ({{ role.slug }})</option>
+            }
+          </select>
+        </label>
+
+        <textarea
+          rows="10"
+          placeholder='[{"type":"mcq","sortOrder":0,"payload":{"stem":"Question?","options":["A","B"],"correctIndex":1,"marks":1}},{"type":"coding","sortOrder":1,"payload":{"title":"Sum","description":"Return a+b","starterCode":"function add(a,b) {}","language":"javascript","marks":10,"publicTestCases":[{"input":"1\\n2","expectedOutput":"3"}],"hiddenTestCases":[{"input":"10\\n20","expectedOutput":"30"}]}}]'
+          [value]="questionJson()"
+          (input)="onQuestionJsonChange($event)"
+        ></textarea>
+
+        <button type="button" class="primary-btn" [disabled]="importingQuestions()" (click)="importQuestions()">
+          Import questions
+        </button>
+
+        @if (questions().length > 0) {
+          <ol class="question-list">
+            @for (q of questions(); track q.id; let i = $index) {
+              <li>
+                <span class="q-num">{{ i + 1 }}.</span>
+                <span class="q-type">{{ q.type }}</span>
+                <span class="q-text">{{ questionPreview(q) }}</span>
+                <span class="q-actions">
+                  <button type="button" class="ghost-btn" (click)="moveQuestion(q, -1)" [disabled]="i === 0">↑</button>
+                  <button type="button" class="ghost-btn" (click)="moveQuestion(q, 1)" [disabled]="i === questions().length - 1">↓</button>
+                  <button type="button" class="ghost-btn danger" (click)="deleteQuestion(q.id)">Delete</button>
+                </span>
+              </li>
+            }
+          </ol>
+        }
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Import candidates</h2>
+      <p class="hint">One row per line: email, fullName, roleSlug, phone, collegeName</p>
+      <textarea
+        rows="8"
+        placeholder="student@college.com, Jane Doe, role-a, 9876543210, ABC College"
+        [value]="importText()"
+        (input)="onImportTextChange($event)"
+      ></textarea>
+      <button type="button" class="primary-btn" [disabled]="importing()" (click)="importCandidates()">
+        Import and email credentials
+      </button>
+    </section>
+  }
+</div>

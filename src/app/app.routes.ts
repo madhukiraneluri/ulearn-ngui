@@ -1,16 +1,19 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
 import { roleGuard } from './core/guards/role-guard';
+import { blockExamOnlyGuard } from './exam/guards/exam-guards';
 
 export const routes: Routes = [
   // ─── Public ──────────────────────────────────────────────────────────────
   {
     path: '',
+    canActivate: [blockExamOnlyGuard],
     loadComponent: () =>
       import('./public/home/home').then(m => m.Home)
   },
   {
     path: 'courses',
+    canActivate: [blockExamOnlyGuard],
     loadComponent: () =>
       import('./public/courses/courses').then(m => m.Courses)
   },
@@ -61,7 +64,7 @@ export const routes: Routes = [
   },
   {
     path: 'my-courses',
-    canActivate: [authGuard],
+    canActivate: [authGuard, blockExamOnlyGuard],
     loadComponent: () =>
       import('./public/my-courses/my-courses').then(m => m.MyCourses)
   },
@@ -73,9 +76,16 @@ export const routes: Routes = [
   },
   {
     path: 'profile',
-    canActivate: [authGuard],
+    canActivate: [authGuard, blockExamOnlyGuard],
     loadComponent: () =>
       import('./public/my-profile/my-profile').then(m => m.MyProfile)
+  },
+
+  // ─── Exam portal (isolated) ───────────────────────────────────────────────
+  {
+    path: 'exam',
+    loadChildren: () =>
+      import('./exam/exam.routes').then(m => m.examRoutes)
   },
 
   // ─── Auth ─────────────────────────────────────────────────────────────────

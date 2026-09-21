@@ -1,0 +1,149 @@
+@use '../../../styles/variables' as *;
+
+.exam-detail-page {
+  padding: 24px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: $purple;
+  text-decoration: none;
+}
+
+header {
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0 0 6px;
+  }
+
+  p {
+    margin: 0;
+    color: $muted;
+  }
+}
+
+.panel {
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0 0 8px;
+  }
+
+  .hint {
+    margin: 0 0 16px;
+    color: $muted;
+  }
+}
+
+.role-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+
+  input[type='text'] {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+}
+
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.primary-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: $purple;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.role-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid $border;
+  }
+}
+
+textarea {
+  width: 100%;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-family: $font-base;
+}
+
+select {
+  width: 100%;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0 12px;
+}
+
+.question-list {
+  margin: 16px 0 0;
+  padding-left: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid $border;
+  }
+
+  .q-type {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: $purple;
+    font-weight: 700;
+  }
+
+  .q-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .danger {
+    color: $red;
+  }
+}
+
+.muted {
+  color: $muted;
+}
+
+@media (max-width: $bp-tablet) {
+  .role-form {
+    grid-template-columns: 1fr;
+  }
+
+  .role-list li {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,49 @@
+<div class="pre-check">
+  <a routerLink="/exam/dashboard" class="back">← Back to exams</a>
+
+  @if (loading()) {
+    <p>Loading pre-check...</p>
+  } @else if (assignment()) {
+    <div class="card">
+      <h1>{{ assignment()!.exam!.title }}</h1>
+      @if (assignment()!.role) {
+        <p class="role">Role: {{ assignment()!.role!.name }}</p>
+      }
+      <ul>
+        <li>Duration: {{ assignment()!.exam!.durationMinutes }} minutes</li>
+        <li>Your attempt will auto-submit when time runs out.</li>
+        <li>Fullscreen mode is required. Exiting records a warning.</li>
+        <li>Camera and microphone will be monitored during the exam.</li>
+      </ul>
+
+      <div class="preview-wrap">
+        <p class="label">Camera preview</p>
+        <video
+          #previewVideo
+          autoplay
+          muted
+          playsinline
+          class="preview"
+          (loadedmetadata)="onVideoReady(previewVideo)"
+        ></video>
+        @if (!mediaOk()) {
+          <p class="warn">Allow camera and microphone to continue.</p>
+        }
+      </div>
+
+      <label class="consent">
+        <input type="checkbox" [checked]="consent()" (change)="toggleConsent($event)" />
+        I consent to video and audio proctoring for this exam.
+      </label>
+
+      <button
+        type="button"
+        class="start-btn"
+        [disabled]="!consent() || !mediaOk() || starting()"
+        (click)="beginExam()"
+      >
+        {{ starting() ? 'Starting...' : 'Begin exam' }}
+      </button>
+    </div>
+  }
+</div>

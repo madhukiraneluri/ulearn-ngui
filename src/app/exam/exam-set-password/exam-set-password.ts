@@ -2,16 +2,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AbstractControl,
   FormBuilder,
   FormGroup,
+  ReactiveFormsModule,
   ValidationErrors,
-  Validators,
-  ReactiveFormsModule
+  Validators
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -35,14 +36,14 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 }
 
 @Component({
-  selector: 'app-set-password',
+  selector: 'app-exam-set-password',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './set-password.html',
-  styleUrl: './set-password.scss'
+  templateUrl: './exam-set-password.html',
+  styleUrl: './exam-set-password.scss'
 })
-export class SetPasswordComponent implements OnInit {
+export class ExamSetPassword implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -53,6 +54,7 @@ export class SetPasswordComponent implements OnInit {
   private submitting = false;
 
   readonly isLoading = this.auth.isLoading;
+  readonly ready = signal(false);
 
   ngOnInit(): void {
     this.form = this.fb.group(
@@ -62,19 +64,20 @@ export class SetPasswordComponent implements OnInit {
       },
       { validators: passwordMatchValidator }
     );
-
     void this.ensureAccess();
   }
 
   private async ensureAccess(): Promise<void> {
     const loggedIn = await this.auth.ensureSessionChecked();
     if (!loggedIn) {
-      await this.router.navigate(['/auth/login']);
+      await this.router.navigate(['/exam/login']);
       return;
     }
     if (!this.auth.mustResetPassword()) {
-      await this.router.navigate([this.auth.postPasswordResetRedirectUrl()]);
+      await this.router.navigate(['/exam/dashboard']);
+      return;
     }
+    this.ready.set(true);
   }
 
   async onSubmit(): Promise<void> {
@@ -88,8 +91,7 @@ export class SetPasswordComponent implements OnInit {
       const password = String(this.form.get('password')?.value);
       const ok = await this.auth.setNewPassword(password);
       if (!ok) return;
-
-      await this.router.navigate([this.auth.postPasswordResetRedirectUrl()]);
+      await this.router.navigate(['/exam/dashboard']);
     } finally {
       this.submitting = false;
     }
@@ -101,17 +103,5 @@ export class SetPasswordComponent implements OnInit {
 
   toggleConfirmPasswordVisibility(): void {
     this.showConfirmPassword = !this.showConfirmPassword;
-  }
-
-  isFieldInvalid(fieldName: string): boolean {
-    const control = this.form.get(fieldName);
-    return !!(control && control.invalid && (control.dirty || control.touched));
-  }
-
-  hasPasswordMismatch(): boolean {
-    return !!(
-      this.form.errors?.['passwordMismatch'] &&
-      this.form.get('confirmPassword')?.touched
-    );
   }
 }

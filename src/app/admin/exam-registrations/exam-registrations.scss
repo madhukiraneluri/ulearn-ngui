@@ -1,0 +1,321 @@
+@use '../../../styles/variables' as *;
+
+.registrations-page {
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+
+  h1 { margin: 8px 0 4px; }
+  p { margin: 0; color: $muted; }
+}
+
+.back {
+  color: $purple;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.primary-btn, .ghost-btn, .upload-btn {
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.primary-btn {
+  border: none;
+  background: $purple;
+  color: #fff;
+}
+
+.danger-btn {
+  border: none;
+  background: $red;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ghost-btn, .upload-btn {
+  border: 1px solid $border;
+  background: $card;
+}
+
+.upload-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.upload-btn input { display: none; }
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  button {
+    border: 1px solid $border;
+    background: $card;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &.active {
+      border-color: $purple;
+      color: $purple;
+      font-weight: 700;
+    }
+  }
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  input, select {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-width: 160px;
+  }
+
+  input[type='search'] { flex: 1; min-width: 220px; }
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 12px;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid $border;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background: $bg;
+      font-weight: 700;
+    }
+  }
+}
+
+.sent { color: $green; font-weight: 600; }
+.error { color: $red; font-weight: 600; }
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 10px;
+}
+
+.pagination-top {
+  margin-bottom: 12px;
+}
+
+.pagination-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+
+  .page-label {
+    font-weight: 700;
+    color: $navy;
+  }
+
+  .range-label {
+    color: $muted;
+    font-size: 0.875rem;
+  }
+}
+
+.pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-btn,
+.pagination-controls .ghost-btn {
+  border: 1px solid $border;
+  background: $card;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.go-to,
+.page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: $text;
+
+  input,
+  select {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 6px 8px;
+    min-width: 0;
+  }
+
+  input {
+    width: 56px;
+    text-align: center;
+  }
+
+  select {
+    width: 72px;
+  }
+}
+
+.role-guide {
+  margin-top: 24px;
+  background: $card;
+  border: 1px dashed $border;
+  border-radius: 12px;
+  padding: 16px;
+
+  .hint {
+    margin: 0 0 8px;
+    color: $muted;
+    font-size: 0.875rem;
+  }
+
+  ul { margin: 8px 0 0; padding-left: 20px; }
+}
+
+.import-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 30, 46, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.import-modal {
+  width: min(100%, 460px);
+  background: $card;
+  border-radius: 16px;
+  padding: 32px 36px;
+  box-shadow: 0 16px 48px rgba(30, 30, 46, 0.2);
+  text-align: center;
+
+  h2 {
+    margin: 0 0 10px;
+    font-family: $font-heading;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: $navy;
+  }
+
+  .import-status {
+    margin: 0 0 18px;
+    color: $text;
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+
+  .import-meta,
+  .import-note {
+    margin: 14px 0 0;
+    font-size: 0.8125rem;
+    color: $muted;
+  }
+
+  .import-note {
+    color: $purple;
+    font-weight: 500;
+  }
+
+  .import-error {
+    color: $red;
+    margin-bottom: 16px;
+  }
+
+  .primary-btn {
+    margin-top: 22px;
+    min-width: 120px;
+  }
+}
+
+.progress-track {
+  height: 8px;
+  background: $bg;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid $border;
+  position: relative;
+
+  &.is-success .progress-fill {
+    background: $green;
+  }
+
+  &.is-indeterminate .progress-fill {
+    width: 40% !important;
+    animation: import-indeterminate 1.4s ease-in-out infinite;
+  }
+}
+
+.progress-fill {
+  height: 100%;
+  background: $purple;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+@keyframes import-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}

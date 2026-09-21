@@ -1,0 +1,129 @@
+@use '../../../styles/variables' as *;
+
+.exams-page {
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+  }
+
+  p {
+    margin: 0;
+    color: $muted;
+  }
+}
+
+.primary-btn,
+.ghost-btn {
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.primary-btn {
+  border: none;
+  background: $purple;
+  color: #fff;
+  font-weight: 700;
+}
+
+.ghost-btn {
+  border: 1px solid $border;
+  background: $card;
+  color: $text;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  input,
+  textarea {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: $font-base;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+.exam-list {
+  display: grid;
+  gap: 12px;
+}
+
+.exam-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 16px;
+
+  h2 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+  }
+
+  .meta {
+    color: $muted;
+    margin-top: 6px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+.muted {
+  color: $muted;
+}
+
+@media (max-width: $bp-tablet) {
+  .create-form .row,
+  .exam-item {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}

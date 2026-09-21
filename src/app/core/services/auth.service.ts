@@ -31,7 +31,7 @@ export class AuthService {
   isLoggedIn = computed(() => this.isAuthenticatedSignal());
   profileCompleted = computed(() => this.profileSignal()?.profile_completed ?? false);
 
-  private static readonly PROTECTED_PREFIXES = ['/my-courses', '/profile', '/admin', '/s/join'];
+  private static readonly PROTECTED_PREFIXES = ['/my-courses', '/profile', '/admin', '/s/join', '/exam'];
 
   constructor() {
     this.sessionInitPromise = this.initializeAuth();
@@ -442,6 +442,25 @@ export class AuthService {
     if (profile?.must_reset_password) return true;
     const meta = this.currentUserSignal()?.user_metadata?.['must_reset_password'];
     return meta === true;
+  }
+
+  isExamOnly(): boolean {
+    const profile = this.profileSignal();
+    if (profile?.exam_only) return true;
+    return this.currentUserSignal()?.user_metadata?.['exam_only'] === true;
+  }
+
+  postLoginRedirectUrl(): string {
+    if (this.isExamOnly()) return '/exam/dashboard';
+    if (this.mustResetPassword()) return '/auth/set-password';
+    if (!this.hasCompletedProfile()) return '/auth/complete-profile';
+    return '/';
+  }
+
+  postPasswordResetRedirectUrl(): string {
+    if (this.isExamOnly()) return '/exam/dashboard';
+    if (!this.hasCompletedProfile()) return '/auth/complete-profile';
+    return '/';
   }
 
   async setNewPassword(password: string): Promise<boolean> {

@@ -1,0 +1,119 @@
+@use '../../../styles/variables' as *;
+
+.exam-dashboard {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.hero {
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0 0 8px;
+    font-family: $font-heading;
+    color: $navy;
+  }
+
+  p {
+    margin: 0;
+    color: $muted;
+  }
+}
+
+.exam-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.exam-card {
+  background: $card;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 20px;
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 1.125rem;
+  }
+
+  .role {
+    margin: 0 0 12px;
+    color: $purple;
+    font-weight: 600;
+  }
+
+  .meta {
+    margin: 0 0 16px;
+    padding-left: 18px;
+    color: $text;
+
+    li + li {
+      margin-top: 4px;
+    }
+  }
+}
+
+.start-btn {
+  display: inline-block;
+  background: $purple;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.locked,
+.muted {
+  color: $muted;
+}
+
+.countdown-box {
+  margin-top: 4px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba($purple, 0.08);
+  border: 1px solid rgba($purple, 0.2);
+  text-align: center;
+}
+
+.countdown-label {
+  margin: 0;
+  color: $text;
+  font-weight: 600;
+}
+
+.countdown-timer {
+  margin: 8px 0 0;
+  font-family: $font-heading;
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+  color: $purple;
+}
+
+.countdown-schedule {
+  margin: 10px 0 0;
+  color: $muted;
+  font-size: 0.875rem;
+}
+
+.result-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba($green, 0.08);
+  border: 1px solid rgba($green, 0.25);
+
+  p { margin: 4px 0 0; }
+}
+
+.error {
+  color: $red;
+}
+
+.empty {
+  background: $card;
+  border: 1px dashed $border;
+  border-radius: 14px;
+  padding: 24px;
+}

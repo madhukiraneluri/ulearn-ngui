@@ -1,0 +1,61 @@
+<div class="exam-dashboard">
+  <div class="hero">
+    <h1>Your exams</h1>
+    <p>Only exams assigned to your account appear here.</p>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Loading your exam...</p>
+  } @else if (error()) {
+    <p class="error">{{ error() }}</p>
+  } @else if (assignments().length === 0) {
+    <div class="empty">
+      <p>No exams assigned yet.</p>
+      <p class="muted">Contact your exam administrator if you expected an invitation.</p>
+    </div>
+  } @else {
+    <div class="exam-grid">
+      @for (item of assignments(); track item.id) {
+        <article class="exam-card">
+          <h2>{{ item.exam?.title ?? 'Exam' }}</h2>
+          @if (item.role) {
+            <p class="role">Role: {{ item.role.name }}</p>
+          }
+          @if (item.exam) {
+            <ul class="meta">
+              <li>Window: {{ item.exam.startsAt | date:'medium' }} – {{ item.exam.endsAt | date:'medium' }}</li>
+              <li>Duration: {{ item.exam.durationMinutes }} minutes</li>
+              <li>Status: {{ examStatusLabel(item) }}</li>
+            </ul>
+          }
+
+          @if (canStart(item)) {
+            <a class="start-btn" [routerLink]="['/exam', item.examId, 'start']">Start exam</a>
+          } @else if (isBeforeStart(item)) {
+            <div class="countdown-box">
+              <p class="countdown-label">Exam will start in</p>
+              <p class="countdown-timer">{{ countdownFor(item) }}</p>
+              @if (item.exam) {
+                <p class="countdown-schedule">
+                  Scheduled for {{ item.exam.startsAt | date:'fullDate' }} at {{ item.exam.startsAt | date:'shortTime' }}
+                </p>
+              }
+            </div>
+          } @else if (isAfterEnd(item)) {
+            <span class="locked">Exam window has closed</span>
+          } @else {
+            <span class="locked">Not available yet</span>
+          }
+
+          @if (results()[item.examId]; as result) {
+            <div class="result-box">
+              <strong>Your result</strong>
+              <p>Score: {{ result.totalScore }}/{{ result.totalMax }} ({{ result.percentage }}%)</p>
+              <p class="muted">MCQ {{ result.mcqScore }}/{{ result.mcqMax }} · Coding {{ result.codingScore }}/{{ result.codingMax }}</p>
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+</div>

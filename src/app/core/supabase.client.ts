@@ -66,6 +66,7 @@ export interface UserProfile {
   role?: string;
   must_reset_password?: boolean;
   created_by_admin?: boolean;
+  exam_only?: boolean;
   created_at: string;
   updated_at: string;
 }

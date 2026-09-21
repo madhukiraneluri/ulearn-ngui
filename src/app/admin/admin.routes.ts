@@ -96,6 +96,21 @@ export const adminRoutes: Routes = [
           import('./session-detail/session-detail').then(m => m.SessionDetail)
       },
       {
+        path: 'exams',
+        loadComponent: () =>
+          import('./exams-management/exams-management').then(m => m.ExamsManagement)
+      },
+      {
+        path: 'exams/registrations',
+        loadComponent: () =>
+          import('./exam-registrations/exam-registrations').then(m => m.ExamRegistrations)
+      },
+      {
+        path: 'exams/:examId',
+        loadComponent: () =>
+          import('./exam-detail/exam-detail').then(m => m.ExamDetail)
+      },
+      {
         path: 'enrollments',
         loadComponent: () =>
           import('./enrollments-management/enrollments-management').then(m => m.EnrollmentsManagement)

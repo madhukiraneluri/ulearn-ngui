@@ -1,0 +1,56 @@
+<div class="exams-page">
+  <div class="page-header">
+    <div>
+      <h1>Exams</h1>
+      <p>Create and manage exam portal assessments.</p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/admin/exams/registrations" class="ghost-btn">Recruitment hub</a>
+      <button type="button" class="primary-btn" (click)="toggleForm()">
+        {{ showForm() ? 'Cancel' : 'New exam' }}
+      </button>
+    </div>
+  </div>
+
+  @if (showForm()) {
+    <form class="create-form" [formGroup]="form" (ngSubmit)="createExam()">
+      <label>Title<input formControlName="title" /></label>
+      <label>Description<textarea formControlName="description" rows="2"></textarea></label>
+      <div class="row">
+        <label>Starts<input type="datetime-local" formControlName="startsAt" /></label>
+        <label>Ends<input type="datetime-local" formControlName="endsAt" /></label>
+      </div>
+      <div class="row">
+        <label>Duration (min)<input type="number" formControlName="durationMinutes" /></label>
+        <label>Max concurrent<input type="number" formControlName="maxConcurrent" /></label>
+      </div>
+      <button type="submit" class="primary-btn" [disabled]="form.invalid || saving()">
+        Create exam
+      </button>
+    </form>
+  }
+
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else if (exams().length === 0) {
+    <p class="muted">No exams yet.</p>
+  } @else {
+    <div class="exam-list">
+      @for (exam of exams(); track exam.id) {
+        <article class="exam-item">
+          <div>
+            <h2>{{ exam.title }}</h2>
+            <p>{{ exam.startsAt | date:'medium' }} – {{ exam.endsAt | date:'medium' }}</p>
+            <p class="meta">{{ exam.durationMinutes }} min · cap {{ exam.maxConcurrent }} · {{ exam.status }}</p>
+          </div>
+          <div class="actions">
+            @if (exam.status === 'draft') {
+              <button type="button" class="ghost-btn" (click)="publish(exam)">Publish</button>
+            }
+            <a class="ghost-btn" [routerLink]="['/admin/exams', exam.id]">Manage</a>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>

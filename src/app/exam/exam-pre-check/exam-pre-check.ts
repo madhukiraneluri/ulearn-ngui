@@ -1,0 +1,115 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast';
+import { ExamService } from '../services/exam.service';
+import { ExamProctoringService } from '../services/exam-proctoring.service';
+import type { ExamCandidate } from '../../models/index';
+
+@Component({
+  selector: 'app-exam-pre-check',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, RouterLink],
+  templateUrl: './exam-pre-check.html',
+  styleUrl: './exam-pre-check.scss'
+})
+export class ExamPreCheck implements OnInit, OnDestroy {
+  @ViewChild('previewVideo') previewVideo?: ElementRef<HTMLVideoElement>;
+
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  private readonly examService = inject(ExamService);
+  private readonly proctoring = inject(ExamProctoringService);
+  private readonly toast = inject(ToastService);
+
+  readonly loading = signal(true);
+  readonly starting = signal(false);
+  readonly assignment = signal<ExamCandidate | null>(null);
+  readonly consent = signal(false);
+  readonly mediaOk = signal(false);
+
+  private examId = '';
+
+  ngOnInit(): void {
+    this.examId = this.route.snapshot.paramMap.get('examId') ?? '';
+    void this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.proctoring.stopMedia();
+  }
+
+  private async load(): Promise<void> {
+    try {
+      const userId = this.auth.currentUser()?.id;
+      if (!userId) {
+        await this.router.navigate(['/exam/login']);
+        return;
+      }
+
+      const assignment = await this.examService.getMyAssignment(userId, this.examId);
+      if (!assignment?.exam) {
+        this.toast.error('You are not registered for this exam.');
+        await this.router.navigate(['/exam/dashboard']);
+        return;
+      }
+
+      const active = await this.examService.getActiveAttempt(userId, this.examId);
+      if (active) {
+        await this.router.navigate(['/exam', this.examId, 'attempt', active.id]);
+        return;
+      }
+
+      this.assignment.set(assignment);
+      const media = await this.proctoring.requestMedia();
+      this.mediaOk.set(media);
+      if (media && this.previewVideo?.nativeElement) {
+        this.proctoring.attachPreview(this.previewVideo.nativeElement);
+      }
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Could not load exam');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  onVideoReady(video: HTMLVideoElement): void {
+    if (this.mediaOk()) {
+      this.proctoring.attachPreview(video);
+    }
+  }
+
+  toggleConsent(event: Event): void {
+    this.consent.set((event.target as HTMLInputElement).checked);
+  }
+
+  async beginExam(): Promise<void> {
+    if (!this.consent() || !this.mediaOk()) {
+      this.toast.error('Accept proctoring consent and allow camera/microphone.');
+      return;
+    }
+
+    this.starting.set(true);
+    try {
+      const result = await this.examService.startExam(this.examId);
+      await this.examService.recordProctoringConsent(result.attemptId);
+      await this.router.navigate(['/exam', this.examId, 'attempt', result.attemptId]);
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Could not start exam');
+    } finally {
+      this.starting.set(false);
+    }
+  }
+}

@@ -63,7 +63,7 @@ export class Login implements OnInit {
       if (this.auth.mustResetPassword()) {
         await this.router.navigate(['/auth/set-password']);
       } else {
-        await this.router.navigateByUrl(this.returnUrl || '/');
+        await this.router.navigateByUrl(this.returnUrl || this.auth.postLoginRedirectUrl());
       }
     }
   }

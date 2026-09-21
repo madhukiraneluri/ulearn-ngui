@@ -1,0 +1,222 @@
+<div class="registrations-page">
+  <header class="page-header">
+    <div>
+      <a routerLink="/admin/exams" class="back">← Exams</a>
+      <h1>Recruitment exam portal</h1>
+      <p>Upload Excel → assign by role → send credentials → view results</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="ghost-btn" (click)="downloadTemplate()">Download template</button>
+      <label class="upload-btn" [class.disabled]="importing()">
+        Upload Excel
+        <input type="file" accept=".xlsx,.xls" hidden (change)="onFileSelected($event)" [disabled]="importing()" />
+      </label>
+      <button type="button" class="danger-btn" [disabled]="deleting() || total() === 0" (click)="deleteAllRegistrations()">
+        {{ deleting() ? 'Deleting...' : 'Delete all' }}
+      </button>
+      <button type="button" class="primary-btn" [disabled]="sending()" (click)="sendAllPendingEmails()">
+        Send emails (all pending)
+      </button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button type="button" [class.active]="activeTab() === 'registrations'" (click)="activeTab.set('registrations')">
+      Registrations
+    </button>
+    <button type="button" [class.active]="activeTab() === 'results'" (click)="activeTab.set('results')">
+      Results
+    </button>
+  </div>
+
+  @if (activeTab() === 'registrations') {
+    <section class="filters">
+      <input type="search" placeholder="Search email, name, role..." [ngModel]="search()" (ngModelChange)="search.set($event)" (keyup.enter)="applyFilters()" />
+      <select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); applyFilters()">
+        <option value="">All roles</option>
+        @for (role of roleOptions; track role.slug) {
+          <option [value]="role.slug">{{ role.name }}</option>
+        }
+      </select>
+      <select [ngModel]="examFilter()" (ngModelChange)="examFilter.set($event); applyFilters()">
+        <option value="">All exams</option>
+        @for (exam of exams(); track exam.id) {
+          <option [value]="exam.id">{{ exam.title }}</option>
+        }
+      </select>
+      <select [ngModel]="emailFilter()" (ngModelChange)="emailFilter.set($event); applyFilters()">
+        <option value="all">All email status</option>
+        <option value="pending">Email pending</option>
+        <option value="sent">Email sent</option>
+      </select>
+      <button type="button" class="ghost-btn" (click)="applyFilters()">Apply</button>
+      <button type="button" class="ghost-btn" (click)="sendFilteredEmails()" [disabled]="sending()">Send filtered</button>
+    </section>
+
+    @if (!loading()) {
+      <div class="pagination pagination-top">
+        <div class="pagination-summary">
+          <span class="page-label">Page {{ page() }} of {{ totalPages() }}</span>
+          <span class="range-label">({{ rangeStart() }}-{{ rangeEnd() }}) of {{ total() }}</span>
+        </div>
+
+        <div class="pagination-controls">
+          <button type="button" class="page-btn" (click)="goToFirstPage()" [disabled]="page() <= 1" aria-label="First page">«</button>
+          <button type="button" class="page-btn" (click)="goPage(-1)" [disabled]="page() <= 1">Previous</button>
+          <button type="button" class="page-btn" (click)="goPage(1)" [disabled]="page() >= totalPages()">Next</button>
+          <button type="button" class="page-btn" (click)="goToLastPage()" [disabled]="page() >= totalPages()" aria-label="Last page">»</button>
+
+          <label class="go-to">
+            Go to
+            <input
+              type="text"
+              inputmode="numeric"
+              [ngModel]="goToPageInput()"
+              (ngModelChange)="onGoToPageInput($event)"
+              (keyup.enter)="goToPage()"
+            />
+          </label>
+          <button type="button" class="ghost-btn" (click)="goToPage()">Go</button>
+
+          <label class="page-size">
+            Rows
+            <select [ngModel]="pageSize()" (ngModelChange)="onPageSizeChange($event)">
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    }
+
+    @if (loading()) {
+      <p>Loading...</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role interested</th>
+              <th>Assigned exam</th>
+              <th>Email status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td>{{ row.fullName }}</td>
+                <td>{{ row.email }}</td>
+                <td>{{ row.roleInterested }}</td>
+                <td>{{ row.examTitle ?? '—' }}</td>
+                <td>
+                  <span [class.sent]="!!row.credentialsSentAt" [class.error]="!!row.provisionError">
+                    {{ emailStatusLabel(row) }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5">No registrations yet. Upload an Excel file to get started.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else {
+    <section class="filters">
+      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsRoleChange()">
+        <option value="">All roles</option>
+        @for (role of roleOptions; track role.slug) {
+          <option [value]="role.slug">{{ role.name }}</option>
+        }
+      </select>
+      <button type="button" class="primary-btn" (click)="exportResults()">Download Excel</button>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>MCQ</th>
+            <th>Coding</th>
+            <th>Total</th>
+            <th>%</th>
+            <th>Warnings</th>
+            <th>Evaluated</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of results(); track r.id) {
+            <tr>
+              <td>{{ r.studentName }}</td>
+              <td>{{ r.studentEmail }}</td>
+              <td>{{ r.roleSlug }}</td>
+              <td>{{ r.mcqScore }}/{{ r.mcqMax }}</td>
+              <td>{{ r.codingScore }}/{{ r.codingMax }}</td>
+              <td>{{ r.totalScore }}/{{ r.totalMax }}</td>
+              <td>{{ r.percentage }}%</td>
+              <td>{{ r.fullscreenWarnings }}</td>
+              <td>{{ r.evaluatedAt | date:'short' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9">No evaluated results yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <section class="role-guide">
+    <h3>Role exam configuration</h3>
+    <p class="hint">Applicants listing multiple roles (or duplicate rows) are assigned to <strong>Research Analyst</strong> only.</p>
+    <ul>
+      @for (role of roleOptions; track role.slug) {
+        <li>
+          <strong>{{ role.name }}</strong> —
+          {{ role.hasCoding ? '90 min · 30 MCQ + 2 coding' : '60 min · 40 MCQ only' }}
+        </li>
+      }
+    </ul>
+  </section>
+</div>
+
+@if (importModalOpen()) {
+  <div class="import-overlay" (click)="importPhase() !== 'importing' && closeImportModal()">
+    <div class="import-modal" (click)="$event.stopPropagation()">
+      @if (importPhase() === 'importing' || importPhase() === 'success') {
+        <h2>{{ importPhase() === 'success' ? 'Successfully imported' : 'Importing candidates' }}</h2>
+        <p class="import-status">{{ importProcessed() }} of {{ importTotal() }} processed</p>
+        <div
+          class="progress-track"
+          [class.is-success]="importPhase() === 'success'"
+          [class.is-indeterminate]="importPhase() === 'importing' && importProcessed() === 0 && importTotal() > 0"
+        >
+          <div
+            class="progress-fill"
+            [style.width.%]="importPhase() === 'success' ? 100 : importPercent()"
+          ></div>
+        </div>
+        <p class="import-meta">
+          {{ importPhase() === 'success' ? 100 : importPercent() }}% ·
+          {{ importSuccessCount() }} succeeded ·
+          {{ importFailedCount() }} failed
+        </p>
+        @if (importMultiRoleCount() > 0) {
+          <p class="import-note">{{ importMultiRoleCount() }} multi-role applicant(s) assigned to Research Analyst</p>
+        }
+        @if (importPhase() === 'success') {
+          <button type="button" class="primary-btn" (click)="closeImportModal()">Done</button>
+        }
+      } @else if (importPhase() === 'error') {
+        <h2>Import failed</h2>
+        <p class="import-error">{{ importErrorMessage() }}</p>
+        <button type="button" class="primary-btn" (click)="closeImportModal()">Close</button>
+      }
+    </div>
+  </div>
+}

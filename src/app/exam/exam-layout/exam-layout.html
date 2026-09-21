@@ -1,0 +1,16 @@
+<div class="exam-shell">
+  <header class="exam-header">
+    <a routerLink="/exam/dashboard" class="exam-brand" aria-label="Exam portal home">
+      <img src="assets/images/logo.jpeg" alt="ULearn Exam Portal" />
+      <span>Exam Portal</span>
+    </a>
+
+    @if (auth.isLoggedIn()) {
+      <button type="button" class="logout-btn" (click)="logout()">Sign out</button>
+    }
+  </header>
+
+  <main class="exam-main">
+    <router-outlet />
+  </main>
+</div>

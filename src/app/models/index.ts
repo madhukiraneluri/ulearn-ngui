@@ -508,3 +508,157 @@ export interface DashboardStats {
   pendingReferrals: number;
   newStudentsThisWeek: number;
 }
+
+// ─── EXAM PORTAL ─────────────────────────────────────────────────────────────
+
+export type ExamStatus = 'draft' | 'published' | 'closed';
+export type ExamQuestionType = 'mcq' | 'coding';
+export type ExamAttemptStatus = 'in_progress' | 'submitted' | 'auto_submitted' | 'blocked';
+
+export interface Exam {
+  id: string;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string;
+  durationMinutes: number;
+  maxConcurrent: number;
+  status: ExamStatus;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamRole {
+  id: string;
+  examId: string;
+  name: string;
+  slug: string;
+  hasCoding: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ExamMcqPayload {
+  stem: string;
+  codeBlock?: string;
+  options: string[];
+  correctIndex: number;
+  marks: number;
+}
+
+export interface ExamCodingPayload {
+  title: string;
+  description: string;
+  starterCode?: string;
+  language: string;
+  marks: number;
+  publicTestCases?: ExamTestCase[];
+  hiddenTestCases?: ExamTestCase[];
+}
+
+export interface ExamTestCase {
+  input: string;
+  expectedOutput: string;
+}
+
+export interface ExamQuestion {
+  id: string;
+  examRoleId: string;
+  type: ExamQuestionType;
+  sortOrder: number;
+  payload: ExamMcqPayload | ExamCodingPayload;
+  createdAt: string;
+}
+
+export interface ExamCandidate {
+  id: string;
+  examId: string;
+  userId: string;
+  examRoleId: string;
+  registeredAt: string;
+  credentialsSentAt: string | null;
+  exam?: Exam;
+  role?: ExamRole;
+}
+
+export interface ExamAttempt {
+  id: string;
+  examId: string;
+  examRoleId: string;
+  userId: string;
+  startedAt: string;
+  endsAt: string;
+  submittedAt: string | null;
+  status: ExamAttemptStatus;
+  fullscreenExitCount: number;
+  proctoringConsentAt: string | null;
+  createdAt: string;
+}
+
+export interface ExamAnswer {
+  id: string;
+  attemptId: string;
+  questionId: string;
+  answer: Record<string, unknown>;
+  answeredAt: string;
+}
+
+export interface ExamUpsertInput {
+  title: string;
+  description?: string | null;
+  startsAt: string;
+  endsAt: string;
+  durationMinutes: number;
+  maxConcurrent?: number;
+  status?: ExamStatus;
+}
+
+export interface ExamCandidateImportRow {
+  email: string;
+  fullName: string;
+  phone?: string;
+  collegeName?: string;
+  roleSlug: string;
+}
+
+export interface ExamQuestionImportInput {
+  type: ExamQuestionType;
+  sortOrder: number;
+  payload: ExamMcqPayload | ExamCodingPayload;
+}
+
+export interface ExamRegistration {
+  id: string;
+  email: string;
+  fullName: string;
+  roleInterested: string;
+  roleSlug: string | null;
+  examId: string | null;
+  userId: string | null;
+  candidateId: string | null;
+  importBatchId: string | null;
+  credentialsSentAt: string | null;
+  provisionError: string | null;
+  createdAt: string;
+  examTitle?: string;
+}
+
+export interface ExamResultRow {
+  id: string;
+  attemptId: string;
+  examId: string;
+  userId: string;
+  roleSlug: string;
+  studentName: string;
+  studentEmail: string;
+  mcqScore: number;
+  mcqMax: number;
+  codingScore: number;
+  codingMax: number;
+  totalScore: number;
+  totalMax: number;
+  percentage: number;
+  fullscreenWarnings: number;
+  evaluatedAt: string;
+}

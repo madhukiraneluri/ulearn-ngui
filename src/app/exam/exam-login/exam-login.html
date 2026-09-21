@@ -1,0 +1,41 @@
+<div class="exam-login">
+  <div class="exam-login-card">
+    <h1>Exam Portal</h1>
+    <p>Sign in with the credentials emailed to you.</p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="exam-login-form">
+      <label for="email">Email</label>
+      <input
+        id="email"
+        type="email"
+        formControlName="email"
+        placeholder="your.email@college.com"
+        autocomplete="email"
+        [class.error]="isFieldInvalid('email')"
+      />
+
+      <label for="password">Password</label>
+      <div class="password-field">
+        <input
+          id="password"
+          [type]="showPassword ? 'text' : 'password'"
+          formControlName="password"
+          placeholder="Temporary password"
+          autocomplete="current-password"
+          [class.error]="isFieldInvalid('password')"
+        />
+        <button type="button" class="toggle" (click)="togglePasswordVisibility()">
+          {{ showPassword ? 'Hide' : 'Show' }}
+        </button>
+      </div>
+
+      <button type="submit" class="submit-btn" [disabled]="form.invalid || isLoading()">
+        @if (isLoading()) {
+          Signing in...
+        } @else {
+          Enter exam portal
+        }
+      </button>
+    </form>
+  </div>
+</div>
