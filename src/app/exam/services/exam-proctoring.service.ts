@@ -31,10 +31,15 @@ export class ExamProctoringService {
 
   attachPreview(video: HTMLVideoElement): void {
     this.videoEl = video;
-    if (this.mediaStream) {
+    if (!this.mediaStream) return;
+
+    if (video.srcObject !== this.mediaStream) {
       video.srcObject = this.mediaStream;
-      void video.play();
     }
+
+    void video.play().catch(() => {
+      // Autoplay may require a user gesture in some browsers; preview still works after play().
+    });
   }
 
   async enterFullscreen(element: HTMLElement): Promise<void> {

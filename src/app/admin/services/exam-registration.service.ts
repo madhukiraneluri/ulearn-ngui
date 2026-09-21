@@ -51,6 +51,19 @@ export interface RegistrationListResult {
   total: number;
 }
 
+export interface SendCredentialsRowResult {
+  registrationId: string;
+  email: string;
+  success: boolean;
+  message: string;
+  tempPassword?: string;
+}
+
+export interface SendCredentialsResult {
+  summary: { total: number; sent: number; failed: number };
+  results: SendCredentialsRowResult[];
+}
+
 function mapRegistration(row: RegistrationRow): ExamRegistration {
   const exam = Array.isArray(row.exams) ? row.exams[0] : row.exams;
   return {
@@ -145,14 +158,26 @@ export class ExamRegistrationService {
     registrationIds?: string[];
     examId?: string;
     onlyUnsent?: boolean;
-  }): Promise<{ summary: { total: number; sent: number; failed: number } }> {
-    const { data, error } = await invokeAuthedFunction<{
-      summary: { total: number; sent: number; failed: number };
-    }>('send-exam-credentials', options);
+  }): Promise<SendCredentialsResult> {
+    const { data, error } = await invokeAuthedFunction<SendCredentialsResult>(
+      'send-exam-credentials',
+      options
+    );
 
     if (error) throw new Error(error instanceof Error ? error.message : 'Send failed');
     if (!data) throw new Error('Send failed');
     return data;
+  }
+
+  async resetAndSendCredentials(registrationId: string): Promise<SendCredentialsRowResult> {
+    const result = await this.sendCredentials({
+      registrationIds: [registrationId],
+      onlyUnsent: false
+    });
+    const row = result.results.find((item) => item.registrationId === registrationId);
+    if (!row) throw new Error('Registration not found');
+    if (!row.success) throw new Error(row.message);
+    return row;
   }
 
   async listResults(examId?: string, roleSlug?: string): Promise<ExamResultRow[]> {

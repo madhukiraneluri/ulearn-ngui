@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Exam hall is full. Please try again shortly.' }, 409);
     }
 
+    const examEnd = new Date(exam.ends_at).getTime();
     const attemptEndsAt = Math.min(now + exam.duration_minutes * 60_000, examEnd);
     const endsAtIso = new Date(attemptEndsAt).toISOString();
 

@@ -102,6 +102,7 @@
               <th>Role interested</th>
               <th>Assigned exam</th>
               <th>Email status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -116,9 +117,32 @@
                     {{ emailStatusLabel(row) }}
                   </span>
                 </td>
+                <td class="actions-cell">
+                  @if (row.userId) {
+                    <button
+                      type="button"
+                      class="ghost-btn action-btn"
+                      [disabled]="isResetting(row.id)"
+                      (click)="resetAndSendCredentials(row)"
+                    >
+                      {{ isResetting(row.id) ? 'Sending...' : 'Reset temp password & resend email' }}
+                    </button>
+                    @if (tempPasswordFor(row.id); as tempPassword) {
+                      <div class="temp-password">
+                        <span class="temp-password-label">Temporary password</span>
+                        <code>{{ tempPassword }}</code>
+                        <button type="button" class="ghost-btn copy-btn" (click)="copyTempPassword(tempPassword)">
+                          Copy
+                        </button>
+                      </div>
+                    }
+                  } @else {
+                    <span class="muted-action">Not provisioned</span>
+                  }
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="5">No registrations yet. Upload an Excel file to get started.</td></tr>
+              <tr><td colspan="6">No registrations yet. Upload an Excel file to get started.</td></tr>
             }
           </tbody>
         </table>

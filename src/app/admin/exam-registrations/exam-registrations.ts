@@ -46,6 +46,8 @@ export class ExamRegistrations implements OnInit {
   readonly importing = signal(false);
   readonly deleting = signal(false);
   readonly sending = signal(false);
+  readonly resettingId = signal<string | null>(null);
+  readonly tempPasswords = signal<Record<string, string>>({});
   readonly activeTab = signal<'registrations' | 'results'>('registrations');
 
   readonly importModalOpen = signal(false);
@@ -230,6 +232,7 @@ export class ExamRegistrations implements OnInit {
     this.sending.set(true);
     try {
       const result = await this.registrationService.sendCredentials({ onlyUnsent: true });
+      this.storeTempPasswords(result.results);
       this.toast.success(`${result.summary.sent} emails sent, ${result.summary.failed} failed`);
       await this.loadRegistrations();
     } catch (err) {
@@ -246,6 +249,7 @@ export class ExamRegistrations implements OnInit {
         examId: this.examFilter() || undefined,
         onlyUnsent: this.emailFilter() !== 'sent'
       });
+      this.storeTempPasswords(result.results);
       this.toast.success(`${result.summary.sent} emails sent`);
       await this.loadRegistrations();
     } catch (err) {
@@ -253,6 +257,59 @@ export class ExamRegistrations implements OnInit {
     } finally {
       this.sending.set(false);
     }
+  }
+
+  async resetAndSendCredentials(row: ExamRegistration): Promise<void> {
+    if (!row.userId) {
+      this.toast.error('Student account is not provisioned yet');
+      return;
+    }
+
+    const ok = await this.confirmDialog.confirm({
+      title: 'Reset temporary password?',
+      message: `Generate a new temporary password for ${row.fullName} and send the credentials email again.`,
+      confirmLabel: 'Reset & send email',
+      variant: 'danger'
+    });
+    if (!ok) return;
+
+    this.resettingId.set(row.id);
+    try {
+      const result = await this.registrationService.resetAndSendCredentials(row.id);
+      if (result.tempPassword) {
+        this.tempPasswords.update((map) => ({ ...map, [row.id]: result.tempPassword! }));
+      }
+      this.toast.success(`Credentials sent to ${row.email}`);
+      await this.loadRegistrations();
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Reset failed');
+    } finally {
+      this.resettingId.set(null);
+    }
+  }
+
+  tempPasswordFor(rowId: string): string | null {
+    return this.tempPasswords()[rowId] ?? null;
+  }
+
+  isResetting(rowId: string): boolean {
+    return this.resettingId() === rowId;
+  }
+
+  copyTempPassword(password: string): void {
+    void navigator.clipboard.writeText(password).then(
+      () => this.toast.success('Temporary password copied'),
+      () => this.toast.error('Could not copy password')
+    );
+  }
+
+  private storeTempPasswords(results: Array<{ registrationId: string; tempPassword?: string }>): void {
+    const updates: Record<string, string> = {};
+    for (const row of results) {
+      if (row.tempPassword) updates[row.registrationId] = row.tempPassword;
+    }
+    if (Object.keys(updates).length === 0) return;
+    this.tempPasswords.update((map) => ({ ...map, ...updates }));
   }
 
   goPage(delta: number): void {

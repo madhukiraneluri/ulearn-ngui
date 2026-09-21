@@ -131,6 +131,54 @@
 .sent { color: $green; font-weight: 600; }
 .error { color: $red; font-weight: 600; }
 
+.actions-cell {
+  min-width: 240px;
+  vertical-align: top;
+}
+
+.action-btn {
+  white-space: normal;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.muted-action {
+  color: $muted;
+  font-size: 0.8125rem;
+}
+
+.temp-password {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px dashed $border;
+  border-radius: 8px;
+  background: $bg;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8125rem;
+    color: $navy;
+    word-break: break-all;
+  }
+}
+
+.temp-password-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: $muted;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.copy-btn {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
 .pagination {
   display: flex;
   flex-wrap: wrap;

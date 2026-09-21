@@ -5,6 +5,7 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  afterNextRender,
   inject,
   signal
 } from '@angular/core';
@@ -75,14 +76,23 @@ export class ExamPreCheck implements OnInit, OnDestroy {
       this.assignment.set(assignment);
       const media = await this.proctoring.requestMedia();
       this.mediaOk.set(media);
-      if (media && this.previewVideo?.nativeElement) {
-        this.proctoring.attachPreview(this.previewVideo.nativeElement);
-      }
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not load exam');
     } finally {
       this.loading.set(false);
+      if (this.mediaOk()) {
+        this.schedulePreviewAttach();
+      }
     }
+  }
+
+  private schedulePreviewAttach(): void {
+    afterNextRender(() => {
+      const video = this.previewVideo?.nativeElement;
+      if (video && this.mediaOk()) {
+        this.proctoring.attachPreview(video);
+      }
+    });
   }
 
   onVideoReady(video: HTMLVideoElement): void {

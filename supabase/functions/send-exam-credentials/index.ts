@@ -38,9 +38,16 @@ Deno.serve(async (req) => {
       Deno.env.get('ULEARN_EXAM_LOGIN_URL')?.trim() ??
       'https://www.ulearn-edu.in/exam/login';
 
-    const results: Array<{ email: string; success: boolean; message: string }> = [];
+    const results: Array<{
+      registrationId: string;
+      email: string;
+      success: boolean;
+      message: string;
+      tempPassword?: string;
+    }> = [];
 
     for (const row of rows) {
+      const registrationId = String(row.id);
       const email = String(row.email);
       const fullName = String(row.full_name);
       const examTitle = (row.exams as { title?: string } | null)?.title ?? 'Exam';
@@ -54,7 +61,7 @@ Deno.serve(async (req) => {
       });
 
       if (pwErr) {
-        results.push({ email, success: false, message: pwErr.message });
+        results.push({ registrationId, email, success: false, message: pwErr.message });
         continue;
       }
 
@@ -76,9 +83,21 @@ Deno.serve(async (req) => {
         await adminClient.from('exam_registrations').update({
           credentials_sent_at: new Date().toISOString()
         }).eq('id', row.id);
-        results.push({ email, success: true, message: 'Credentials emailed' });
+        results.push({
+          registrationId,
+          email,
+          success: true,
+          message: 'Credentials emailed',
+          tempPassword
+        });
       } else {
-        results.push({ email, success: false, message: mail.error ?? 'Email failed' });
+        results.push({
+          registrationId,
+          email,
+          success: false,
+          message: mail.error ?? 'Email failed',
+          tempPassword
+        });
       }
     }
 
