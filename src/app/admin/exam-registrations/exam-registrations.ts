@@ -28,6 +28,7 @@ import type {
 } from '../../models/index';
 
 const IMPORT_BATCH_SIZE = 25;
+const EMAIL_SEND_BATCH_SIZE = 30;
 
 type ImportModalPhase = 'idle' | 'importing' | 'success' | 'error';
 
@@ -68,6 +69,21 @@ export class ExamRegistrations implements OnInit {
   readonly importMultiRoleCount = signal(0);
   readonly importErrorMessage = signal('');
 
+  readonly sendModalOpen = signal(false);
+  readonly sendPhase = signal<'idle' | 'sending' | 'success' | 'error'>('idle');
+  readonly sendProcessed = signal(0);
+  readonly sendTotal = signal(0);
+  readonly sendSentCount = signal(0);
+  readonly sendFailedCount = signal(0);
+  readonly sendErrorMessage = signal('');
+
+  readonly addStudentOpen = signal(false);
+  readonly addStudentSubmitting = signal(false);
+  readonly addStudentEmail = signal('');
+  readonly addStudentName = signal('');
+  readonly addStudentRoleSlug = signal('');
+  readonly addStudentSendEmail = signal(true);
+
   readonly page = signal(1);
   readonly pageSize = signal(50);
   readonly goToPageInput = signal('1');
@@ -96,6 +112,12 @@ export class ExamRegistrations implements OnInit {
     const total = this.importTotal();
     if (total <= 0) return 0;
     return Math.min(100, Math.round((this.importProcessed() / total) * 100));
+  });
+
+  readonly sendPercent = computed(() => {
+    const total = this.sendTotal();
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((this.sendProcessed() / total) * 100));
   });
 
   ngOnInit(): void {
@@ -241,31 +263,113 @@ export class ExamRegistrations implements OnInit {
   }
 
   async sendAllPendingEmails(): Promise<void> {
-    this.sending.set(true);
-    try {
-      const result = await this.registrationService.sendCredentials({ onlyUnsent: true });
-      this.storeTempPasswords(result.results);
-      this.toast.success(`${result.summary.sent} emails sent, ${result.summary.failed} failed`);
-      await this.loadRegistrations();
-    } catch (err) {
-      this.toast.error(err instanceof Error ? err.message : 'Send failed');
-    } finally {
-      this.sending.set(false);
-    }
+    await this.runBatchedCredentialSend({});
   }
 
   async sendFilteredEmails(): Promise<void> {
-    this.sending.set(true);
+    if (this.emailFilter() === 'sent') {
+      this.toast.error('Filter is “Email sent” — switch to pending or all to send credentials.');
+      return;
+    }
+    await this.runBatchedCredentialSend({
+      examId: this.examFilter() || undefined
+    });
+  }
+
+  openAddStudentModal(): void {
+    this.addStudentEmail.set('');
+    this.addStudentName.set('');
+    this.addStudentRoleSlug.set(this.roleOptions[0]?.slug ?? '');
+    this.addStudentSendEmail.set(true);
+    this.addStudentOpen.set(true);
+  }
+
+  closeAddStudentModal(): void {
+    if (this.addStudentSubmitting()) return;
+    this.addStudentOpen.set(false);
+  }
+
+  async submitAddStudent(): Promise<void> {
+    const email = this.addStudentEmail().trim().toLowerCase();
+    const fullName = this.addStudentName().trim();
+    const role = this.roleOptions.find((r) => r.slug === this.addStudentRoleSlug());
+
+    if (!email || !fullName || !role) {
+      this.toast.error('Email, name, and role are required');
+      return;
+    }
+
+    this.addStudentSubmitting.set(true);
     try {
-      const result = await this.registrationService.sendCredentials({
-        examId: this.examFilter() || undefined,
-        onlyUnsent: this.emailFilter() !== 'sent'
+      await this.registrationService.addSingleRegistration({
+        email,
+        fullName,
+        roleInterested: role.name,
+        sendCredentials: this.addStudentSendEmail()
       });
-      this.storeTempPasswords(result.results);
-      this.toast.success(`${result.summary.sent} emails sent`);
+      this.toast.success(
+        this.addStudentSendEmail()
+          ? `Registered ${fullName} and sent credentials`
+          : `Registered ${fullName} (email not sent)`
+      );
+      this.addStudentOpen.set(false);
       await this.loadRegistrations();
     } catch (err) {
-      this.toast.error(err instanceof Error ? err.message : 'Send failed');
+      this.toast.error(err instanceof Error ? err.message : 'Could not add student');
+    } finally {
+      this.addStudentSubmitting.set(false);
+    }
+  }
+
+  closeSendModal(): void {
+    if (this.sendPhase() === 'sending') return;
+    this.sendModalOpen.set(false);
+    this.sendPhase.set('idle');
+  }
+
+  private async runBatchedCredentialSend(params: { examId?: string }): Promise<void> {
+    this.sending.set(true);
+    this.sendModalOpen.set(true);
+    this.sendPhase.set('sending');
+    this.sendProcessed.set(0);
+    this.sendSentCount.set(0);
+    this.sendFailedCount.set(0);
+    this.sendErrorMessage.set('');
+
+    try {
+      const ids = await this.registrationService.listPendingRegistrationIds(params);
+      this.sendTotal.set(ids.length);
+
+      if (ids.length === 0) {
+        this.sendPhase.set('success');
+        this.toast.success('No pending credential emails');
+        return;
+      }
+
+      await this.flushUi();
+
+      for (let i = 0; i < ids.length; i += EMAIL_SEND_BATCH_SIZE) {
+        const chunk = ids.slice(i, i + EMAIL_SEND_BATCH_SIZE);
+        const result = await this.registrationService.sendCredentials({
+          registrationIds: chunk,
+          onlyUnsent: true
+        });
+        this.storeTempPasswords(result.results);
+        this.sendSentCount.update((n) => n + result.summary.sent);
+        this.sendFailedCount.update((n) => n + result.summary.failed);
+        this.sendProcessed.set(Math.min(i + chunk.length, ids.length));
+        await this.flushUi();
+      }
+
+      this.sendPhase.set('success');
+      await this.loadRegistrations();
+      this.toast.success(
+        `${this.sendSentCount()} emails sent, ${this.sendFailedCount()} failed (${this.sendProcessed()} registrations processed)`
+      );
+    } catch (err) {
+      this.sendPhase.set('error');
+      this.sendErrorMessage.set(err instanceof Error ? err.message : 'Send failed');
+      this.toast.error(this.sendErrorMessage());
     } finally {
       this.sending.set(false);
     }

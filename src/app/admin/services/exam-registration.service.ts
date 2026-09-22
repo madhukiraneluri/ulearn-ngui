@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { supabase, invokeAuthedFunction } from '../../core/supabase.client';
+import { EXAM_ROLE_DEFINITIONS } from '../exam-portal/exam-role.config';
 import type {
   ExamAnswer,
   ExamCodingBreakdownItem,
@@ -203,6 +204,96 @@ export class ExamRegistrationService {
 
     if (error) throw new Error(error instanceof Error ? error.message : 'Delete failed');
     if (!data?.ok) throw new Error('Delete failed');
+  }
+
+  async countPendingCredentials(params?: { examId?: string }): Promise<number> {
+    let query = supabase
+      .from('exam_registrations')
+      .select('*', { count: 'exact', head: true })
+      .is('credentials_sent_at', null)
+      .not('user_id', 'is', null);
+
+    if (params?.examId) query = query.eq('exam_id', params.examId);
+
+    const { count, error } = await query;
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
+
+  async listPendingRegistrationIds(params?: { examId?: string }): Promise<string[]> {
+    const pageSize = 1000;
+    const ids: string[] = [];
+    let from = 0;
+
+    while (true) {
+      let query = supabase
+        .from('exam_registrations')
+        .select('id')
+        .is('credentials_sent_at', null)
+        .not('user_id', 'is', null)
+        .order('created_at', { ascending: true });
+
+      if (params?.examId) query = query.eq('exam_id', params.examId);
+
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw new Error(error.message);
+      if (!data?.length) break;
+
+      for (const row of data) {
+        ids.push(String(row.id));
+      }
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return ids;
+  }
+
+  async addSingleRegistration(input: {
+    email: string;
+    fullName: string;
+    roleInterested: string;
+    sendCredentials?: boolean;
+  }): Promise<{ registrationId?: string; message: string }> {
+    const roleDef = EXAM_ROLE_DEFINITIONS.find((r) => r.name === input.roleInterested.trim());
+    const batchId = crypto.randomUUID();
+    const importResult = await this.importFromExcel(
+      [
+        {
+          email: input.email.trim().toLowerCase(),
+          fullName: input.fullName.trim(),
+          roleInterested: input.roleInterested.trim()
+        }
+      ],
+      batchId
+    );
+
+    if (importResult.summary.failed > 0) {
+      throw new Error('Could not register student (check email and role)');
+    }
+
+    const roleSlug = roleDef?.slug ?? input.roleInterested.trim().toLowerCase();
+
+    const { data: row, error } = await supabase
+      .from('exam_registrations')
+      .select('id')
+      .eq('email', input.email.trim().toLowerCase())
+      .eq('role_slug', roleSlug)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    const registrationId = row?.id ? String(row.id) : undefined;
+
+    if (input.sendCredentials !== false && registrationId) {
+      await this.sendCredentials({ registrationIds: [registrationId], onlyUnsent: true });
+    }
+
+    return {
+      registrationId,
+      message: importResult.summary.success ? 'Student registered' : 'Registration failed'
+    };
   }
 
   async sendCredentials(options: {

@@ -14,6 +14,7 @@
       <button type="button" class="danger-btn" [disabled]="deleting() || total() === 0" (click)="deleteAllRegistrations()">
         {{ deleting() ? 'Deleting...' : 'Delete all' }}
       </button>
+      <button type="button" class="ghost-btn" (click)="openAddStudentModal()">Add one student</button>
       <button type="button" class="primary-btn" [disabled]="sending()" (click)="sendAllPendingEmails()">
         Send emails (all pending)
       </button>
@@ -50,7 +51,9 @@
         <option value="sent">Email sent</option>
       </select>
       <button type="button" class="ghost-btn" (click)="applyFilters()">Apply</button>
-      <button type="button" class="ghost-btn" (click)="sendFilteredEmails()" [disabled]="sending()">Send filtered</button>
+      <button type="button" class="ghost-btn" (click)="sendFilteredEmails()" [disabled]="sending()">
+        Send filtered (batched)
+      </button>
     </section>
 
     @if (!loading()) {
@@ -197,7 +200,7 @@
 
   <section class="role-guide">
     <h3>Role exam configuration</h3>
-    <p class="hint">Duplicate rows or multiple roles for the same email create a separate exam assignment for each role.</p>
+    <p class="hint">Duplicate rows or multiple roles for the same email assign <strong>non-technical</strong> role exams only (BDE, Lead Gen, Relationship). Single-role applicants still get their chosen technical exam when applicable.</p>
     <ul>
       @for (role of roleOptions; track role.slug) {
         <li>
@@ -231,7 +234,7 @@
           {{ importFailedCount() }} failed
         </p>
         @if (importMultiRoleCount() > 0) {
-          <p class="import-note">{{ importMultiRoleCount() }} applicant(s) assigned to multiple role exams</p>
+          <p class="import-note">{{ importMultiRoleCount() }} &quot;Multiple Roles&quot; row(s) → non-technical exams only (one Excel row = one applicant row; duplicates are not merged)</p>
         }
         @if (importPhase() === 'success') {
           <button type="button" class="primary-btn" (click)="closeImportModal()">Done</button>
@@ -241,6 +244,68 @@
         <p class="import-error">{{ importErrorMessage() }}</p>
         <button type="button" class="primary-btn" (click)="closeImportModal()">Close</button>
       }
+    </div>
+  </div>
+}
+
+@if (sendModalOpen()) {
+  <div class="import-overlay" (click)="sendPhase() !== 'sending' && closeSendModal()">
+    <div class="import-modal" (click)="$event.stopPropagation()">
+      @if (sendPhase() === 'sending' || sendPhase() === 'success') {
+        <h2>{{ sendPhase() === 'success' ? 'Email send complete' : 'Sending credential emails' }}</h2>
+        <p class="import-status">{{ sendProcessed() }} of {{ sendTotal() }} registrations</p>
+        <div class="progress-track" [class.is-success]="sendPhase() === 'success'">
+          <div class="progress-fill" [style.width.%]="sendPhase() === 'success' ? 100 : sendPercent()"></div>
+        </div>
+        <p class="import-meta">
+          {{ sendPhase() === 'success' ? 100 : sendPercent() }}% ·
+          {{ sendSentCount() }} sent ·
+          {{ sendFailedCount() }} failed
+        </p>
+        <p class="import-note">Each registration gets its own email (multi-role students may receive more than one).</p>
+        @if (sendPhase() === 'success') {
+          <button type="button" class="primary-btn" (click)="closeSendModal()">Done</button>
+        }
+      } @else if (sendPhase() === 'error') {
+        <h2>Send failed</h2>
+        <p class="import-error">{{ sendErrorMessage() }}</p>
+        <button type="button" class="primary-btn" (click)="closeSendModal()">Close</button>
+      }
+    </div>
+  </div>
+}
+
+@if (addStudentOpen()) {
+  <div class="import-overlay" (click)="!addStudentSubmitting() && closeAddStudentModal()">
+    <div class="import-modal add-student-modal" (click)="$event.stopPropagation()">
+      <h2>Add one student</h2>
+      <p class="import-note">Creates an exam account and registration for the selected recruitment role.</p>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" [ngModel]="addStudentEmail()" (ngModelChange)="addStudentEmail.set($event)" />
+      </label>
+      <label class="field">
+        <span>Full name</span>
+        <input type="text" [ngModel]="addStudentName()" (ngModelChange)="addStudentName.set($event)" />
+      </label>
+      <label class="field">
+        <span>Role / exam</span>
+        <select [ngModel]="addStudentRoleSlug()" (ngModelChange)="addStudentRoleSlug.set($event)">
+          @for (role of roleOptions; track role.slug) {
+            <option [value]="role.slug">{{ role.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="checkbox-field">
+        <input type="checkbox" [ngModel]="addStudentSendEmail()" (ngModelChange)="addStudentSendEmail.set($event)" />
+        Send credentials email now
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" [disabled]="addStudentSubmitting()" (click)="closeAddStudentModal()">Cancel</button>
+        <button type="button" class="primary-btn" [disabled]="addStudentSubmitting()" (click)="submitAddStudent()">
+          {{ addStudentSubmitting() ? 'Saving...' : 'Add student' }}
+        </button>
+      </div>
     </div>
   </div>
 }

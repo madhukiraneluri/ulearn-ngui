@@ -358,6 +358,47 @@
   transition: width 0.25s ease;
 }
 
+.add-student-modal {
+  text-align: left;
+  max-width: 420px;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+    font-size: 0.875rem;
+    font-weight: 600;
+
+    input,
+    select {
+      font-weight: 400;
+      padding: 10px 12px;
+      border: 1px solid $border;
+      border-radius: 8px;
+    }
+  }
+
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+
+    .primary-btn {
+      margin-top: 0;
+    }
+  }
+}
+
 @keyframes import-indeterminate {
   0% {
     transform: translateX(-120%);

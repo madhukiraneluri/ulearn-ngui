@@ -67,46 +67,44 @@ export class ExamBulkImportService {
     };
   }
 
-  /** Merge duplicate emails and assign one import row per distinct role exam. */
+  /**
+   * One Excel row → one or more exam assignments (never merge rows by email).
+   * "Multiple Roles" or multi-slug cells → non-technical exams only.
+   */
   normalizeMultiRoleApplicants(rows: ParsedExamRegistrationRow[]): NormalizedImportResult {
-    const byEmail = new Map<string, ParsedExamRegistrationRow[]>();
-
-    for (const row of rows) {
-      const email = row.email.trim().toLowerCase();
-      if (!email) continue;
-      const list = byEmail.get(email) ?? [];
-      list.push({ ...row, email });
-      byEmail.set(email, list);
-    }
-
     const normalized: ParsedExamRegistrationRow[] = [];
     let multiRoleReassigned = 0;
 
-    for (const group of byEmail.values()) {
-      const primary = group[0];
-      const roleSlugs = new Set<string>();
+    for (const raw of rows) {
+      const email = raw.email.trim().toLowerCase();
+      if (!email) continue;
 
-      for (const row of group) {
-        for (const slug of this.resolveRolesFromText(row.roleInterested)) {
-          roleSlugs.add(slug);
-        }
-      }
+      const fullName = raw.fullName.trim();
+      const roleInterested = raw.roleInterested.trim();
+      const roleSlugs = this.resolveRolesFromText(roleInterested);
 
-      if (roleSlugs.size === 0) {
-        normalized.push(primary);
+      if (roleSlugs.length === 0) {
+        normalized.push({ email, fullName, roleInterested });
         continue;
       }
 
-      if (roleSlugs.size > 1 || group.length > 1) {
+      const isMultiRoleRow =
+        /^multiple roles?$/i.test(roleInterested) || roleSlugs.length > 1;
+      if (isMultiRoleRow) {
         multiRoleReassigned++;
       }
 
-      const fullName = group.map((row) => row.fullName.trim()).find(Boolean) ?? primary.fullName;
+      const slugsToAssign = isMultiRoleRow
+        ? roleSlugs.filter((slug) => {
+            const roleDef = EXAM_ROLE_DEFINITIONS.find((role) => role.slug === slug);
+            return roleDef !== undefined && !roleDef.hasCoding;
+          })
+        : roleSlugs.slice(0, 1);
 
-      for (const slug of roleSlugs) {
+      for (const slug of slugsToAssign) {
         const roleDef = EXAM_ROLE_DEFINITIONS.find((role) => role.slug === slug);
         normalized.push({
-          email: primary.email,
+          email,
           fullName,
           roleInterested: roleDef?.name ?? slug
         });
@@ -121,7 +119,7 @@ export class ExamBulkImportService {
     if (!text) return [];
 
     if (/^multiple roles?$/i.test(text)) {
-      return EXAM_ROLE_DEFINITIONS.map((role) => role.slug);
+      return EXAM_ROLE_DEFINITIONS.filter((role) => !role.hasCoding).map((role) => role.slug);
     }
 
     const parts = text

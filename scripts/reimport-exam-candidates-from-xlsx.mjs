@@ -8,34 +8,38 @@ import fs from 'node:fs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://yllfccuxohnipleyseup.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const DEFAULT_XLSX =
-  process.argv[2] ?? 'C:/Users/madhu/Downloads/exam-candidates-template.xlsx';
+const DEFAULT_XLSX = 'C:/Users/madhu/Downloads/exam-candidates-template.xlsx';
 const BATCH_SIZE = 25;
 
 const ROLE_DEFINITIONS = [
   {
     slug: 'business-development-executive',
     name: 'Business Development Executive',
+    hasCoding: false,
     matchTerms: ['business development', 'bde', 'business development executive']
   },
   {
     slug: 'research-analyst',
     name: 'Research Analyst',
+    hasCoding: true,
     matchTerms: ['research analyst', 'research']
   },
   {
     slug: 'associate-lead-generation-specialist',
     name: 'Associate Lead Generation Specialist',
+    hasCoding: false,
     matchTerms: ['lead generation', 'associate lead', 'lead gen']
   },
   {
     slug: 'relationship-executive',
     name: 'Relationship Executive',
+    hasCoding: false,
     matchTerms: ['relationship executive', 'relationship']
   },
   {
     slug: 'junior-full-stack-developer',
     name: 'Junior Full-Stack Developer',
+    hasCoding: true,
     matchTerms: ['full stack', 'full-stack', 'fullstack', 'junior full', 'developer']
   }
 ];
@@ -66,7 +70,7 @@ function resolveRolesFromText(roleInterested) {
   if (!text) return [];
 
   if (/^multiple roles?$/i.test(text)) {
-    return ROLE_DEFINITIONS.map((role) => role.slug);
+    return ROLE_DEFINITIONS.filter((role) => !role.hasCoding).map((role) => role.slug);
   }
 
   const parts = text
@@ -123,42 +127,85 @@ function parseExcel(path) {
 }
 
 function normalizeRows(parsed) {
-  const byEmail = new Map();
-  for (const row of parsed) {
-    const email = row.email.trim().toLowerCase();
-    if (!email) continue;
-    const list = byEmail.get(email) ?? [];
-    list.push({ ...row, email });
-    byEmail.set(email, list);
-  }
-
   const normalized = [];
-  for (const group of byEmail.values()) {
-    const primary = group[0];
-    const roleSlugs = new Set();
-    for (const row of group) {
-      for (const slug of resolveRolesFromText(row.roleInterested)) {
-        roleSlugs.add(slug);
-      }
-    }
+  for (const raw of parsed) {
+    const email = raw.email.trim().toLowerCase();
+    if (!email) continue;
 
-    if (roleSlugs.size === 0) {
-      normalized.push(primary);
+    const fullName = raw.fullName.trim();
+    const roleInterested = raw.roleInterested.trim();
+    const roleSlugs = resolveRolesFromText(roleInterested);
+
+    if (roleSlugs.length === 0) {
+      normalized.push({ email, fullName, roleInterested, roleSlug: null, isMultiRoleRow: false });
       continue;
     }
 
-    const fullName = group.map((r) => r.fullName.trim()).find(Boolean) ?? primary.fullName;
-    for (const slug of roleSlugs) {
+    const isMultiRoleRow =
+      /^multiple roles?$/i.test(normalizeRoleText(roleInterested)) || roleSlugs.length > 1;
+    const slugsToAssign = isMultiRoleRow
+      ? roleSlugs.filter((slug) => {
+          const roleDef = ROLE_DEFINITIONS.find((r) => r.slug === slug);
+          return roleDef && !roleDef.hasCoding;
+        })
+      : roleSlugs.slice(0, 1);
+
+    for (const slug of slugsToAssign) {
       const roleDef = ROLE_DEFINITIONS.find((r) => r.slug === slug);
       normalized.push({
-        email: primary.email,
+        email,
         fullName,
         roleInterested: roleDef?.name ?? slug,
-        roleSlug: slug
+        roleSlug: slug,
+        isMultiRoleRow
       });
     }
   }
   return normalized;
+}
+
+function summarizeAssignments(parsed, normalized) {
+  const byRole = {};
+  for (const role of ROLE_DEFINITIONS) {
+    byRole[role.slug] = 0;
+  }
+  const excelRowsByCategory = {
+    'associate-lead-generation-specialist': 0,
+    'business-development-executive': 0,
+    'junior-full-stack-developer': 0,
+    'relationship-executive': 0,
+    'research-analyst': 0,
+    multipleRoles: 0
+  };
+  let multiRoleRows = 0;
+
+  for (const row of parsed) {
+    const text = normalizeRoleText(row.roleInterested);
+    if (/^multiple roles?$/i.test(text)) {
+      excelRowsByCategory.multipleRoles++;
+      multiRoleRows++;
+      continue;
+    }
+    const slugs = resolveRolesFromText(row.roleInterested);
+    if (slugs.length === 1) {
+      excelRowsByCategory[slugs[0]] = (excelRowsByCategory[slugs[0]] ?? 0) + 1;
+    } else if (slugs.length > 1) {
+      multiRoleRows++;
+    }
+  }
+
+  for (const row of normalized) {
+    if (row.roleSlug) byRole[row.roleSlug] = (byRole[row.roleSlug] ?? 0) + 1;
+  }
+
+  return {
+    excelRows: parsed.length,
+    uniqueEmails: new Set(parsed.map((r) => r.email).filter(Boolean)).size,
+    excelRowsByCategory,
+    multiRoleRows,
+    totalAssignments: normalized.filter((r) => r.roleSlug).length,
+    assignmentsByRole: byRole
+  };
 }
 
 function generateTempPassword(length = 10) {
@@ -197,6 +244,7 @@ async function loadExamsByRecruitmentSlug() {
 
 async function provisionCandidate(input) {
   let userId;
+  const useFixedPassword = Boolean(input.password);
 
   const { data: existing } = await supabase
     .from('profiles')
@@ -208,17 +256,38 @@ async function provisionCandidate(input) {
     userId = String(existing.id);
     await supabase
       .from('profiles')
-      .update({ exam_only: true, updated_at: new Date().toISOString() })
+      .update({
+        full_name: input.fullName,
+        exam_only: true,
+        must_reset_password: useFixedPassword ? false : true,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId);
+
+    if (useFixedPassword) {
+      const { error: pwErr } = await supabase.auth.admin.updateUserById(userId, {
+        password: input.password,
+        user_metadata: {
+          full_name: input.fullName,
+          must_reset_password: false,
+          exam_only: true,
+          created_by_admin: true
+        }
+      });
+      if (pwErr) {
+        return { ok: false, message: pwErr.message };
+      }
+    }
   } else {
-    const tempPassword = generateTempPassword(10);
+    const tempPassword = input.password ?? generateTempPassword(10);
+    const mustReset = useFixedPassword ? false : true;
     const { data: created, error: createErr } = await supabase.auth.admin.createUser({
       email: input.email,
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
         full_name: input.fullName,
-        must_reset_password: true,
+        must_reset_password: mustReset,
         created_by_admin: true,
         exam_only: true
       }
@@ -232,7 +301,7 @@ async function provisionCandidate(input) {
       full_name: input.fullName,
       email: input.email,
       profile_completed: true,
-      must_reset_password: true,
+      must_reset_password: mustReset,
       created_by_admin: true,
       exam_only: true,
       role: 'USER'
@@ -259,6 +328,100 @@ async function provisionCandidate(input) {
   return { ok: true, userId, candidateId: String(cand.id) };
 }
 
+const TEST_EXAM_PASSWORD = 'Kiran@4075';
+
+/** One tester per recruitment role; shared password for QA. */
+const TEST_EXAM_ACCOUNTS = [
+  {
+    email: 'madhukiraneluri1@gmail.com',
+    fullName: 'Test1',
+    roleSlug: 'research-analyst',
+    roleInterested: 'Research Analyst'
+  },
+  {
+    email: 'madhukiranchowdaryeluri2004@gmail.com',
+    fullName: 'Test2',
+    roleSlug: 'junior-full-stack-developer',
+    roleInterested: 'Junior Full-Stack Developer'
+  },
+  {
+    email: 'duggiralapriyanka0549@gmail.com',
+    fullName: 'Test3',
+    roleSlug: 'business-development-executive',
+    roleInterested: 'Business Development Executive'
+  },
+  {
+    email: 'jayasree5259@gmail.com',
+    fullName: 'Test4',
+    roleSlug: 'associate-lead-generation-specialist',
+    roleInterested: 'Associate Lead Generation Specialist'
+  },
+  {
+    email: 'rams2898@gmail.com',
+    fullName: 'Test5',
+    roleSlug: 'relationship-executive',
+    roleInterested: 'Relationship Executive'
+  }
+];
+
+async function provisionTestExamAccounts(examsBySlug, importBatchId) {
+  console.log('\nProvisioning QA test accounts (Test1–Test5, shared password)...');
+  const results = [];
+
+  for (const account of TEST_EXAM_ACCOUNTS) {
+    const exam = examsBySlug.get(account.roleSlug);
+    if (!exam) {
+      results.push({ ...account, ok: false, message: 'Exam not configured' });
+      continue;
+    }
+
+    const provision = await provisionCandidate({
+      email: account.email,
+      fullName: account.fullName,
+      examId: exam.id,
+      examRoleId: exam.roleId,
+      roleSlug: account.roleSlug,
+      password: TEST_EXAM_PASSWORD
+    });
+
+    if (!provision.ok) {
+      results.push({ email: account.email, fullName: account.fullName, ok: false, message: provision.message });
+      continue;
+    }
+
+    const { error: regErr } = await supabase.from('exam_registrations').upsert(
+      {
+        email: account.email,
+        full_name: account.fullName,
+        role_interested: account.roleInterested,
+        role_slug: account.roleSlug,
+        exam_id: exam.id,
+        user_id: provision.userId,
+        candidate_id: provision.candidateId,
+        import_batch_id: importBatchId,
+        provision_error: null
+      },
+      { onConflict: 'email,exam_id' }
+    );
+
+    if (regErr) {
+      results.push({ email: account.email, fullName: account.fullName, ok: false, message: regErr.message });
+      continue;
+    }
+
+    results.push({
+      email: account.email,
+      fullName: account.fullName,
+      roleSlug: account.roleSlug,
+      examTitle: exam.title,
+      ok: true
+    });
+  }
+
+  console.log(JSON.stringify({ testAccounts: results, password: TEST_EXAM_PASSWORD }, null, 2));
+  return results;
+}
+
 async function wipeExamStudentData(examIds) {
   if (examIds.length === 0) return;
 
@@ -278,10 +441,19 @@ async function wipeExamStudentData(examIds) {
 }
 
 async function main() {
-  console.log('Reading', DEFAULT_XLSX);
-  const parsed = parseExcel(DEFAULT_XLSX);
+  const statsOnly = process.argv.includes('--stats-only');
+  const xlsxPath = process.argv.find((a) => a.endsWith('.xlsx')) ?? DEFAULT_XLSX;
+
+  console.log('Reading', xlsxPath);
+  const parsed = parseExcel(xlsxPath);
   const rows = normalizeRows(parsed);
-  console.log(`Parsed ${parsed.length} Excel rows → ${rows.length} assignments after multi-role merge`);
+  const summary = summarizeAssignments(parsed, rows);
+  console.log('\nAssignment summary (multi-role → non-technical exams only):');
+  console.log(JSON.stringify(summary, null, 2));
+
+  if (statsOnly) return;
+
+  console.log(`\nParsed ${parsed.length} Excel rows → ${rows.length} assignments`);
 
   const examsBySlug = await loadExamsByRecruitmentSlug();
   const recruitmentExamIds = [...examsBySlug.values()].map((e) => e.id);
@@ -368,16 +540,32 @@ async function main() {
     console.log('First failures:', failures.slice(0, 15));
   }
 
-  const { data: counts } = await supabase
+  const { count, error: countErr } = await supabase
     .from('exam_registrations')
-    .select('role_slug');
+    .select('*', { count: 'exact', head: true });
+  if (countErr) throw new Error(countErr.message);
 
   const byRole = {};
-  for (const r of counts ?? []) {
-    const slug = r.role_slug ?? 'unknown';
-    byRole[slug] = (byRole[slug] ?? 0) + 1;
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: page, error: pageErr } = await supabase
+      .from('exam_registrations')
+      .select('role_slug')
+      .range(from, from + pageSize - 1);
+    if (pageErr) throw new Error(pageErr.message);
+    if (!page?.length) break;
+    for (const r of page) {
+      const slug = r.role_slug ?? 'unknown';
+      byRole[slug] = (byRole[slug] ?? 0) + 1;
+    }
+    if (page.length < pageSize) break;
+    from += pageSize;
   }
+  console.log('Registrations total:', count);
   console.log('Registrations by role:', byRole);
+
+  await provisionTestExamAccounts(examsBySlug, importBatchId);
 }
 
 main().catch((err) => {

@@ -14,9 +14,16 @@ Deno.serve(async (req) => {
     const { adminClient } = auth;
 
     const body = await req.json();
-    const registrationIds = Array.isArray(body?.registrationIds) ? body.registrationIds : [];
+    const registrationIds = Array.isArray(body?.registrationIds)
+      ? body.registrationIds.map((id: unknown) => String(id))
+      : [];
     const examId = body?.examId ? String(body.examId) : null;
     const onlyUnsent = body?.onlyUnsent !== false;
+    const MAX_BATCH = 40;
+
+    if (registrationIds.length > MAX_BATCH) {
+      return json({ error: `Send at most ${MAX_BATCH} registrationIds per request (use batched sends)` }, 400);
+    }
 
     let query = adminClient
       .from('exam_registrations')
@@ -25,7 +32,12 @@ Deno.serve(async (req) => {
     if (registrationIds.length > 0) {
       query = query.in('id', registrationIds);
     } else if (examId) {
-      query = query.eq('exam_id', examId);
+      query = query.eq('exam_id', examId).limit(MAX_BATCH);
+    } else {
+      return json(
+        { error: 'Provide registrationIds (recommended, max 40) or examId for a small filtered batch' },
+        400
+      );
     }
 
     if (onlyUnsent) query = query.is('credentials_sent_at', null);
