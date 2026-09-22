@@ -11,6 +11,22 @@ import { ToastService } from './toast';
 
 export type SignOutReason = 'manual' | 'remote' | 'timeout';
 
+const AUTH_SIGN_IN_TIMEOUT_MS = 25_000;
+const AUTH_PROFILE_LOAD_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  timeoutMessage: string
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(timeoutMessage)), ms);
+    })
+  ]);
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -181,10 +197,14 @@ export class AuthService {
     try {
       this.isLoadingSignal.set(true);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password
+        }),
+        AUTH_SIGN_IN_TIMEOUT_MS,
+        'Sign-in timed out. Supabase Auth may still be recovering after the upgrade—wait 1–2 minutes, refresh, and try again.'
+      );
 
       if (error) {
         // ← changed: human-friendly message for unconfirmed email
@@ -203,8 +223,22 @@ export class AuthService {
           user_metadata: data.user.user_metadata
         });
         this.isAuthenticatedSignal.set(true);
-        await this.ensureProfile(data.user);
-        await this.loadProfile(data.user.id);
+
+        try {
+          await withTimeout(
+            (async () => {
+              await this.ensureProfile(data.user);
+              await this.loadProfile(data.user.id);
+            })(),
+            AUTH_PROFILE_LOAD_TIMEOUT_MS,
+            'Profile load timed out'
+          );
+        } catch {
+          this.toast.warning(
+            'Signed in, but loading your profile is slow. If pages fail to open, wait for Supabase to show Healthy and refresh.'
+          );
+        }
+
         void supabase.auth.signOut({ scope: 'others' }).catch(() => undefined);
         if (!options?.silent) {
           this.toast.success('Welcome back!');
