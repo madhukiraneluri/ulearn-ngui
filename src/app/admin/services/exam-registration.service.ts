@@ -301,13 +301,29 @@ export class ExamRegistrationService {
     examId?: string;
     onlyUnsent?: boolean;
   }): Promise<SendCredentialsResult> {
-    const { data, error } = await invokeAuthedFunction<SendCredentialsResult>(
+    const { data, error } = await invokeAuthedFunction<SendCredentialsResult & { error?: string }>(
       'send-exam-credentials',
       options
     );
 
-    if (error) throw new Error(error instanceof Error ? error.message : 'Send failed');
-    if (!data) throw new Error('Send failed');
+    if (data && typeof data.error === 'string' && data.error) {
+      throw new Error(data.error);
+    }
+
+    if (error) {
+      const ctx = error as { context?: Response; message?: string };
+      if (ctx.context && typeof ctx.context.json === 'function') {
+        try {
+          const payload = (await ctx.context.json()) as { error?: string };
+          if (payload?.error) throw new Error(payload.error);
+        } catch (parseErr) {
+          if (parseErr instanceof Error && parseErr.message !== 'Send failed') throw parseErr;
+        }
+      }
+      throw new Error(error instanceof Error ? error.message : 'Send failed');
+    }
+
+    if (!data?.summary) throw new Error('Send failed');
     return data;
   }
 

@@ -32,17 +32,25 @@ Deno.serve(async (req) => {
     if (registrationIds.length > 0) {
       query = query.in('id', registrationIds);
     } else if (examId) {
-      query = query.eq('exam_id', examId).limit(MAX_BATCH);
+      query = query.eq('exam_id', examId);
+    } else if (onlyUnsent) {
+      query = query.order('created_at', { ascending: true });
     } else {
       return json(
-        { error: 'Provide registrationIds (recommended, max 40) or examId for a small filtered batch' },
+        { error: 'Provide registrationIds (max 40), examId, or onlyUnsent for the next pending batch' },
         400
       );
     }
 
     if (onlyUnsent) query = query.is('credentials_sent_at', null);
 
-    const { data: rows, error } = await query.not('user_id', 'is', null);
+    query = query.not('user_id', 'is', null);
+
+    if (registrationIds.length === 0) {
+      query = query.limit(MAX_BATCH);
+    }
+
+    const { data: rows, error } = await query;
     if (error) return json({ error: error.message }, 500);
     if (!rows?.length) return json({ summary: { total: 0, sent: 0, failed: 0 }, results: [] });
 

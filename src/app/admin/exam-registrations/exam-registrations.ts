@@ -337,28 +337,58 @@ export class ExamRegistrations implements OnInit {
     this.sendErrorMessage.set('');
 
     try {
-      const ids = await this.registrationService.listPendingRegistrationIds(params);
-      this.sendTotal.set(ids.length);
+      let ids: string[] = [];
+      try {
+        ids = await this.registrationService.listPendingRegistrationIds(params);
+      } catch {
+        ids = [];
+      }
 
-      if (ids.length === 0) {
-        this.sendPhase.set('success');
-        this.toast.success('No pending credential emails');
-        return;
+      const useIdBatches = ids.length > 0;
+      if (useIdBatches) {
+        this.sendTotal.set(ids.length);
+      } else {
+        const pending = await this.registrationService.countPendingCredentials(params);
+        this.sendTotal.set(pending);
+        if (pending === 0) {
+          this.sendPhase.set('success');
+          this.toast.success('No pending credential emails');
+          return;
+        }
       }
 
       await this.flushUi();
 
-      for (let i = 0; i < ids.length; i += EMAIL_SEND_BATCH_SIZE) {
-        const chunk = ids.slice(i, i + EMAIL_SEND_BATCH_SIZE);
-        const result = await this.registrationService.sendCredentials({
-          registrationIds: chunk,
-          onlyUnsent: true
-        });
-        this.storeTempPasswords(result.results);
-        this.sendSentCount.update((n) => n + result.summary.sent);
-        this.sendFailedCount.update((n) => n + result.summary.failed);
-        this.sendProcessed.set(Math.min(i + chunk.length, ids.length));
-        await this.flushUi();
+      if (useIdBatches) {
+        for (let i = 0; i < ids.length; i += EMAIL_SEND_BATCH_SIZE) {
+          const chunk = ids.slice(i, i + EMAIL_SEND_BATCH_SIZE);
+          const result = await this.registrationService.sendCredentials({
+            registrationIds: chunk,
+            examId: params.examId,
+            onlyUnsent: true
+          });
+          this.storeTempPasswords(result.results);
+          this.sendSentCount.update((n) => n + result.summary.sent);
+          this.sendFailedCount.update((n) => n + result.summary.failed);
+          this.sendProcessed.set(Math.min(i + chunk.length, ids.length));
+          await this.flushUi();
+        }
+      } else {
+        let processed = 0;
+        const total = this.sendTotal();
+        while (processed < total) {
+          const result = await this.registrationService.sendCredentials({
+            examId: params.examId,
+            onlyUnsent: true
+          });
+          if (result.summary.total === 0) break;
+          this.storeTempPasswords(result.results);
+          this.sendSentCount.update((n) => n + result.summary.sent);
+          this.sendFailedCount.update((n) => n + result.summary.failed);
+          processed += result.summary.total;
+          this.sendProcessed.set(Math.min(processed, total));
+          await this.flushUi();
+        }
       }
 
       this.sendPhase.set('success');
