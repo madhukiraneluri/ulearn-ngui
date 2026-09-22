@@ -116,6 +116,7 @@ export class ExamPreCheck implements OnInit, OnDestroy {
 
     this.starting.set(true);
     try {
+      await this.proctoring.enterFullscreen(document.documentElement);
       const result = await this.examService.startExam(this.examId);
       await this.examService.recordProctoringConsent(result.attemptId);
       await this.router.navigate(['/exam', this.examId, 'attempt', result.attemptId]);

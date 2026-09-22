@@ -13,14 +13,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { ToastService } from '../../core/services/toast';
 import { ExamService } from '../services/exam.service';
 import { ExamProctoringService } from '../services/exam-proctoring.service';
 import { isMobileExamDevice } from '../utils/exam-device.util';
 import {
   DEFAULT_EXAM_CODING_LANGUAGE,
-  EXAM_CODING_LANGUAGES,
-  defaultStarterCode
+  EXAM_CODING_LANGUAGES
 } from '../exam-coding-languages.config';
 import type { ExamPublicTestResult } from '../models/exam-test-result.model';
 import type {
@@ -29,6 +29,8 @@ import type {
   ExamMcqPayload,
   ExamQuestion
 } from '../../models/index';
+
+const SUBMIT_LOCK_SECONDS = 20 * 60;
 
 @Component({
   selector: 'app-exam-attempt',
@@ -48,9 +50,11 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   private readonly examService = inject(ExamService);
   private readonly proctoring = inject(ExamProctoringService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly codingLanguages = EXAM_CODING_LANGUAGES;
   readonly loading = signal(true);
+  readonly fullscreenGateOpen = signal(false);
   readonly submitting = signal(false);
   readonly submittingCode = signal(false);
   readonly runningTests = signal(false);
@@ -59,6 +63,7 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   readonly questions = signal<ExamQuestion[]>([]);
   readonly currentIndex = signal(0);
   readonly remainingSeconds = signal(0);
+  readonly submitLockSeconds = signal(SUBMIT_LOCK_SECONDS);
   readonly fullscreenWarnings = signal(0);
   readonly visitedIndices = signal<Set<number>>(new Set([0]));
 
@@ -69,6 +74,16 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   });
 
   readonly isCodingQuestion = computed(() => this.currentQuestion()?.type === 'coding');
+
+  readonly canSubmitExam = computed(() => this.submitLockSeconds() <= 0 && !this.submitting());
+
+  readonly submitExamLabel = computed(() => {
+    const lock = this.submitLockSeconds();
+    if (lock > 0) {
+      return `Submit (${this.formatTime(lock)})`;
+    }
+    return this.submitting() ? 'Submitting…' : 'Submit exam';
+  });
 
   readonly questionSummary = computed(() => {
     const list = this.questions();
@@ -103,6 +118,7 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   private attemptId = '';
   private timerHandle: ReturnType<typeof setInterval> | null = null;
   private unbindFullscreen: (() => void) | null = null;
+  private unbindFullscreenGate: (() => void) | null = null;
   private saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   ngOnInit(): void {
@@ -114,6 +130,7 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.timerHandle) clearInterval(this.timerHandle);
     this.unbindFullscreen?.();
+    this.unbindFullscreenGate?.();
     this.proctoring.stopMedia();
     for (const t of this.saveTimers.values()) clearTimeout(t);
   }
@@ -172,9 +189,8 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
           const defaultLang = payload.language?.toLowerCase() ?? DEFAULT_EXAM_CODING_LANGUAGE;
           this.codingLanguagesByQuestion[q.id] = this.normalizeLanguage(defaultLang);
         }
-        if (!this.codingAnswers[q.id]) {
-          this.codingAnswers[q.id] =
-            payload.starterCode ?? defaultStarterCode(this.codingLanguagesByQuestion[q.id]);
+        if (this.codingAnswers[q.id] === undefined) {
+          this.codingAnswers[q.id] = '';
         }
       }
 
@@ -189,8 +205,8 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
         if (this.proctorVideo?.nativeElement) {
           this.proctoring.attachPreview(this.proctorVideo.nativeElement);
         }
-        if (this.attemptShell?.nativeElement) {
-          void this.proctoring.enterFullscreen(this.attemptShell.nativeElement);
+        if (!document.fullscreenElement) {
+          this.fullscreenGateOpen.set(true);
         }
       }, 0);
 
@@ -199,8 +215,16 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
         (count) => this.fullscreenWarnings.set(count)
       );
 
+      const onFs = (): void => {
+        if (document.fullscreenElement) {
+          this.fullscreenGateOpen.set(false);
+        }
+      };
+      document.addEventListener('fullscreenchange', onFs);
+      this.unbindFullscreenGate = () => document.removeEventListener('fullscreenchange', onFs);
+
       this.proctoring.startSnapshotLoop(userId, this.attemptId);
-      this.startTimer(new Date(attempt.endsAt).getTime());
+      this.startTimer(new Date(attempt.endsAt).getTime(), new Date(attempt.startedAt).getTime());
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not load exam');
       await this.router.navigate(['/exam/dashboard']);
@@ -209,10 +233,12 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
     }
   }
 
-  private startTimer(endsAtMs: number): void {
+  private startTimer(endsAtMs: number, startedAtMs: number): void {
     const tick = (): void => {
       const remaining = Math.max(0, Math.floor((endsAtMs - Date.now()) / 1000));
       this.remainingSeconds.set(remaining);
+      const elapsed = Math.floor((Date.now() - startedAtMs) / 1000);
+      this.submitLockSeconds.set(Math.max(0, SUBMIT_LOCK_SECONDS - elapsed));
       if (remaining <= 0) {
         void this.autoSubmit();
       }
@@ -249,20 +275,20 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   }
 
   onLanguageChange(questionId: string, languageId: string): void {
-    const previous = this.codingLanguagesByQuestion[questionId] ?? DEFAULT_EXAM_CODING_LANGUAGE;
-    const currentCode = this.codingAnswers[questionId] ?? '';
-    const previousStarter = defaultStarterCode(previous);
-    const payload = this.questions().find((q) => q.id === questionId)?.payload as ExamCodingPayload | undefined;
-
     this.codingLanguagesByQuestion[questionId] = languageId;
-
-    if (!currentCode.trim() || currentCode.trim() === previousStarter.trim()) {
-      this.codingAnswers[questionId] = payload?.starterCode ?? defaultStarterCode(languageId);
-    }
-
     this.codingSubmitted[questionId] = false;
     this.scheduleSave(questionId, this.buildCodingAnswer(questionId));
     this.testResults.set([]);
+  }
+
+  async enterExamFullscreen(): Promise<void> {
+    const shell = this.attemptShell?.nativeElement ?? document.documentElement;
+    const ok = await this.proctoring.enterFullscreen(shell);
+    if (ok) {
+      this.fullscreenGateOpen.set(false);
+    } else {
+      this.toast.error('Could not enter fullscreen. Click again or use your browser fullscreen control.');
+    }
   }
 
   async runPublicTests(questionId: string): Promise<void> {
@@ -377,7 +403,18 @@ export class ExamAttemptPage implements OnInit, OnDestroy {
   }
 
   async submitExam(): Promise<void> {
-    if (this.submitting()) return;
+    if (this.submitting() || this.submitLockSeconds() > 0) return;
+
+    const ok = await this.confirmDialog.confirm({
+      title: 'Submit and leave the exam?',
+      message:
+        'You are about to submit your exam and leave this session. You will not be able to return or change your answers. Make sure you have answered every question you intend to submit.',
+      confirmLabel: 'Submit and leave',
+      cancelLabel: 'Continue exam',
+      variant: 'danger'
+    });
+    if (!ok) return;
+
     this.submitting.set(true);
     try {
       await this.examService.submitAttempt(this.attemptId, false);

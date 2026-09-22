@@ -68,14 +68,33 @@ export class ExamProctoringService {
     video.onloadedmetadata = () => play();
   }
 
-  async enterFullscreen(element: HTMLElement): Promise<void> {
-    if (document.fullscreenElement) return;
-    try {
-      await element.requestFullscreen();
+  async enterFullscreen(element: HTMLElement = document.documentElement): Promise<boolean> {
+    if (document.fullscreenElement) {
       this.hasEnteredFullscreenOnce = true;
       this.fullscreenExited.set(false);
+      return true;
+    }
+
+    const el = element as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+      msRequestFullscreen?: () => Promise<void> | void;
+    };
+
+    try {
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+      } else if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen();
+      } else {
+        return false;
+      }
+      this.hasEnteredFullscreenOnce = true;
+      this.fullscreenExited.set(false);
+      return true;
     } catch {
-      // Browser may block until user gesture; polling will retry.
+      return false;
     }
   }
 

@@ -5,9 +5,17 @@
     [class.coding-mode]="isCodingQuestion()"
     [class.fullscreen-exited]="fullscreenExited()"
   >
+    @if (fullscreenGateOpen()) {
+      <button type="button" class="fullscreen-gate" (click)="enterExamFullscreen()">
+        <span class="gate-title">Enter secure exam mode</span>
+        <span class="gate-sub">Click here to enter fullscreen. Camera monitoring stays active.</span>
+      </button>
+    }
+
     @if (fullscreenExited()) {
       <div class="fullscreen-banner">
         Fullscreen is required. Return to fullscreen — warnings are recorded every few seconds until you do.
+        <button type="button" class="fs-reenter" (click)="enterExamFullscreen()">Return to fullscreen</button>
       </div>
     }
 
@@ -15,9 +23,19 @@
       <div class="timer" [class.urgent]="remainingSeconds() <= 300">
         Time left: {{ formatTime(remainingSeconds()) }}
       </div>
-      <div class="meta">
-        <span>Warnings: {{ fullscreenWarnings() }}</span>
-        <video #proctorVideo autoplay muted playsinline class="proctor-pip"></video>
+      <div class="header-right">
+        <div class="meta">
+          <span>Warnings: {{ fullscreenWarnings() }}</span>
+          <video #proctorVideo autoplay muted playsinline class="proctor-pip"></video>
+        </div>
+        <button
+          type="button"
+          class="submit-header"
+          [disabled]="!canSubmitExam()"
+          (click)="submitExam()"
+        >
+          {{ submitExamLabel() }}
+        </button>
       </div>
     </header>
 
@@ -65,75 +83,99 @@
           </div>
         } @else {
           @let coding = asCoding(question.payload);
-          <h2>{{ coding.title }}</h2>
-          <p class="desc">{{ coding.description }}</p>
+          <div class="coding-split">
+            <aside class="coding-spec">
+              <h2>{{ coding.title }}</h2>
+              <p class="desc">{{ coding.description }}</p>
 
-          <label class="lang-picker">
-            <span>Language</span>
-            <select
-              [ngModel]="codingLanguagesByQuestion[question.id]"
-              (ngModelChange)="onLanguageChange(question.id, $event)"
-            >
-              @for (lang of codingLanguages; track lang.id) {
-                <option [value]="lang.id">{{ lang.label }}</option>
+              <h3 class="sample-heading">Sample test cases</h3>
+              @if ((coding.publicTestCases?.length ?? 0) === 0) {
+                <p class="muted">No sample cases listed for this question.</p>
               }
-            </select>
-          </label>
-
-          @if (isCodeSubmitted(question.id)) {
-            <p class="submitted-badge">Code submitted for grading</p>
-          }
-
-          <textarea
-            class="code-input"
-            [ngModel]="codingAnswers[question.id]"
-            (ngModelChange)="onCodingInput(question.id, $event)"
-            rows="16"
-            spellcheck="false"
-          ></textarea>
-
-          <div class="coding-actions">
-            <button
-              type="button"
-              class="run-tests"
-              [disabled]="runningTests()"
-              (click)="runPublicTests(question.id)"
-            >
-              {{ runningTests() ? 'Running...' : 'Run public test cases' }}
-            </button>
-            <button
-              type="button"
-              class="submit-code"
-              [disabled]="submittingCode()"
-              (click)="submitCode(question.id)"
-            >
-              {{ submittingCode() ? 'Submitting...' : 'Submit code' }}
-            </button>
-          </div>
-
-          @if (testResults().length > 0) {
-            <ul class="test-results">
-              @for (tr of testResults(); track $index) {
-                <li [class.pass]="tr.passed" [class.fail]="!tr.passed">
-                  <div class="test-head">
-                    {{ tr.passed ? 'PASS' : 'FAIL' }} — input: {{ formatTestInput(tr.input) }}
+              @for (sample of coding.publicTestCases ?? []; track $index) {
+                <div class="sample-case">
+                  <div class="sample-block">
+                    <span class="sample-label">Input</span>
+                    <pre>{{ sample.input || '(empty)' }}</pre>
                   </div>
-                  @if (!tr.passed) {
-                    <div class="test-detail">
-                      <span><strong>Expected:</strong> {{ tr.expectedOutput || '(empty)' }}</span>
-                      <span><strong>Actual:</strong> {{ tr.actualOutput || '(empty)' }}</span>
-                    </div>
-                    @if (tr.compileOutput) {
-                      <pre class="test-error">{{ tr.compileOutput }}</pre>
-                    }
-                    @if (tr.stderr) {
-                      <pre class="test-error">{{ tr.stderr }}</pre>
-                    }
-                  }
-                </li>
+                  <div class="sample-block">
+                    <span class="sample-label">Expected output</span>
+                    <pre>{{ sample.expectedOutput || '(empty)' }}</pre>
+                  </div>
+                </div>
               }
-            </ul>
-          }
+            </aside>
+
+            <div class="coding-workspace">
+              <label class="lang-picker">
+                <span>Language</span>
+                <select
+                  [ngModel]="codingLanguagesByQuestion[question.id]"
+                  (ngModelChange)="onLanguageChange(question.id, $event)"
+                >
+                  @for (lang of codingLanguages; track lang.id) {
+                    <option [value]="lang.id">{{ lang.label }}</option>
+                  }
+                </select>
+              </label>
+
+              @if (isCodeSubmitted(question.id)) {
+                <p class="submitted-badge">Code submitted for grading</p>
+              }
+
+              <textarea
+                class="code-input"
+                [ngModel]="codingAnswers[question.id]"
+                (ngModelChange)="onCodingInput(question.id, $event)"
+                rows="20"
+                spellcheck="false"
+                placeholder="Write your solution here…"
+              ></textarea>
+
+              <div class="coding-actions">
+                <button
+                  type="button"
+                  class="run-tests"
+                  [disabled]="runningTests()"
+                  (click)="runPublicTests(question.id)"
+                >
+                  {{ runningTests() ? 'Running...' : 'Run public test cases' }}
+                </button>
+                <button
+                  type="button"
+                  class="submit-code"
+                  [disabled]="submittingCode()"
+                  (click)="submitCode(question.id)"
+                >
+                  {{ submittingCode() ? 'Submitting...' : 'Submit code' }}
+                </button>
+              </div>
+
+              @if (testResults().length > 0) {
+                <ul class="test-results">
+                  @for (tr of testResults(); track $index) {
+                    <li [class.pass]="tr.passed" [class.fail]="!tr.passed">
+                      <div class="test-head">
+                        {{ tr.passed ? 'PASS' : 'FAIL' }} — input: {{ formatTestInput(tr.input) }}
+                      </div>
+                      @if (!tr.passed) {
+                        <div class="test-detail">
+                          <span><strong>Expected:</strong> {{ tr.expectedOutput || '(empty)' }}</span>
+                          <span><strong>Actual:</strong> {{ tr.actualOutput || '(empty)' }}</span>
+                        </div>
+                        @if (tr.compileOutput) {
+                          <pre class="test-error">{{ tr.compileOutput }}</pre>
+                        }
+                        @if (tr.stderr) {
+                          <pre class="test-error">{{ tr.stderr }}</pre>
+                        }
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </div>
         }
 
         <div class="nav-actions">
@@ -143,9 +185,6 @@
           @if (currentIndex() < questions().length - 1) {
             <button type="button" class="ghost" (click)="goTo(currentIndex() + 1)">Next</button>
           }
-          <button type="button" class="submit" [disabled]="submitting()" (click)="submitExam()">
-            Submit exam
-          </button>
         </div>
       </section>
     } @else {
