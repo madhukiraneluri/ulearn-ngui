@@ -16,7 +16,7 @@
       </button>
       <button type="button" class="ghost-btn" (click)="openAddStudentModal()">Add one student</button>
       <button type="button" class="primary-btn" [disabled]="sending()" (click)="sendAllPendingEmails()">
-        Send emails (all pending)
+        {{ sending() ? 'Sending emails…' : 'Send emails (all pending)' }}
       </button>
     </div>
   </header>
@@ -253,8 +253,12 @@
     <div class="import-modal" (click)="$event.stopPropagation()">
       @if (sendPhase() === 'sending' || sendPhase() === 'success') {
         <h2>{{ sendPhase() === 'success' ? 'Email send complete' : 'Sending credential emails' }}</h2>
-        <p class="import-status">{{ sendProcessed() }} of {{ sendTotal() }} registrations</p>
-        <div class="progress-track" [class.is-success]="sendPhase() === 'success'">
+        <p class="import-status">{{ sendProcessed() }} of {{ sendTotal() }} registrations ({{ emailSendBatchSize }} per batch)</p>
+        <div
+          class="progress-track"
+          [class.is-success]="sendPhase() === 'success'"
+          [class.is-indeterminate]="sendPhase() === 'sending' && sendProcessed() === 0 && sendTotal() > 0"
+        >
           <div class="progress-fill" [style.width.%]="sendPhase() === 'success' ? 100 : sendPercent()"></div>
         </div>
         <p class="import-meta">
@@ -262,7 +266,7 @@
           {{ sendSentCount() }} sent ·
           {{ sendFailedCount() }} failed
         </p>
-        <p class="import-note">Each registration gets its own email (multi-role students may receive more than one).</p>
+        <p class="import-note">Keep this window open until all batches finish. Do not refresh the page.</p>
         @if (sendPhase() === 'success') {
           <button type="button" class="primary-btn" (click)="closeSendModal()">Done</button>
         }
