@@ -9,6 +9,7 @@ export interface ParsedExamRegistrationRow {
   email: string;
   fullName: string;
   roleInterested: string;
+  fromMultipleRoles?: boolean;
 }
 
 export interface NormalizedImportResult {
@@ -106,7 +107,8 @@ export class ExamBulkImportService {
         normalized.push({
           email,
           fullName,
-          roleInterested: roleDef?.name ?? slug
+          roleInterested: roleDef?.name ?? slug,
+          fromMultipleRoles: isMultiRoleRow
         });
       }
     }

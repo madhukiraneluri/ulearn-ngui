@@ -9,6 +9,9 @@ import type {
   ExamRegistration,
   ExamNotAttendedRow,
   ExamPortalStats,
+  ExamPortalFilterParams,
+  ExamAssignmentFilter,
+  ExamMultiExamFilter,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow
@@ -27,6 +30,7 @@ interface RegistrationRow {
   credentials_sent_at: string | null;
   provision_error: string | null;
   created_at: string;
+  from_multiple_roles?: boolean;
   exams?: { title: string } | { title: string }[] | null;
 }
 
@@ -89,6 +93,8 @@ export interface RegistrationListParams {
   roleSlug?: string;
   emailStatus?: 'all' | 'sent' | 'pending';
   examId?: string;
+  assignmentFilter?: ExamAssignmentFilter;
+  multiExamFilter?: ExamMultiExamFilter;
 }
 
 export interface RegistrationListResult {
@@ -124,7 +130,8 @@ function mapRegistration(row: RegistrationRow): ExamRegistration {
     credentialsSentAt: row.credentials_sent_at,
     provisionError: row.provision_error,
     createdAt: row.created_at,
-    examTitle: exam?.title
+    examTitle: exam?.title,
+    fromMultipleRoles: Boolean(row.from_multiple_roles)
   };
 }
 
@@ -184,6 +191,40 @@ function attemptKey(userId: string, examId: string): string {
 
 @Injectable({ providedIn: 'root' })
 export class ExamRegistrationService {
+  private async loadMultiExamEmails(
+    filters: ExamPortalFilterParams
+  ): Promise<string[] | null> {
+    if (!filters.multiExamFilter || filters.multiExamFilter === 'all') {
+      return null;
+    }
+
+    const { data, error } = await supabase.rpc('admin_exam_portal_matching_emails', {
+      p_role_slug: filters.roleSlug ?? null,
+      p_exam_id: filters.examId ?? null,
+      p_multi_exam_filter: filters.multiExamFilter
+    });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as string[];
+  }
+
+  registrationMatchesPortalFilters(
+    row: { email: string; examId: string | null; fromMultipleRoles?: boolean },
+    filters: ExamPortalFilterParams,
+    multiExamEmails: Set<string> | null
+  ): boolean {
+    if (filters.assignmentFilter === 'multiple-roles' && !row.fromMultipleRoles) {
+      return false;
+    }
+    if (filters.assignmentFilter === 'single-role' && row.fromMultipleRoles) {
+      return false;
+    }
+    if (multiExamEmails && !multiExamEmails.has(row.email)) {
+      return false;
+    }
+    return true;
+  }
+
   async listRegistrations(params: RegistrationListParams): Promise<RegistrationListResult> {
     const from = (params.page - 1) * params.pageSize;
     const to = from + params.pageSize - 1;
@@ -201,6 +242,22 @@ export class ExamRegistrationService {
     if (params.examId) query = query.eq('exam_id', params.examId);
     if (params.emailStatus === 'sent') query = query.not('credentials_sent_at', 'is', null);
     if (params.emailStatus === 'pending') query = query.is('credentials_sent_at', null);
+    if (params.assignmentFilter === 'multiple-roles') {
+      query = query.eq('from_multiple_roles', true);
+    } else if (params.assignmentFilter === 'single-role') {
+      query = query.eq('from_multiple_roles', false);
+    }
+
+    const multiEmails = await this.loadMultiExamEmails({
+      roleSlug: params.roleSlug,
+      examId: params.examId,
+      assignmentFilter: params.assignmentFilter,
+      multiExamFilter: params.multiExamFilter
+    });
+    if (multiEmails !== null) {
+      if (multiEmails.length === 0) return { rows: [], total: 0 };
+      query = query.in('email', multiEmails);
+    }
 
     const { data, error, count } = await query.range(from, to);
     if (error) throw new Error(error.message);
@@ -252,8 +309,10 @@ export class ExamRegistrationService {
     return keys;
   }
 
-  async listNotAttended(filters?: { roleSlug?: string; examId?: string }): Promise<ExamNotAttendedRow[]> {
+  async listNotAttended(filters?: ExamPortalFilterParams): Promise<ExamNotAttendedRow[]> {
     const attemptKeys = await this.loadAttemptKeys();
+    const multiEmails = await this.loadMultiExamEmails(filters ?? {});
+    const multiSet = multiEmails ? new Set(multiEmails) : null;
     const pageSize = 1000;
     let from = 0;
     const rows: ExamNotAttendedRow[] = [];
@@ -261,13 +320,25 @@ export class ExamRegistrationService {
     while (true) {
       let query = supabase
         .from('exam_registrations')
-        .select('id, email, full_name, role_interested, role_slug, exam_id, user_id, credentials_sent_at, created_at, exams(title)')
+        .select(
+          'id, email, full_name, role_interested, role_slug, exam_id, user_id, credentials_sent_at, created_at, from_multiple_roles, exams(title)'
+        )
         .not('user_id', 'is', null)
         .not('exam_id', 'is', null)
         .order('created_at', { ascending: false });
 
       if (filters?.roleSlug) query = query.eq('role_slug', filters.roleSlug);
       if (filters?.examId) query = query.eq('exam_id', filters.examId);
+      if (filters?.assignmentFilter === 'multiple-roles') {
+        query = query.eq('from_multiple_roles', true);
+      } else if (filters?.assignmentFilter === 'single-role') {
+        query = query.eq('from_multiple_roles', false);
+      }
+
+      if (multiEmails !== null) {
+        if (multiEmails.length === 0) break;
+        query = query.in('email', multiEmails);
+      }
 
       const { data, error } = await query.range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
@@ -280,6 +351,20 @@ export class ExamRegistrationService {
         if (attemptKeys.has(attemptKey(userId, examId))) continue;
 
         const mapped = mapRegistration(raw);
+        if (
+          !this.registrationMatchesPortalFilters(
+            {
+              email: mapped.email,
+              examId: mapped.examId,
+              fromMultipleRoles: mapped.fromMultipleRoles
+            },
+            filters ?? {},
+            multiSet
+          )
+        ) {
+          continue;
+        }
+
         rows.push({
           id: mapped.id,
           email: mapped.email,
@@ -300,10 +385,12 @@ export class ExamRegistrationService {
     return rows;
   }
 
-  async getPortalStats(filters?: { roleSlug?: string; examId?: string }): Promise<ExamPortalStats> {
+  async getPortalStats(filters?: ExamPortalFilterParams): Promise<ExamPortalStats> {
     const { data, error } = await supabase.rpc('admin_exam_portal_stats', {
       p_role_slug: filters?.roleSlug ?? null,
-      p_exam_id: filters?.examId ?? null
+      p_exam_id: filters?.examId ?? null,
+      p_assignment_filter: filters?.assignmentFilter ?? 'all',
+      p_multi_exam_filter: filters?.multiExamFilter ?? 'all'
     });
 
     if (error) throw new Error(error.message);
@@ -319,7 +406,12 @@ export class ExamRegistrationService {
   }
 
   async importFromExcel(
-    registrations: Array<{ email: string; fullName: string; roleInterested: string }>,
+    registrations: Array<{
+      email: string;
+      fullName: string;
+      roleInterested: string;
+      fromMultipleRoles?: boolean;
+    }>,
     importBatchId?: string
   ): Promise<{ summary: { total: number; success: number; failed: number }; importBatchId: string }> {
     const { data, error } = await invokeAuthedFunction<{
@@ -471,19 +563,65 @@ export class ExamRegistrationService {
     return row;
   }
 
-  async listResults(examId?: string, roleSlug?: string): Promise<ExamResultRow[]> {
+  async listResults(
+    examId?: string,
+    roleSlug?: string,
+    portalFilters?: ExamPortalFilterParams
+  ): Promise<ExamResultRow[]> {
     let query = supabase
       .from('exam_results')
-      .select(
-        '*, exam_attempts ( started_at, submitted_at, status, ends_at )'
-      )
+      .select('*, exam_attempts ( started_at, submitted_at, status, ends_at )')
       .order('evaluated_at', { ascending: false });
     if (examId) query = query.eq('exam_id', examId);
     if (roleSlug) query = query.eq('role_slug', roleSlug);
 
+    const multiEmails = await this.loadMultiExamEmails({
+      roleSlug,
+      examId,
+      assignmentFilter: portalFilters?.assignmentFilter,
+      multiExamFilter: portalFilters?.multiExamFilter
+    });
+    if (multiEmails !== null) {
+      if (multiEmails.length === 0) return [];
+      query = query.in('student_email', multiEmails);
+    }
+
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return ((data ?? []) as ResultRow[]).map(mapResult);
+
+    let rows = ((data ?? []) as ResultRow[]).map(mapResult);
+
+    const needsAssignment =
+      portalFilters?.assignmentFilter && portalFilters.assignmentFilter !== 'all';
+    if (!needsAssignment) return rows;
+
+    const assignmentByKey = new Map<string, boolean>();
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      let regQuery = supabase
+        .from('exam_registrations')
+        .select('email, exam_id, from_multiple_roles');
+      if (roleSlug) regQuery = regQuery.eq('role_slug', roleSlug);
+      if (examId) regQuery = regQuery.eq('exam_id', examId);
+      const { data: regRows, error: regErr } = await regQuery.range(from, from + pageSize - 1);
+      if (regErr) throw new Error(regErr.message);
+      if (!regRows?.length) break;
+      for (const reg of regRows) {
+        assignmentByKey.set(`${reg.email}:${reg.exam_id}`, Boolean(reg.from_multiple_roles));
+      }
+      if (regRows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    rows = rows.filter((row) => {
+      const fromMulti = assignmentByKey.get(`${row.studentEmail}:${row.examId}`);
+      if (portalFilters?.assignmentFilter === 'multiple-roles') return fromMulti === true;
+      if (portalFilters?.assignmentFilter === 'single-role') return fromMulti === false;
+      return true;
+    });
+
+    return rows;
   }
 
   async getMyResult(userId: string, examId: string): Promise<ExamResultRow | null> {

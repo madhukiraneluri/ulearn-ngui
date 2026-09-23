@@ -24,6 +24,9 @@ import type {
   ExamRegistration,
   ExamNotAttendedRow,
   ExamPortalStats,
+  ExamAssignmentFilter,
+  ExamMultiExamFilter,
+  ExamPortalFilterParams,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow,
@@ -101,6 +104,8 @@ export class ExamRegistrations implements OnInit {
   readonly roleFilter = signal('');
   readonly emailFilter = signal<'all' | 'sent' | 'pending'>('all');
   readonly examFilter = signal('');
+  readonly assignmentFilter = signal<ExamAssignmentFilter>('all');
+  readonly multiExamFilter = signal<ExamMultiExamFilter>('all');
   readonly portalStats = signal<ExamPortalStats>({
     registrations: 0,
     submitted: 0,
@@ -197,10 +202,12 @@ export class ExamRegistrations implements OnInit {
     void this.loadNotAttended();
   }
 
-  private portalFilterParams(): { roleSlug?: string; examId?: string } {
+  private portalFilterParams(): ExamPortalFilterParams {
     return {
       roleSlug: this.roleFilter() || undefined,
-      examId: this.examFilter() || undefined
+      examId: this.examFilter() || undefined,
+      assignmentFilter: this.assignmentFilter(),
+      multiExamFilter: this.multiExamFilter()
     };
   }
 
@@ -244,7 +251,9 @@ export class ExamRegistrations implements OnInit {
         search: this.search(),
         roleSlug: this.roleFilter() || undefined,
         emailStatus: this.emailFilter(),
-        examId: this.examFilter() || undefined
+        examId: this.examFilter() || undefined,
+        assignmentFilter: this.assignmentFilter(),
+        multiExamFilter: this.multiExamFilter()
       });
       this.rows.set(result.rows);
       this.total.set(result.total);
@@ -262,7 +271,8 @@ export class ExamRegistrations implements OnInit {
       this.results.set(
         await this.registrationService.listResults(
           this.examFilter() || undefined,
-          this.roleFilter() || undefined
+          this.roleFilter() || undefined,
+          this.portalFilterParams()
         )
       );
       this.resultsPage.set(1);
@@ -702,7 +712,9 @@ export class ExamRegistrations implements OnInit {
         search: this.search(),
         roleSlug: this.roleFilter() || undefined,
         emailStatus: this.emailFilter(),
-        examId: this.examFilter() || undefined
+        examId: this.examFilter() || undefined,
+        assignmentFilter: this.assignmentFilter(),
+        multiExamFilter: this.multiExamFilter()
       });
       if (rows.length === 0) {
         this.toast.error('No registrations to export');
@@ -716,6 +728,7 @@ export class ExamRegistrations implements OnInit {
         { id: 'roleSlug', label: 'Role slug' },
         { id: 'exam', label: 'Assigned exam' },
         { id: 'emailStatus', label: 'Email status' },
+        { id: 'multiRole', label: 'Multiple roles import' },
         { id: 'credentialsSentAt', label: 'Credentials sent at (IST)' },
         { id: 'provisionError', label: 'Provision error' },
         { id: 'registeredAt', label: 'Registered at (IST)' }
@@ -740,6 +753,8 @@ export class ExamRegistrations implements OnInit {
               return row.examTitle ?? '';
             case 'emailStatus':
               return this.emailStatusLabel(row);
+            case 'multiRole':
+              return row.fromMultipleRoles ? 'Yes' : 'No';
             case 'credentialsSentAt':
               return this.formatExportDateTime(row.credentialsSentAt);
             case 'provisionError':

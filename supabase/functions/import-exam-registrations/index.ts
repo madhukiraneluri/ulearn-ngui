@@ -9,6 +9,7 @@ interface RegistrationInput {
   email: string;
   fullName: string;
   roleInterested: string;
+  fromMultipleRoles?: boolean;
 }
 
 interface ImportPayload {
@@ -47,6 +48,7 @@ Deno.serve(async (req) => {
       const email = String(row?.email ?? '').trim().toLowerCase();
       const fullName = String(row?.fullName ?? '').trim();
       const roleInterested = String(row?.roleInterested ?? '').trim();
+      const fromMultipleRoles = Boolean(row?.fromMultipleRoles);
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         results.push({ rowNumber, email: email || '—', success: false, message: 'Invalid email' });
@@ -85,7 +87,8 @@ Deno.serve(async (req) => {
           role_slug: roleSlug,
           exam_id: exam.id,
           import_batch_id: batchId,
-          provision_error: provision.message
+          provision_error: provision.message,
+          from_multiple_roles: fromMultipleRoles
         }, { onConflict: 'email,exam_id' });
         results.push({ rowNumber, email, success: false, message: provision.message, roleSlug });
         continue;
@@ -100,7 +103,8 @@ Deno.serve(async (req) => {
         user_id: provision.userId,
         candidate_id: provision.candidateId,
         import_batch_id: batchId,
-        provision_error: null
+        provision_error: null,
+        from_multiple_roles: fromMultipleRoles
       }, { onConflict: 'email,exam_id' });
 
       results.push({

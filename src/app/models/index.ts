@@ -642,6 +642,7 @@ export interface ExamRegistration {
   provisionError: string | null;
   createdAt: string;
   examTitle?: string;
+  fromMultipleRoles?: boolean;
 }
 
 export interface ExamMcqBreakdownItem {
@@ -705,6 +706,16 @@ export interface ExamPortalStats {
   notStarted: number;
   inProgress: number;
   notProvisioned: number;
+}
+
+export type ExamAssignmentFilter = 'all' | 'multiple-roles' | 'single-role';
+export type ExamMultiExamFilter = 'all' | 'multi-exam' | 'multi-exam-other';
+
+export interface ExamPortalFilterParams {
+  roleSlug?: string;
+  examId?: string;
+  assignmentFilter?: ExamAssignmentFilter;
+  multiExamFilter?: ExamMultiExamFilter;
 }
 
 export interface ExamResultQuestionReview {
