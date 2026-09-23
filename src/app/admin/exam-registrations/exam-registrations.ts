@@ -22,6 +22,7 @@ import type {
   ExamCodingPayload,
   ExamMcqPayload,
   ExamRegistration,
+  ExamNotAttendedRow,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow,
@@ -55,6 +56,8 @@ export class ExamRegistrations implements OnInit {
   readonly exams = signal<Exam[]>([]);
   readonly rows = signal<ExamRegistration[]>([]);
   readonly results = signal<ExamResultRow[]>([]);
+  readonly notAttended = signal<ExamNotAttendedRow[]>([]);
+  readonly notAttendedLoading = signal(false);
   readonly total = signal(0);
   readonly loading = signal(true);
   readonly importing = signal(false);
@@ -62,7 +65,7 @@ export class ExamRegistrations implements OnInit {
   readonly sending = signal(false);
   readonly resettingId = signal<string | null>(null);
   readonly tempPasswords = signal<Record<string, string>>({});
-  readonly activeTab = signal<'registrations' | 'results'>('registrations');
+  readonly activeTab = signal<'registrations' | 'results' | 'not-attended'>('registrations');
 
   readonly importModalOpen = signal(false);
   readonly importPhase = signal<ImportModalPhase>('idle');
@@ -96,6 +99,13 @@ export class ExamRegistrations implements OnInit {
   readonly emailFilter = signal<'all' | 'sent' | 'pending'>('all');
   readonly examFilter = signal('');
   readonly resultsRoleFilter = signal('');
+  readonly resultsExamFilter = signal('');
+
+  readonly attendanceSummary = computed(() => {
+    const evaluated = this.results().length;
+    const notAttended = this.notAttended().length;
+    return { evaluated, notAttended };
+  });
   readonly resultDetailOpen = signal(false);
   readonly resultDetailLoading = signal(false);
   readonly resultDetail = signal<ExamResultDetail | null>(null);
@@ -128,6 +138,7 @@ export class ExamRegistrations implements OnInit {
     void this.loadExams();
     void this.loadRegistrations();
     void this.loadResults();
+    void this.loadNotAttended();
   }
 
   private async loadExams(): Promise<void> {
@@ -163,13 +174,40 @@ export class ExamRegistrations implements OnInit {
     try {
       this.results.set(
         await this.registrationService.listResults(
-          undefined,
+          this.resultsExamFilter() || undefined,
           this.resultsRoleFilter() || undefined
         )
       );
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not load results');
     }
+  }
+
+  async loadNotAttended(): Promise<void> {
+    this.notAttendedLoading.set(true);
+    try {
+      this.notAttended.set(
+        await this.registrationService.listNotAttended({
+          roleSlug: this.resultsRoleFilter() || undefined,
+          examId: this.resultsExamFilter() || undefined
+        })
+      );
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Could not load not-attended list');
+    } finally {
+      this.notAttendedLoading.set(false);
+    }
+  }
+
+  setActiveTab(tab: 'registrations' | 'results' | 'not-attended'): void {
+    this.activeTab.set(tab);
+    if (tab === 'results') void this.loadResults();
+    if (tab === 'not-attended') void this.loadNotAttended();
+  }
+
+  onResultsFiltersChange(): void {
+    void this.loadResults();
+    if (this.activeTab() === 'not-attended') void this.loadNotAttended();
   }
 
   applyFilters(): void {
@@ -494,7 +532,119 @@ export class ExamRegistrations implements OnInit {
   }
 
   onResultsRoleChange(): void {
-    void this.loadResults();
+    this.onResultsFiltersChange();
+  }
+
+  formatExportDateTime(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  }
+
+  async exportRegistrations(): Promise<void> {
+    try {
+      const rows = await this.registrationService.listAllRegistrations({
+        search: this.search(),
+        roleSlug: this.roleFilter() || undefined,
+        emailStatus: this.emailFilter(),
+        examId: this.examFilter() || undefined
+      });
+      if (rows.length === 0) {
+        this.toast.error('No registrations to export');
+        return;
+      }
+
+      const columns = [
+        { id: 'name', label: 'Name' },
+        { id: 'email', label: 'Email' },
+        { id: 'role', label: 'Role interested' },
+        { id: 'roleSlug', label: 'Role slug' },
+        { id: 'exam', label: 'Assigned exam' },
+        { id: 'emailStatus', label: 'Email status' },
+        { id: 'credentialsSentAt', label: 'Credentials sent at (IST)' },
+        { id: 'provisionError', label: 'Provision error' },
+        { id: 'registeredAt', label: 'Registered at (IST)' }
+      ];
+
+      downloadAdminTableXlsx(
+        rows,
+        columns,
+        columns.map((c) => c.id),
+        `exam-registrations-${this.roleFilter() || 'all'}`,
+        (row, col) => {
+          switch (col) {
+            case 'name':
+              return row.fullName;
+            case 'email':
+              return row.email;
+            case 'role':
+              return row.roleInterested;
+            case 'roleSlug':
+              return row.roleSlug ?? '';
+            case 'exam':
+              return row.examTitle ?? '';
+            case 'emailStatus':
+              return this.emailStatusLabel(row);
+            case 'credentialsSentAt':
+              return this.formatExportDateTime(row.credentialsSentAt);
+            case 'provisionError':
+              return row.provisionError ?? '';
+            case 'registeredAt':
+              return this.formatExportDateTime(row.createdAt);
+            default:
+              return '';
+          }
+        }
+      );
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Export failed');
+    }
+  }
+
+  exportNotAttended(): void {
+    const rows = this.notAttended();
+    if (rows.length === 0) {
+      this.toast.error('No not-attended rows to export');
+      return;
+    }
+
+    const columns = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email' },
+      { id: 'role', label: 'Role interested' },
+      { id: 'roleSlug', label: 'Role slug' },
+      { id: 'exam', label: 'Assigned exam' },
+      { id: 'credentialsSentAt', label: 'Credentials sent at (IST)' },
+      { id: 'registeredAt', label: 'Registered at (IST)' }
+    ];
+
+    downloadAdminTableXlsx(
+      rows,
+      columns,
+      columns.map((c) => c.id),
+      `exam-not-attended-${this.resultsRoleFilter() || 'all'}`,
+      (row, col) => {
+        switch (col) {
+          case 'name':
+            return row.fullName;
+          case 'email':
+            return row.email;
+          case 'role':
+            return row.roleInterested;
+          case 'roleSlug':
+            return row.roleSlug ?? '';
+          case 'exam':
+            return row.examTitle ?? '';
+          case 'credentialsSentAt':
+            return this.formatExportDateTime(row.credentialsSentAt);
+          case 'registeredAt':
+            return this.formatExportDateTime(row.createdAt);
+          default:
+            return '';
+        }
+      }
+    );
   }
 
   async openResultDetail(row: ExamResultRow): Promise<void> {
@@ -600,14 +750,26 @@ export class ExamRegistrations implements OnInit {
     if (rows.length === 0) return;
 
     const columns = [
+      { id: 'resultId', label: 'Result ID' },
+      { id: 'attemptId', label: 'Attempt ID' },
+      { id: 'examId', label: 'Exam ID' },
+      { id: 'userId', label: 'User ID' },
       { id: 'name', label: 'Name' },
       { id: 'email', label: 'Email' },
-      { id: 'role', label: 'Role' },
-      { id: 'mcq', label: 'MCQ Score' },
-      { id: 'coding', label: 'Coding Score' },
-      { id: 'total', label: 'Total' },
+      { id: 'role', label: 'Role slug' },
+      { id: 'attemptStatus', label: 'Attempt status' },
+      { id: 'startedAt', label: 'Started at (IST)' },
+      { id: 'submittedAt', label: 'Submitted at (IST)' },
+      { id: 'attemptEndsAt', label: 'Attempt ends at (IST)' },
+      { id: 'mcq', label: 'MCQ score' },
+      { id: 'mcqMax', label: 'MCQ max' },
+      { id: 'coding', label: 'Coding score' },
+      { id: 'codingMax', label: 'Coding max' },
+      { id: 'total', label: 'Total score' },
+      { id: 'totalMax', label: 'Total max' },
       { id: 'pct', label: 'Percentage' },
-      { id: 'warnings', label: 'Fullscreen Warnings' }
+      { id: 'warnings', label: 'Fullscreen warnings' },
+      { id: 'evaluatedAt', label: 'Evaluated at (IST)' }
     ];
 
     downloadAdminTableXlsx(
@@ -617,15 +779,48 @@ export class ExamRegistrations implements OnInit {
       `exam-results-${this.resultsRoleFilter() || 'all'}`,
       (row, col) => {
         switch (col) {
-          case 'name': return row.studentName;
-          case 'email': return row.studentEmail;
-          case 'role': return row.roleSlug;
-          case 'mcq': return `${row.mcqScore}/${row.mcqMax}`;
-          case 'coding': return `${row.codingScore}/${row.codingMax}`;
-          case 'total': return `${row.totalScore}/${row.totalMax}`;
-          case 'pct': return `${row.percentage}%`;
-          case 'warnings': return String(row.fullscreenWarnings);
-          default: return '';
+          case 'resultId':
+            return row.id;
+          case 'attemptId':
+            return row.attemptId;
+          case 'examId':
+            return row.examId;
+          case 'userId':
+            return row.userId;
+          case 'name':
+            return row.studentName;
+          case 'email':
+            return row.studentEmail;
+          case 'role':
+            return row.roleSlug;
+          case 'attemptStatus':
+            return row.attemptStatus ?? '';
+          case 'startedAt':
+            return this.formatExportDateTime(row.attemptStartedAt);
+          case 'submittedAt':
+            return this.formatExportDateTime(row.attemptSubmittedAt);
+          case 'attemptEndsAt':
+            return this.formatExportDateTime(row.attemptEndsAt);
+          case 'mcq':
+            return String(row.mcqScore);
+          case 'mcqMax':
+            return String(row.mcqMax);
+          case 'coding':
+            return String(row.codingScore);
+          case 'codingMax':
+            return String(row.codingMax);
+          case 'total':
+            return String(row.totalScore);
+          case 'totalMax':
+            return String(row.totalMax);
+          case 'pct':
+            return String(row.percentage);
+          case 'warnings':
+            return String(row.fullscreenWarnings);
+          case 'evaluatedAt':
+            return this.formatExportDateTime(row.evaluatedAt);
+          default:
+            return '';
         }
       }
     );

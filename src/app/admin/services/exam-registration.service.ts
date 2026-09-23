@@ -7,6 +7,7 @@ import type {
   ExamMcqBreakdownItem,
   ExamQuestion,
   ExamRegistration,
+  ExamNotAttendedRow,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow
@@ -47,6 +48,20 @@ interface ResultRow {
   mcq_breakdown?: ExamMcqBreakdownItem[] | null;
   coding_breakdown?: ExamCodingBreakdownItem[] | null;
   evaluated_at: string;
+  exam_attempts?:
+    | {
+        started_at: string;
+        submitted_at: string | null;
+        status: string;
+        ends_at: string;
+      }
+    | {
+        started_at: string;
+        submitted_at: string | null;
+        status: string;
+        ends_at: string;
+      }[]
+    | null;
 }
 
 interface ExamQuestionRow {
@@ -134,6 +149,8 @@ function mapAnswer(row: ExamAnswerRow): ExamAnswer {
 }
 
 function mapResult(row: ResultRow): ExamResultRow {
+  const attemptRaw = row.exam_attempts;
+  const attempt = Array.isArray(attemptRaw) ? attemptRaw[0] : attemptRaw;
   return {
     id: row.id,
     attemptId: row.attempt_id,
@@ -151,9 +168,17 @@ function mapResult(row: ResultRow): ExamResultRow {
     percentage: Number(row.percentage),
     fullscreenWarnings: row.fullscreen_warnings,
     evaluatedAt: row.evaluated_at,
+    attemptStartedAt: attempt?.started_at ?? null,
+    attemptSubmittedAt: attempt?.submitted_at ?? null,
+    attemptStatus: attempt?.status ?? null,
+    attemptEndsAt: attempt?.ends_at ?? null,
     mcqBreakdown: row.mcq_breakdown ?? undefined,
     codingBreakdown: row.coding_breakdown ?? undefined
   };
+}
+
+function attemptKey(userId: string, examId: string): string {
+  return `${userId}:${examId}`;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -183,6 +208,95 @@ export class ExamRegistrationService {
       rows: ((data ?? []) as RegistrationRow[]).map(mapRegistration),
       total: count ?? 0
     };
+  }
+
+  async listAllRegistrations(params: Omit<RegistrationListParams, 'page' | 'pageSize'>): Promise<ExamRegistration[]> {
+    const pageSize = 1000;
+    const all: ExamRegistration[] = [];
+    let page = 1;
+
+    while (true) {
+      const chunk = await this.listRegistrations({ ...params, page, pageSize });
+      all.push(...chunk.rows);
+      if (chunk.rows.length < pageSize || all.length >= chunk.total) break;
+      page += 1;
+    }
+
+    return all;
+  }
+
+  private async loadAttemptKeys(): Promise<Set<string>> {
+    const keys = new Set<string>();
+    const pageSize = 1000;
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('exam_attempts')
+        .select('user_id, exam_id')
+        .range(from, from + pageSize - 1);
+
+      if (error) throw new Error(error.message);
+      if (!data?.length) break;
+
+      for (const row of data) {
+        if (row.user_id && row.exam_id) {
+          keys.add(attemptKey(String(row.user_id), String(row.exam_id)));
+        }
+      }
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return keys;
+  }
+
+  async listNotAttended(filters?: { roleSlug?: string; examId?: string }): Promise<ExamNotAttendedRow[]> {
+    const attemptKeys = await this.loadAttemptKeys();
+    const pageSize = 1000;
+    let from = 0;
+    const rows: ExamNotAttendedRow[] = [];
+
+    while (true) {
+      let query = supabase
+        .from('exam_registrations')
+        .select('id, email, full_name, role_interested, role_slug, exam_id, user_id, credentials_sent_at, created_at, exams(title)')
+        .not('user_id', 'is', null)
+        .not('exam_id', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (filters?.roleSlug) query = query.eq('role_slug', filters.roleSlug);
+      if (filters?.examId) query = query.eq('exam_id', filters.examId);
+
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw new Error(error.message);
+      if (!data?.length) break;
+
+      for (const raw of data as RegistrationRow[]) {
+        const userId = raw.user_id;
+        const examId = raw.exam_id;
+        if (!userId || !examId) continue;
+        if (attemptKeys.has(attemptKey(userId, examId))) continue;
+
+        const mapped = mapRegistration(raw);
+        rows.push({
+          id: mapped.id,
+          email: mapped.email,
+          fullName: mapped.fullName,
+          roleInterested: mapped.roleInterested,
+          roleSlug: mapped.roleSlug,
+          examId: mapped.examId,
+          examTitle: mapped.examTitle,
+          credentialsSentAt: mapped.credentialsSentAt,
+          createdAt: mapped.createdAt
+        });
+      }
+
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return rows;
   }
 
   async importFromExcel(
@@ -339,7 +453,12 @@ export class ExamRegistrationService {
   }
 
   async listResults(examId?: string, roleSlug?: string): Promise<ExamResultRow[]> {
-    let query = supabase.from('exam_results').select('*').order('evaluated_at', { ascending: false });
+    let query = supabase
+      .from('exam_results')
+      .select(
+        '*, exam_attempts ( started_at, submitted_at, status, ends_at )'
+      )
+      .order('evaluated_at', { ascending: false });
     if (examId) query = query.eq('exam_id', examId);
     if (roleSlug) query = query.eq('role_slug', roleSlug);
 

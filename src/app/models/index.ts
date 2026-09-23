@@ -677,8 +677,25 @@ export interface ExamResultRow {
   percentage: number;
   fullscreenWarnings: number;
   evaluatedAt: string;
+  attemptStartedAt?: string | null;
+  attemptSubmittedAt?: string | null;
+  attemptStatus?: string | null;
+  attemptEndsAt?: string | null;
   mcqBreakdown?: ExamMcqBreakdownItem[];
   codingBreakdown?: ExamCodingBreakdownItem[];
+}
+
+/** Registered candidate with account who never started an exam attempt. */
+export interface ExamNotAttendedRow {
+  id: string;
+  email: string;
+  fullName: string;
+  roleInterested: string;
+  roleSlug: string | null;
+  examId: string | null;
+  examTitle?: string;
+  credentialsSentAt: string | null;
+  createdAt: string;
 }
 
 export interface ExamResultQuestionReview {

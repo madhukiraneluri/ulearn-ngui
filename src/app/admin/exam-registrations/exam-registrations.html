@@ -22,11 +22,16 @@
   </header>
 
   <div class="tabs">
-    <button type="button" [class.active]="activeTab() === 'registrations'" (click)="activeTab.set('registrations')">
+    <button type="button" [class.active]="activeTab() === 'registrations'" (click)="setActiveTab('registrations')">
       Registrations
     </button>
-    <button type="button" [class.active]="activeTab() === 'results'" (click)="activeTab.set('results')">
-      Results
+    <button type="button" [class.active]="activeTab() === 'results'" (click)="setActiveTab('results')">
+      Results (attended &amp; submitted)
+      <span class="tab-count">{{ attendanceSummary().evaluated }}</span>
+    </button>
+    <button type="button" [class.active]="activeTab() === 'not-attended'" (click)="setActiveTab('not-attended')">
+      Not attended
+      <span class="tab-count">{{ attendanceSummary().notAttended }}</span>
     </button>
   </div>
 
@@ -54,6 +59,7 @@
       <button type="button" class="ghost-btn" (click)="sendFilteredEmails()" [disabled]="sending()">
         Send filtered (batched)
       </button>
+      <button type="button" class="primary-btn" (click)="exportRegistrations()">Download Excel</button>
     </section>
 
     @if (!loading()) {
@@ -151,16 +157,24 @@
         </table>
       </div>
     }
-  } @else {
+  } @else if (activeTab() === 'results') {
     <section class="filters">
-      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsRoleChange()">
+      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsFiltersChange()">
         <option value="">All roles</option>
         @for (role of roleOptions; track role.slug) {
           <option [value]="role.slug">{{ role.name }}</option>
         }
       </select>
+      <select [ngModel]="resultsExamFilter()" (ngModelChange)="resultsExamFilter.set($event); onResultsFiltersChange()">
+        <option value="">All exams</option>
+        @for (exam of exams(); track exam.id) {
+          <option [value]="exam.id">{{ exam.title }}</option>
+        }
+      </select>
       <button type="button" class="primary-btn" (click)="exportResults()">Download Excel</button>
     </section>
+
+    <p class="tab-hint">Students who submitted and were evaluated. Times shown in your locale; Excel uses IST.</p>
 
     <div class="table-wrap">
       <table>
@@ -169,6 +183,8 @@
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Started</th>
+            <th>Submitted</th>
             <th>MCQ</th>
             <th>Coding</th>
             <th>Total</th>
@@ -179,23 +195,78 @@
         </thead>
         <tbody>
           @for (r of results(); track r.id) {
-            <tr>
+            <tr class="clickable-row" (click)="openResultDetail(r)">
               <td>{{ r.studentName }}</td>
               <td>{{ r.studentEmail }}</td>
-              <td>{{ r.roleSlug }}</td>
+              <td>{{ roleLabel(r.roleSlug) }}</td>
+              <td>{{ r.attemptStartedAt | date:'medium' }}</td>
+              <td>{{ r.attemptSubmittedAt | date:'medium' }}</td>
               <td>{{ r.mcqScore }}/{{ r.mcqMax }}</td>
               <td>{{ r.codingScore }}/{{ r.codingMax }}</td>
               <td>{{ r.totalScore }}/{{ r.totalMax }}</td>
               <td>{{ r.percentage }}%</td>
               <td>{{ r.fullscreenWarnings }}</td>
-              <td>{{ r.evaluatedAt | date:'short' }}</td>
+              <td>{{ r.evaluatedAt | date:'medium' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="9">No evaluated results yet.</td></tr>
+            <tr><td colspan="11">No evaluated results yet.</td></tr>
           }
         </tbody>
       </table>
     </div>
+  } @else {
+    <section class="filters">
+      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsFiltersChange()">
+        <option value="">All roles</option>
+        @for (role of roleOptions; track role.slug) {
+          <option [value]="role.slug">{{ role.name }}</option>
+        }
+      </select>
+      <select [ngModel]="resultsExamFilter()" (ngModelChange)="resultsExamFilter.set($event); onResultsFiltersChange()">
+        <option value="">All exams</option>
+        @for (exam of exams(); track exam.id) {
+          <option [value]="exam.id">{{ exam.title }}</option>
+        }
+      </select>
+      <button type="button" class="primary-btn" (click)="exportNotAttended()">Download Excel</button>
+    </section>
+
+    <p class="tab-hint">
+      Provisioned candidates with <strong>no exam attempt</strong> (never clicked Start). {{ notAttended().length }} row(s).
+    </p>
+
+    @if (notAttendedLoading()) {
+      <p>Loading...</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Assigned exam</th>
+              <th>Credentials sent</th>
+              <th>Registered</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of notAttended(); track row.id) {
+              <tr>
+                <td>{{ row.fullName }}</td>
+                <td>{{ row.email }}</td>
+                <td>{{ row.roleInterested }}</td>
+                <td>{{ row.examTitle ?? '—' }}</td>
+                <td>{{ row.credentialsSentAt ? (row.credentialsSentAt | date:'medium') : 'Pending' }}</td>
+                <td>{{ row.createdAt | date:'medium' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6">Everyone provisioned has started an attempt, or filters exclude all rows.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   }
 
   <section class="role-guide">

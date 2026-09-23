@@ -88,6 +88,29 @@
   }
 }
 
+.tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.tab-hint {
+  margin: 0 0 12px;
+  color: $muted;
+  font-size: 0.875rem;
+}
+
+.clickable-row {
+  cursor: pointer;
+
+  &:hover td {
+    background: rgba($purple, 0.06);
+  }
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;
