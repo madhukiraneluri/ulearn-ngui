@@ -8,6 +8,7 @@ import type {
   ExamQuestion,
   ExamRegistration,
   ExamNotAttendedRow,
+  ExamPortalStats,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow
@@ -297,6 +298,24 @@ export class ExamRegistrationService {
     }
 
     return rows;
+  }
+
+  async getPortalStats(filters?: { roleSlug?: string; examId?: string }): Promise<ExamPortalStats> {
+    const { data, error } = await supabase.rpc('admin_exam_portal_stats', {
+      p_role_slug: filters?.roleSlug ?? null,
+      p_exam_id: filters?.examId ?? null
+    });
+
+    if (error) throw new Error(error.message);
+
+    const payload = (data ?? {}) as Record<string, number>;
+    return {
+      registrations: Number(payload['registrations'] ?? 0),
+      submitted: Number(payload['submitted'] ?? 0),
+      notStarted: Number(payload['notStarted'] ?? 0),
+      inProgress: Number(payload['inProgress'] ?? 0),
+      notProvisioned: Number(payload['notProvisioned'] ?? 0)
+    };
   }
 
   async importFromExcel(

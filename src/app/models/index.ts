@@ -698,6 +698,15 @@ export interface ExamNotAttendedRow {
   createdAt: string;
 }
 
+/** Admin recruitment portal summary (matches role + exam filters). */
+export interface ExamPortalStats {
+  registrations: number;
+  submitted: number;
+  notStarted: number;
+  inProgress: number;
+  notProvisioned: number;
+}
+
 export interface ExamResultQuestionReview {
   question: ExamQuestion;
   answer: Record<string, unknown> | null;

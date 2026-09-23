@@ -5,7 +5,36 @@
       <h1>Recruitment exam portal</h1>
       <p>Upload Excel → assign by role → send credentials → view results</p>
     </div>
-    <div class="header-actions">
+    <div class="header-right">
+      <div class="portal-stats" [class.is-loading]="portalStatsLoading()">
+        <div class="stat-card stat-registrations">
+          <span class="stat-value">{{ portalStats().registrations }}</span>
+          <span class="stat-label">Registrations</span>
+        </div>
+        <div class="stat-card stat-submitted">
+          <span class="stat-value">{{ portalStats().submitted }}</span>
+          <span class="stat-label">Submitted</span>
+        </div>
+        <div class="stat-card stat-not-started">
+          <span class="stat-value">{{ portalStats().notStarted }}</span>
+          <span class="stat-label">Not started</span>
+        </div>
+      </div>
+      @if (portalStats().inProgress > 0 || portalStats().notProvisioned > 0) {
+        <p class="stats-footnote">
+          @if (portalStats().inProgress > 0) {
+            <span>{{ portalStats().inProgress }} in progress</span>
+          }
+          @if (portalStats().inProgress > 0 && portalStats().notProvisioned > 0) {
+            <span> · </span>
+          }
+          @if (portalStats().notProvisioned > 0) {
+            <span>{{ portalStats().notProvisioned }} not provisioned</span>
+          }
+          <span> — totals match {{ statsAccountedTotal() }} of {{ portalStats().registrations }}</span>
+        </p>
+      }
+      <div class="header-actions">
       <button type="button" class="ghost-btn" (click)="downloadTemplate()">Download template</button>
       <label class="upload-btn" [class.disabled]="importing()">
         Upload Excel
@@ -18,44 +47,49 @@
       <button type="button" class="primary-btn" [disabled]="sending()" (click)="sendAllPendingEmails()">
         {{ sending() ? 'Sending emails…' : 'Send emails (all pending)' }}
       </button>
+      </div>
     </div>
   </header>
+
+  <section class="filters filters-global">
+    <span class="filters-label">Filter all tabs:</span>
+    <select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); onPortalFilterChange()">
+      <option value="">All roles</option>
+      @for (role of roleOptions; track role.slug) {
+        <option [value]="role.slug">{{ role.name }}</option>
+      }
+    </select>
+    <select [ngModel]="examFilter()" (ngModelChange)="examFilter.set($event); onPortalFilterChange()">
+      <option value="">All exams</option>
+      @for (exam of exams(); track exam.id) {
+        <option [value]="exam.id">{{ exam.title }}</option>
+      }
+    </select>
+  </section>
 
   <div class="tabs">
     <button type="button" [class.active]="activeTab() === 'registrations'" (click)="setActiveTab('registrations')">
       Registrations
     </button>
     <button type="button" [class.active]="activeTab() === 'results'" (click)="setActiveTab('results')">
-      Results (attended &amp; submitted)
-      <span class="tab-count">{{ attendanceSummary().evaluated }}</span>
+      Results
+      <span class="tab-count">{{ portalStats().submitted }}</span>
     </button>
-    <button type="button" [class.active]="activeTab() === 'not-attended'" (click)="setActiveTab('not-attended')">
-      Not attended
-      <span class="tab-count">{{ attendanceSummary().notAttended }}</span>
+    <button type="button" [class.active]="activeTab() === 'not-started'" (click)="setActiveTab('not-started')">
+      Not started
+      <span class="tab-count">{{ portalStats().notStarted }}</span>
     </button>
   </div>
 
   @if (activeTab() === 'registrations') {
     <section class="filters">
       <input type="search" placeholder="Search email, name, role..." [ngModel]="search()" (ngModelChange)="search.set($event)" (keyup.enter)="applyFilters()" />
-      <select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); applyFilters()">
-        <option value="">All roles</option>
-        @for (role of roleOptions; track role.slug) {
-          <option [value]="role.slug">{{ role.name }}</option>
-        }
-      </select>
-      <select [ngModel]="examFilter()" (ngModelChange)="examFilter.set($event); applyFilters()">
-        <option value="">All exams</option>
-        @for (exam of exams(); track exam.id) {
-          <option [value]="exam.id">{{ exam.title }}</option>
-        }
-      </select>
       <select [ngModel]="emailFilter()" (ngModelChange)="emailFilter.set($event); applyFilters()">
         <option value="all">All email status</option>
         <option value="pending">Email pending</option>
         <option value="sent">Email sent</option>
       </select>
-      <button type="button" class="ghost-btn" (click)="applyFilters()">Apply</button>
+      <button type="button" class="ghost-btn" (click)="applyFilters()">Apply search</button>
       <button type="button" class="ghost-btn" (click)="sendFilteredEmails()" [disabled]="sending()">
         Send filtered (batched)
       </button>
@@ -156,84 +190,132 @@
           </tbody>
         </table>
       </div>
+
+      <div class="pagination pagination-bottom">
+        <div class="pagination-summary">
+          <span class="page-label">Page {{ page() }} of {{ totalPages() }}</span>
+          <span class="range-label">({{ rangeStart() }}-{{ rangeEnd() }}) of {{ total() }}</span>
+        </div>
+        <div class="pagination-controls">
+          <button type="button" class="page-btn" (click)="goToFirstPage()" [disabled]="page() <= 1" aria-label="First page">«</button>
+          <button type="button" class="page-btn" (click)="goPage(-1)" [disabled]="page() <= 1">Previous</button>
+          <button type="button" class="page-btn" (click)="goPage(1)" [disabled]="page() >= totalPages()">Next</button>
+          <button type="button" class="page-btn" (click)="goToLastPage()" [disabled]="page() >= totalPages()" aria-label="Last page">»</button>
+        </div>
+      </div>
     }
   } @else if (activeTab() === 'results') {
     <section class="filters">
-      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsFiltersChange()">
-        <option value="">All roles</option>
-        @for (role of roleOptions; track role.slug) {
-          <option [value]="role.slug">{{ role.name }}</option>
-        }
-      </select>
-      <select [ngModel]="resultsExamFilter()" (ngModelChange)="resultsExamFilter.set($event); onResultsFiltersChange()">
-        <option value="">All exams</option>
-        @for (exam of exams(); track exam.id) {
-          <option [value]="exam.id">{{ exam.title }}</option>
-        }
-      </select>
       <button type="button" class="primary-btn" (click)="exportResults()">Download Excel</button>
     </section>
 
-    <p class="tab-hint">Students who submitted and were evaluated. Times shown in your locale; Excel uses IST.</p>
+    <p class="tab-hint">Submitted and evaluated attempts. Excel includes all filtered rows and IST timestamps.</p>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Started</th>
-            <th>Submitted</th>
-            <th>MCQ</th>
-            <th>Coding</th>
-            <th>Total</th>
-            <th>%</th>
-            <th>Warnings</th>
-            <th>Evaluated</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of results(); track r.id) {
-            <tr class="clickable-row" (click)="openResultDetail(r)">
-              <td>{{ r.studentName }}</td>
-              <td>{{ r.studentEmail }}</td>
-              <td>{{ roleLabel(r.roleSlug) }}</td>
-              <td>{{ r.attemptStartedAt | date:'medium' }}</td>
-              <td>{{ r.attemptSubmittedAt | date:'medium' }}</td>
-              <td>{{ r.mcqScore }}/{{ r.mcqMax }}</td>
-              <td>{{ r.codingScore }}/{{ r.codingMax }}</td>
-              <td>{{ r.totalScore }}/{{ r.totalMax }}</td>
-              <td>{{ r.percentage }}%</td>
-              <td>{{ r.fullscreenWarnings }}</td>
-              <td>{{ r.evaluatedAt | date:'medium' }}</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="11">No evaluated results yet.</td></tr>
+    @if (!resultsLoading()) {
+      <ng-container
+        *ngTemplateOutlet="
+          clientPagination;
+          context: {
+            page: resultsPage(),
+            totalPages: resultsTotalPages(),
+            rangeStart: resultsRangeStart(),
+            rangeEnd: resultsRangeEnd(),
+            total: results().length,
+            goToInput: resultsGoToPageInput(),
+            pageSize: resultsPageSize(),
+            tab: 'results',
+            position: 'top'
           }
-        </tbody>
-      </table>
-    </div>
-  } @else {
+        "
+      />
+    }
+
+    @if (resultsLoading()) {
+      <p>Loading...</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Started</th>
+              <th>Submitted</th>
+              <th>MCQ</th>
+              <th>Coding</th>
+              <th>Total</th>
+              <th>%</th>
+              <th>Warnings</th>
+              <th>Evaluated</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of paginatedResults(); track r.id) {
+              <tr class="clickable-row" (click)="openResultDetail(r)">
+                <td>{{ r.studentName }}</td>
+                <td>{{ r.studentEmail }}</td>
+                <td>{{ roleLabel(r.roleSlug) }}</td>
+                <td>{{ r.attemptStartedAt | date:'medium' }}</td>
+                <td>{{ r.attemptSubmittedAt | date:'medium' }}</td>
+                <td>{{ r.mcqScore }}/{{ r.mcqMax }}</td>
+                <td>{{ r.codingScore }}/{{ r.codingMax }}</td>
+                <td>{{ r.totalScore }}/{{ r.totalMax }}</td>
+                <td>{{ r.percentage }}%</td>
+                <td>{{ r.fullscreenWarnings }}</td>
+                <td>{{ r.evaluatedAt | date:'medium' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="11">No evaluated results yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <ng-container
+        *ngTemplateOutlet="
+          clientPagination;
+          context: {
+            page: resultsPage(),
+            totalPages: resultsTotalPages(),
+            rangeStart: resultsRangeStart(),
+            rangeEnd: resultsRangeEnd(),
+            total: results().length,
+            goToInput: resultsGoToPageInput(),
+            pageSize: resultsPageSize(),
+            tab: 'results',
+            position: 'bottom'
+          }
+        "
+      />
+    }
+  } @else if (activeTab() === 'not-started') {
     <section class="filters">
-      <select [ngModel]="resultsRoleFilter()" (ngModelChange)="resultsRoleFilter.set($event); onResultsFiltersChange()">
-        <option value="">All roles</option>
-        @for (role of roleOptions; track role.slug) {
-          <option [value]="role.slug">{{ role.name }}</option>
-        }
-      </select>
-      <select [ngModel]="resultsExamFilter()" (ngModelChange)="resultsExamFilter.set($event); onResultsFiltersChange()">
-        <option value="">All exams</option>
-        @for (exam of exams(); track exam.id) {
-          <option [value]="exam.id">{{ exam.title }}</option>
-        }
-      </select>
-      <button type="button" class="primary-btn" (click)="exportNotAttended()">Download Excel</button>
+      <button type="button" class="primary-btn" (click)="exportNotStarted()">Download Excel</button>
     </section>
 
     <p class="tab-hint">
-      Provisioned candidates with <strong>no exam attempt</strong> (never clicked Start). {{ notAttended().length }} row(s).
+      Provisioned candidates who have <strong>not started</strong> (same count as summary above).
     </p>
+
+    @if (!notAttendedLoading()) {
+      <ng-container
+        *ngTemplateOutlet="
+          clientPagination;
+          context: {
+            page: notStartedPage(),
+            totalPages: notStartedTotalPages(),
+            rangeStart: notStartedRangeStart(),
+            rangeEnd: notStartedRangeEnd(),
+            total: notAttended().length,
+            goToInput: notStartedGoToPageInput(),
+            pageSize: notStartedPageSize(),
+            tab: 'not-started',
+            position: 'top'
+          }
+        "
+      />
+    }
 
     @if (notAttendedLoading()) {
       <p>Loading...</p>
@@ -251,7 +333,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of notAttended(); track row.id) {
+            @for (row of paginatedNotStarted(); track row.id) {
               <tr>
                 <td>{{ row.fullName }}</td>
                 <td>{{ row.email }}</td>
@@ -261,13 +343,82 @@
                 <td>{{ row.createdAt | date:'medium' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="6">Everyone provisioned has started an attempt, or filters exclude all rows.</td></tr>
+              <tr><td colspan="6">Everyone provisioned has started, or filters exclude all rows.</td></tr>
             }
           </tbody>
         </table>
       </div>
+
+      <ng-container
+        *ngTemplateOutlet="
+          clientPagination;
+          context: {
+            page: notStartedPage(),
+            totalPages: notStartedTotalPages(),
+            rangeStart: notStartedRangeStart(),
+            rangeEnd: notStartedRangeEnd(),
+            total: notAttended().length,
+            goToInput: notStartedGoToPageInput(),
+            pageSize: notStartedPageSize(),
+            tab: 'not-started',
+            position: 'bottom'
+          }
+        "
+      />
     }
   }
+
+  <ng-template
+    #clientPagination
+    let-page="page"
+    let-totalPages="totalPages"
+    let-rangeStart="rangeStart"
+    let-rangeEnd="rangeEnd"
+    let-total="total"
+    let-goToInput="goToInput"
+    let-pageSize="pageSize"
+    let-tab="tab"
+    let-position="position"
+  >
+    <div
+      class="pagination"
+      [class.pagination-top]="position !== 'bottom'"
+      [class.pagination-bottom]="position === 'bottom'"
+    >
+      <div class="pagination-summary">
+        <span class="page-label">Page {{ page }} of {{ totalPages }}</span>
+        <span class="range-label">({{ rangeStart }}-{{ rangeEnd }}) of {{ total }}</span>
+      </div>
+
+      <div class="pagination-controls">
+        <button type="button" class="page-btn" (click)="goClientFirstPage(tab)" [disabled]="page <= 1" aria-label="First page">«</button>
+        <button type="button" class="page-btn" (click)="goClientPage(tab, -1)" [disabled]="page <= 1">Previous</button>
+        <button type="button" class="page-btn" (click)="goClientPage(tab, 1)" [disabled]="page >= totalPages">Next</button>
+        <button type="button" class="page-btn" (click)="goClientLastPage(tab)" [disabled]="page >= totalPages" aria-label="Last page">»</button>
+
+        <label class="go-to">
+          Go to
+          <input
+            type="text"
+            inputmode="numeric"
+            [ngModel]="goToInput"
+            (ngModelChange)="onClientGoToPageInput(tab, $event)"
+            (keyup.enter)="goClientToPage(tab)"
+          />
+        </label>
+        <button type="button" class="ghost-btn" (click)="goClientToPage(tab)">Go</button>
+
+        <label class="page-size">
+          Rows
+          <select [ngModel]="pageSize" (ngModelChange)="onClientPageSizeChange(tab, $event)">
+            <option [value]="25">25</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </ng-template>
 
   <section class="role-guide">
     <h3>Role exam configuration</h3>

@@ -23,6 +23,7 @@ import type {
   ExamMcqPayload,
   ExamRegistration,
   ExamNotAttendedRow,
+  ExamPortalStats,
   ExamResultDetail,
   ExamResultQuestionReview,
   ExamResultRow,
@@ -34,6 +35,8 @@ const IMPORT_BATCH_SIZE = 25;
 const EMAIL_SEND_BATCH_SIZE = 40;
 
 type ImportModalPhase = 'idle' | 'importing' | 'success' | 'error';
+type ExamPortalTab = 'registrations' | 'results' | 'not-started';
+type ClientPagedTab = 'results' | 'not-started';
 
 @Component({
   selector: 'app-exam-registrations',
@@ -65,7 +68,7 @@ export class ExamRegistrations implements OnInit {
   readonly sending = signal(false);
   readonly resettingId = signal<string | null>(null);
   readonly tempPasswords = signal<Record<string, string>>({});
-  readonly activeTab = signal<'registrations' | 'results' | 'not-attended'>('registrations');
+  readonly activeTab = signal<ExamPortalTab>('registrations');
 
   readonly importModalOpen = signal(false);
   readonly importPhase = signal<ImportModalPhase>('idle');
@@ -98,13 +101,65 @@ export class ExamRegistrations implements OnInit {
   readonly roleFilter = signal('');
   readonly emailFilter = signal<'all' | 'sent' | 'pending'>('all');
   readonly examFilter = signal('');
-  readonly resultsRoleFilter = signal('');
-  readonly resultsExamFilter = signal('');
+  readonly portalStats = signal<ExamPortalStats>({
+    registrations: 0,
+    submitted: 0,
+    notStarted: 0,
+    inProgress: 0,
+    notProvisioned: 0
+  });
+  readonly portalStatsLoading = signal(false);
 
-  readonly attendanceSummary = computed(() => {
-    const evaluated = this.results().length;
-    const notAttended = this.notAttended().length;
-    return { evaluated, notAttended };
+  readonly statsAccountedTotal = computed(() => {
+    const s = this.portalStats();
+    return s.submitted + s.notStarted + s.inProgress + s.notProvisioned;
+  });
+  readonly resultsPageSize = signal(50);
+  readonly resultsGoToPageInput = signal('1');
+  readonly resultsLoading = signal(false);
+
+  readonly notStartedPage = signal(1);
+  readonly notStartedPageSize = signal(50);
+  readonly notStartedGoToPageInput = signal('1');
+
+  readonly resultsPage = signal(1);
+
+  readonly resultsTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.results().length / this.resultsPageSize()))
+  );
+
+  readonly notStartedTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.notAttended().length / this.notStartedPageSize()))
+  );
+
+  readonly paginatedResults = computed(() => {
+    const start = (this.resultsPage() - 1) * this.resultsPageSize();
+    return this.results().slice(start, start + this.resultsPageSize());
+  });
+
+  readonly paginatedNotStarted = computed(() => {
+    const start = (this.notStartedPage() - 1) * this.notStartedPageSize();
+    return this.notAttended().slice(start, start + this.notStartedPageSize());
+  });
+
+  readonly resultsRangeStart = computed(() => {
+    if (this.results().length === 0) return 0;
+    return (this.resultsPage() - 1) * this.resultsPageSize() + 1;
+  });
+
+  readonly resultsRangeEnd = computed(() => {
+    if (this.results().length === 0) return 0;
+    return Math.min(this.resultsPage() * this.resultsPageSize(), this.results().length);
+  });
+
+  readonly notStartedRangeStart = computed(() => {
+    if (this.notAttended().length === 0) return 0;
+    return (this.notStartedPage() - 1) * this.notStartedPageSize() + 1;
+  });
+
+  readonly notStartedRangeEnd = computed(() => {
+    if (this.notAttended().length === 0) return 0;
+    return Math.min(this.notStartedPage() * this.notStartedPageSize(), this.notAttended().length);
   });
   readonly resultDetailOpen = signal(false);
   readonly resultDetailLoading = signal(false);
@@ -136,6 +191,37 @@ export class ExamRegistrations implements OnInit {
 
   ngOnInit(): void {
     void this.loadExams();
+    void this.loadPortalStats();
+    void this.loadRegistrations();
+    void this.loadResults();
+    void this.loadNotAttended();
+  }
+
+  private portalFilterParams(): { roleSlug?: string; examId?: string } {
+    return {
+      roleSlug: this.roleFilter() || undefined,
+      examId: this.examFilter() || undefined
+    };
+  }
+
+  async loadPortalStats(): Promise<void> {
+    this.portalStatsLoading.set(true);
+    try {
+      this.portalStats.set(await this.registrationService.getPortalStats(this.portalFilterParams()));
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Could not load summary counts');
+    } finally {
+      this.portalStatsLoading.set(false);
+    }
+  }
+
+  onPortalFilterChange(): void {
+    this.page.set(1);
+    this.resultsPage.set(1);
+    this.notStartedPage.set(1);
+    this.resultsGoToPageInput.set('1');
+    this.notStartedGoToPageInput.set('1');
+    void this.loadPortalStats();
     void this.loadRegistrations();
     void this.loadResults();
     void this.loadNotAttended();
@@ -171,15 +257,20 @@ export class ExamRegistrations implements OnInit {
   }
 
   async loadResults(): Promise<void> {
+    this.resultsLoading.set(true);
     try {
       this.results.set(
         await this.registrationService.listResults(
-          this.resultsExamFilter() || undefined,
-          this.resultsRoleFilter() || undefined
+          this.examFilter() || undefined,
+          this.roleFilter() || undefined
         )
       );
+      this.resultsPage.set(1);
+      this.resultsGoToPageInput.set('1');
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not load results');
+    } finally {
+      this.resultsLoading.set(false);
     }
   }
 
@@ -187,27 +278,85 @@ export class ExamRegistrations implements OnInit {
     this.notAttendedLoading.set(true);
     try {
       this.notAttended.set(
-        await this.registrationService.listNotAttended({
-          roleSlug: this.resultsRoleFilter() || undefined,
-          examId: this.resultsExamFilter() || undefined
-        })
+        await this.registrationService.listNotAttended(this.portalFilterParams())
       );
+      this.notStartedPage.set(1);
+      this.notStartedGoToPageInput.set('1');
     } catch (err) {
-      this.toast.error(err instanceof Error ? err.message : 'Could not load not-attended list');
+      this.toast.error(err instanceof Error ? err.message : 'Could not load not-started list');
     } finally {
       this.notAttendedLoading.set(false);
     }
   }
 
-  setActiveTab(tab: 'registrations' | 'results' | 'not-attended'): void {
+  setActiveTab(tab: ExamPortalTab): void {
     this.activeTab.set(tab);
     if (tab === 'results') void this.loadResults();
-    if (tab === 'not-attended') void this.loadNotAttended();
+    if (tab === 'not-started') void this.loadNotAttended();
   }
 
-  onResultsFiltersChange(): void {
-    void this.loadResults();
-    if (this.activeTab() === 'not-attended') void this.loadNotAttended();
+  goClientPage(tab: ClientPagedTab, delta: number): void {
+    const page = tab === 'results' ? this.resultsPage : this.notStartedPage;
+    const totalPages = tab === 'results' ? this.resultsTotalPages() : this.notStartedTotalPages();
+    const next = page() + delta;
+    if (next < 1 || next > totalPages) return;
+    page.set(next);
+    this.syncClientGoToInput(tab);
+  }
+
+  goClientFirstPage(tab: ClientPagedTab): void {
+    const page = tab === 'results' ? this.resultsPage : this.notStartedPage;
+    if (page() === 1) return;
+    page.set(1);
+    this.syncClientGoToInput(tab);
+  }
+
+  goClientLastPage(tab: ClientPagedTab): void {
+    const page = tab === 'results' ? this.resultsPage : this.notStartedPage;
+    const last = tab === 'results' ? this.resultsTotalPages() : this.notStartedTotalPages();
+    if (page() === last) return;
+    page.set(last);
+    this.syncClientGoToInput(tab);
+  }
+
+  onClientGoToPageInput(tab: ClientPagedTab, value: string): void {
+    const input = tab === 'results' ? this.resultsGoToPageInput : this.notStartedGoToPageInput;
+    input.set(value.replace(/\D/g, ''));
+  }
+
+  goClientToPage(tab: ClientPagedTab): void {
+    const page = tab === 'results' ? this.resultsPage : this.notStartedPage;
+    const input = tab === 'results' ? this.resultsGoToPageInput : this.notStartedGoToPageInput;
+    const totalPages = tab === 'results' ? this.resultsTotalPages() : this.notStartedTotalPages();
+    const parsed = Number(input());
+    if (!parsed || Number.isNaN(parsed)) {
+      this.syncClientGoToInput(tab);
+      return;
+    }
+    const target = Math.min(Math.max(1, parsed), totalPages);
+    page.set(target);
+    this.syncClientGoToInput(tab);
+  }
+
+  onClientPageSizeChange(tab: ClientPagedTab, value: string): void {
+    const size = Number(value);
+    if (!size || size < 1) return;
+    if (tab === 'results') {
+      this.resultsPageSize.set(size);
+      this.resultsPage.set(1);
+    } else {
+      this.notStartedPageSize.set(size);
+      this.notStartedPage.set(1);
+    }
+    this.syncClientGoToInput(tab);
+  }
+
+  private syncClientGoToInput(tab: ClientPagedTab): void {
+    if (tab === 'results') {
+      this.resultsGoToPageInput.set(String(this.resultsPage()));
+    } else {
+      this.notStartedGoToPageInput.set(String(this.notStartedPage()));
+    }
   }
 
   applyFilters(): void {
@@ -263,7 +412,10 @@ export class ExamRegistrations implements OnInit {
       }
 
       this.importPhase.set('success');
+      await this.loadPortalStats();
       await this.loadRegistrations();
+      await this.loadResults();
+      await this.loadNotAttended();
     } catch (err) {
       this.importPhase.set('error');
       this.importErrorMessage.set(err instanceof Error ? err.message : 'Import failed');
@@ -295,7 +447,10 @@ export class ExamRegistrations implements OnInit {
     try {
       await this.registrationService.deleteAllRegistrations();
       this.page.set(1);
+      await this.loadPortalStats();
       await this.loadRegistrations();
+      await this.loadResults();
+      await this.loadNotAttended();
       this.toast.success('All registrations deleted');
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Delete failed');
@@ -355,7 +510,9 @@ export class ExamRegistrations implements OnInit {
           : `Registered ${fullName} (email not sent)`
       );
       this.addStudentOpen.set(false);
+      await this.loadPortalStats();
       await this.loadRegistrations();
+      await this.loadNotAttended();
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Could not add student');
     } finally {
@@ -417,6 +574,7 @@ export class ExamRegistrations implements OnInit {
       }
 
       this.sendPhase.set('success');
+      await this.loadPortalStats();
       await this.loadRegistrations();
       this.toast.success(
         `${this.sendSentCount()} emails sent, ${this.sendFailedCount()} failed (${this.sendProcessed()} of ${this.sendTotal()} registrations)`
@@ -531,10 +689,6 @@ export class ExamRegistrations implements OnInit {
     void this.loadRegistrations();
   }
 
-  onResultsRoleChange(): void {
-    this.onResultsFiltersChange();
-  }
-
   formatExportDateTime(iso: string | null | undefined): string {
     if (!iso) return '';
     const d = new Date(iso);
@@ -602,10 +756,10 @@ export class ExamRegistrations implements OnInit {
     }
   }
 
-  exportNotAttended(): void {
+  exportNotStarted(): void {
     const rows = this.notAttended();
     if (rows.length === 0) {
-      this.toast.error('No not-attended rows to export');
+      this.toast.error('No not-started rows to export');
       return;
     }
 
@@ -623,7 +777,7 @@ export class ExamRegistrations implements OnInit {
       rows,
       columns,
       columns.map((c) => c.id),
-      `exam-not-attended-${this.resultsRoleFilter() || 'all'}`,
+      `exam-not-started-${this.roleFilter() || 'all'}`,
       (row, col) => {
         switch (col) {
           case 'name':
@@ -747,7 +901,10 @@ export class ExamRegistrations implements OnInit {
 
   exportResults(): void {
     const rows = this.results();
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      this.toast.error('No results to export');
+      return;
+    }
 
     const columns = [
       { id: 'resultId', label: 'Result ID' },
@@ -776,7 +933,7 @@ export class ExamRegistrations implements OnInit {
       rows,
       columns,
       columns.map((c) => c.id),
-      `exam-results-${this.resultsRoleFilter() || 'all'}`,
+      `exam-results-${this.roleFilter() || 'all'}`,
       (row, col) => {
         switch (col) {
           case 'resultId':
