@@ -113,10 +113,10 @@ export class App implements OnInit {
 
   private async redirectExamOnlyUsers(url: string): Promise<void> {
     const path = url.split('?')[0];
-    if (path.startsWith('/exam') || path.startsWith('/auth')) return;
+    if (path.startsWith('/exam') || path.startsWith('/auth') || path.startsWith('/admin')) return;
 
     await this.auth.ensureSessionChecked();
-    if (this.auth.isLoggedIn() && this.auth.isExamOnly()) {
+    if (this.auth.isLoggedIn() && this.auth.isExamOnly() && !this.auth.isAdmin()) {
       const target = this.auth.mustResetPassword() ? '/exam/set-password' : '/exam/dashboard';
       await this.router.navigateByUrl(target, { replaceUrl: true });
     }

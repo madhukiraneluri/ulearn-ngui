@@ -569,6 +569,7 @@ export class AuthService {
   }
 
   isExamOnly(): boolean {
+    if (this.isAdmin()) return false;
     const profile = this.profileSignal();
     if (profile?.exam_only) return true;
     return this.currentUserSignal()?.user_metadata?.['exam_only'] === true;

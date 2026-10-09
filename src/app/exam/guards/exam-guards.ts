@@ -36,6 +36,7 @@ export const blockExamOnlyGuard: CanActivateFn = async () => {
   const router = inject(Router);
 
   await auth.ensureSessionChecked();
+  if (auth.isAdmin()) return true;
   if (auth.isLoggedIn() && auth.isExamOnly()) {
     const target = auth.mustResetPassword() ? '/exam/set-password' : '/exam/dashboard';
     return router.createUrlTree([target]);
