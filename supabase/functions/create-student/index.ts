@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { issueProvisionNonce } from '../_shared/provision-gate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,6 +101,11 @@ Deno.serve(async (req) => {
       const tempPassword = generateTempPassword();
       const phone = String(row?.phone ?? '').trim() || null;
       const collegeName = String(row?.collegeName ?? '').trim() || null;
+      const gate = await issueProvisionNonce(adminClient, email);
+      if ('error' in gate) {
+        results.push({ rowNumber, email, success: false, message: gate.error });
+        continue;
+      }
 
       const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
         email,
@@ -110,7 +116,8 @@ Deno.serve(async (req) => {
           full_name: fullName,
           phone_number: phone,
           must_reset_password: true,
-          created_by_admin: true
+          created_by_admin: true,
+          provision_nonce: gate.nonce
         }
       });
 

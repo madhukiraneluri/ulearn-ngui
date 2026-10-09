@@ -180,6 +180,18 @@
   margin-left: auto;
 }
 
+.topbar-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+
+  strong {
+    color: var(--navy);
+    font-size: 0.88rem;
+  }
+}
+
 .admin-badge {
   background: #1b5e20;
   color: #fff;

@@ -68,20 +68,6 @@ Deno.serve(async (req) => {
       return json({ error: 'Email verification expired. Request a new code.' }, 400);
     }
 
-    const consumedAt = new Date().toISOString();
-    const { data: consumed, error: consumeErr } = await adminClient
-      .from('signup_email_otps')
-      .update({ consumed_at: consumedAt })
-      .eq('email', email)
-      .is('consumed_at', null)
-      .select('email')
-      .maybeSingle();
-
-    if (consumeErr) return json({ error: consumeErr.message }, 500);
-    if (!consumed) {
-      return json({ error: 'Verify your email before creating an account' }, 400);
-    }
-
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -89,16 +75,16 @@ Deno.serve(async (req) => {
       app_metadata: { provisioned: true },
       user_metadata: {
         full_name: fullName,
-        phone_number: phone
+        phone_number: phone,
+        signup_token: verificationToken
       }
     });
 
     if (createErr || !created.user) {
-      await adminClient
-        .from('signup_email_otps')
-        .update({ consumed_at: null })
-        .eq('email', email);
-      const message = createErr?.message ?? 'Could not create account';
+      const raw = createErr?.message ?? 'Could not create account';
+      const message = raw.toLowerCase().includes('database error')
+        ? 'Could not create the account. Verify your email again and retry.'
+        : raw;
       const status = message.toLowerCase().includes('already') ? 409 : 500;
       return json({ error: message }, status);
     }

@@ -3,6 +3,7 @@
  * Usage: node scripts/reimport-exam-candidates-from-xlsx.mjs [path-to-xlsx]
  */
 import { createClient } from '@supabase/supabase-js';
+import { issueProvisionNonce } from './provision-nonce.mjs';
 import XLSX from 'xlsx';
 import fs from 'node:fs';
 
@@ -281,6 +282,7 @@ async function provisionCandidate(input) {
   } else {
     const tempPassword = input.password ?? generateTempPassword(10);
     const mustReset = useFixedPassword ? false : true;
+    const provisionNonce = await issueProvisionNonce(supabase, input.email);
     const { data: created, error: createErr } = await supabase.auth.admin.createUser({
       email: input.email,
       password: tempPassword,
@@ -290,7 +292,8 @@ async function provisionCandidate(input) {
         full_name: input.fullName,
         must_reset_password: mustReset,
         created_by_admin: true,
-        exam_only: true
+        exam_only: true,
+        provision_nonce: provisionNonce
       }
     });
     if (createErr || !created.user) {

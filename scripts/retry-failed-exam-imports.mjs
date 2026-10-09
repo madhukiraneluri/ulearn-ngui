@@ -1,5 +1,6 @@
 /** Retry failed bulk-import rows (provision_error set). */
 import { createClient } from '@supabase/supabase-js';
+import { issueProvisionNonce } from './provision-nonce.mjs';
 
 const supabase = createClient(
   process.env.SUPABASE_URL ?? 'https://yllfccuxohnipleyseup.supabase.co',
@@ -28,6 +29,7 @@ async function provisionCandidate(input) {
       .eq('id', userId);
   } else {
     const tempPassword = generateTempPassword(10);
+    const provisionNonce = await issueProvisionNonce(supabase, input.email);
     const { data: created, error: createErr } = await supabase.auth.admin.createUser({
       email: input.email,
       password: tempPassword,
@@ -37,6 +39,7 @@ async function provisionCandidate(input) {
         full_name: input.fullName,
         must_reset_password: true,
         created_by_admin: true,
+        provision_nonce: provisionNonce,
         exam_only: true
       }
     });

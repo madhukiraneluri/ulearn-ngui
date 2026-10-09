@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { issueProvisionNonce } from '../_shared/provision-gate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -169,6 +170,8 @@ async function provisionCandidate(
     await client.from('profiles').update({ exam_only: true, updated_at: new Date().toISOString() }).eq('id', userId);
   } else {
     const tempPassword = generateTempPassword(10);
+    const gate = await issueProvisionNonce(client, input.email);
+    if ('error' in gate) return { ok: false, message: gate.error };
     const { data: created, error: createErr } = await client.auth.admin.createUser({
       email: input.email,
       password: tempPassword,
@@ -178,7 +181,8 @@ async function provisionCandidate(
         full_name: input.fullName,
         must_reset_password: true,
         created_by_admin: true,
-        exam_only: true
+        exam_only: true,
+        provision_nonce: gate.nonce
       }
     });
     if (createErr || !created.user) {

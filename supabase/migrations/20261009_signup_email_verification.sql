@@ -73,15 +73,64 @@ BEGIN
 END;
 $$;
 
+CREATE TABLE IF NOT EXISTS public.auth_provision_nonces (
+  email text PRIMARY KEY,
+  nonce text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  used_at timestamptz
+);
+
+ALTER TABLE public.auth_provision_nonces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_provision_nonces FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.auth_provision_nonces FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.enforce_provisioned_signup()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
+DECLARE
+  v_email text;
+  v_token text;
+  v_nonce text;
 BEGIN
-  IF COALESCE(NEW.raw_app_meta_data ->> 'provisioned', '') = 'true' THEN
-    RETURN NEW;
+  v_email := lower(trim(NEW.email));
+  v_token := NULLIF(trim(NEW.raw_user_meta_data ->> 'signup_token'), '');
+  v_nonce := NULLIF(trim(NEW.raw_user_meta_data ->> 'provision_nonce'), '');
+
+  IF v_token IS NOT NULL THEN
+    UPDATE public.signup_email_otps
+    SET consumed_at = now()
+    WHERE email = v_email
+      AND verified_at IS NOT NULL
+      AND consumed_at IS NULL
+      AND verified_at > now() - interval '20 minutes'
+      AND token_hash = encode(
+        extensions.digest(convert_to(token_salt || ':' || v_token, 'UTF8'), 'sha256'),
+        'hex'
+      )
+    RETURNING email INTO v_email;
+
+    IF v_email IS NOT NULL THEN
+      RETURN NEW;
+    END IF;
+
+    v_email := lower(trim(NEW.email));
+  END IF;
+
+  IF v_nonce IS NOT NULL THEN
+    UPDATE public.auth_provision_nonces
+    SET used_at = now()
+    WHERE email = v_email
+      AND nonce = v_nonce
+      AND used_at IS NULL
+      AND expires_at > now()
+    RETURNING email INTO v_email;
+
+    IF v_email IS NOT NULL THEN
+      RETURN NEW;
+    END IF;
   END IF;
 
   RAISE EXCEPTION 'Verify your email before creating an account';

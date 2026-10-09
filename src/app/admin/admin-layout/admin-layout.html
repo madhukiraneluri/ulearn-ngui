@@ -36,7 +36,10 @@
     <header class="admin-topbar">
       <button type="button" class="menu-btn" (click)="toggleSidebar()" aria-label="Menu">☰</button>
       <div class="topbar-user">
-        <span>{{ auth.currentUser()?.email }}</span>
+        <span class="topbar-identity">
+          <strong>{{ auth.profile()?.full_name || 'Admin' }}</strong>
+          <span>{{ auth.currentUser()?.email }}</span>
+        </span>
         <span class="admin-badge">Admin</span>
       </div>
     </header>

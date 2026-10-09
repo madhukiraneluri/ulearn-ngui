@@ -3,6 +3,7 @@
  * Usage: node scripts/provision-test-exam-accounts.mjs
  */
 import { createClient } from '@supabase/supabase-js';
+import { issueProvisionNonce } from './provision-nonce.mjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://yllfccuxohnipleyseup.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -110,12 +111,14 @@ async function provisionCandidate(input) {
     });
     if (pwErr) return { ok: false, message: pwErr.message };
   } else {
+    const provisionNonce = await issueProvisionNonce(supabase, input.email);
     const { data: created, error: createErr } = await supabase.auth.admin.createUser({
       email: input.email,
       password: TEST_EXAM_PASSWORD,
       email_confirm: true,
       app_metadata: { provisioned: true },
       user_metadata: {
+        provision_nonce: provisionNonce,
         full_name: input.fullName,
         must_reset_password: false,
         created_by_admin: true,

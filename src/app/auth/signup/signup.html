@@ -37,13 +37,13 @@
           <input id="email" type="email" formControlName="email" class="form-input" placeholder="your.email@college.com"
             autocomplete="email" [class.error]="isFieldInvalid('email')" (input)="onEmailChanged()" />
           <button type="button" class="btn-code" (click)="sendCode()"
-            [disabled]="isLoading() || resendIn() > 0">
+            [disabled]="isLoading() || resendIn() > 0 || emailVerified()">
             @if (resendIn() > 0) {
             {{ resendIn() }}s
-            } @else if (codeSent()) {
+            } @else if (codeSent() && !emailVerified()) {
             Resend
             } @else {
-            Send code
+            Send
             }
           </button>
         </div>

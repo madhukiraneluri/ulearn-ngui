@@ -17,12 +17,13 @@ export class AdminDashboardService {
       { count: totalPapersPublished },
       { count: activeInternships }
     ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'USER'),
       supabase.from('courses').select('*', { count: 'exact', head: true }),
       supabase.from('enrollments').select('course_id, enrolled_at, courses(price)'),
       supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
+        .eq('role', 'USER')
         .gte('created_at', weekStart),
       supabase
         .from('research_papers')
