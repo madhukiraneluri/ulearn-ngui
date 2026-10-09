@@ -27,6 +27,10 @@
   font-weight: 600;
 }
 
+.account-card {
+  margin-bottom: 20px;
+}
+
 .settings-card {
   background: #fff;
   border: 1px solid var(--border);
@@ -100,6 +104,21 @@
 
 .form-actions {
   margin-top: 12px;
+}
+
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--navy);
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
 .btn-primary {

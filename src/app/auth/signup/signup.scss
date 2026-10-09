@@ -91,6 +91,50 @@
   }
 }
 
+.otp-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.btn-code {
+  border: none;
+  background: $navy;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: $muted;
+  line-height: 1.4;
+}
+
+.verified-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba($green, 0.12);
+  color: $green;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .form-error-banner {
   padding: 12px 16px;
   background: rgba($red, 0.08);

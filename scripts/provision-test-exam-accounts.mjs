@@ -114,6 +114,7 @@ async function provisionCandidate(input) {
       email: input.email,
       password: TEST_EXAM_PASSWORD,
       email_confirm: true,
+      app_metadata: { provisioned: true },
       user_metadata: {
         full_name: input.fullName,
         must_reset_password: false,

@@ -33,12 +33,45 @@
       <!-- Email -->
       <div class="form-group anim-item" style="--delay: 0.21s">
         <label for="email" class="form-label">Email Address</label>
-        <input id="email" type="email" formControlName="email" class="form-input" placeholder="your.email@college.com"
-          autocomplete="email" [class.error]="isFieldInvalid('email')" />
+        <div class="otp-row">
+          <input id="email" type="email" formControlName="email" class="form-input" placeholder="your.email@college.com"
+            autocomplete="email" [class.error]="isFieldInvalid('email')" (input)="onEmailChanged()" />
+          <button type="button" class="btn-code" (click)="sendCode()"
+            [disabled]="isLoading() || resendIn() > 0">
+            @if (resendIn() > 0) {
+            {{ resendIn() }}s
+            } @else if (codeSent()) {
+            Resend
+            } @else {
+            Send code
+            }
+          </button>
+        </div>
         @if (isFieldInvalid('email')) {
         <span class="error-message">{{ getErrorMessage('email') }}</span>
         }
+        <span class="field-hint">We’ll email a 6-digit code. Your account is created only after you verify it.</span>
       </div>
+
+      @if (codeSent() && !emailVerified()) {
+      <div class="form-group anim-item">
+        <label for="otp" class="form-label">Verification code</label>
+        <div class="otp-row">
+          <input id="otp" type="text" inputmode="numeric" maxlength="6" formControlName="otp" class="form-input"
+            placeholder="6-digit code" autocomplete="one-time-code" [class.error]="isFieldInvalid('otp')" />
+          <button type="button" class="btn-code" (click)="verifyCode()" [disabled]="isLoading()">
+            Verify
+          </button>
+        </div>
+        @if (isFieldInvalid('otp')) {
+        <span class="error-message">{{ getErrorMessage('otp') }}</span>
+        }
+      </div>
+      }
+
+      @if (emailVerified()) {
+      <p class="verified-banner">Email verified. Finish the form to create your account.</p>
+      }
 
       <!-- Password -->
       <div class="form-group anim-item" style="--delay: 0.27s">
@@ -118,7 +151,7 @@
       </div>
 
       <button type="submit" class="btn-submit anim-item" style="--delay: 0.45s"
-        [disabled]="form.invalid || isLoading()">
+        [disabled]="form.invalid || isLoading() || !emailVerified()">
         @if (isLoading()) {
         <span class="loader"></span>
         Creating account...

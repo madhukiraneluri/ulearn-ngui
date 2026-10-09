@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
         email,
         password: tempPassword,
         email_confirm: true,
+        app_metadata: { provisioned: true },
         user_metadata: {
           full_name: fullName,
           phone_number: phone,

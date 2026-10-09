@@ -63,14 +63,8 @@ export class Register {
         return;
       }
 
-      // Use supabase signUp
-      const success = await this.auth.signUp(email, password, name, phone);
-      if (success) {
-        this.toast.success('Account created successfully! Redirecting to dashboard.');
-        this.router.navigate(['/']);
-      } else {
-        this.toast.error('Registration failed. Please try again.');
-      }
+      this.toast.info('Verify your email on the signup page before creating an account.');
+      await this.router.navigate(['/auth/signup']);
     } finally {
       this.submitting = false;
     }

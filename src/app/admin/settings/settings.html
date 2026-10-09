@@ -6,6 +6,18 @@
     </div>
   </div>
 
+  <section class="settings-card account-card">
+    <h2>Admin password</h2>
+    <p class="hint">
+      Reset sends a temporary password to
+      <strong>{{ adminEmail() || 'your admin email' }}</strong>.
+      Sign in with that password and you will be asked to set a new one.
+    </p>
+    <button type="button" class="btn-secondary" (click)="resetPassword()" [disabled]="isResettingPassword()">
+      {{ isResettingPassword() ? 'Sending…' : 'Reset password' }}
+    </button>
+  </section>
+
   @if (isLoading()) {
     <p class="loading">Loading…</p>
   } @else {

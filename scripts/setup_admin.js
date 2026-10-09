@@ -32,6 +32,7 @@ async function main() {
     email: ADMIN_EMAIL,
     password: ADMIN_PASSWORD,
     email_confirm: true,
+    app_metadata: { provisioned: true, role: 'ADMIN' },
     user_metadata: { full_name: ADMIN_NAME, role: 'ADMIN' }
   });
 
@@ -48,6 +49,7 @@ async function main() {
           profile_completed: true
         });
         await admin.auth.admin.updateUserById(existing.id, {
+          app_metadata: { provisioned: true, role: 'ADMIN' },
           user_metadata: { full_name: ADMIN_NAME, role: 'ADMIN' }
         });
       }

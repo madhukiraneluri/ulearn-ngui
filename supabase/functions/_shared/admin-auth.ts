@@ -79,6 +79,48 @@ export function generateTempPassword(): string {
   return chars.join('');
 }
 
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export async function sendHtmlEmail(
+  to: string,
+  subject: string,
+  html: string
+): Promise<{ sent: boolean; error?: string }> {
+  const apiKey = Deno.env.get('RESEND_API_KEY')?.trim();
+  const from = Deno.env.get('RESEND_FROM_EMAIL')?.trim() ?? 'ULearn <noreply@ulearn-edu.in>';
+
+  if (!apiKey) {
+    return { sent: false, error: 'RESEND_API_KEY not configured' };
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      html
+    })
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    return { sent: false, error: errText || `Resend HTTP ${res.status}` };
+  }
+
+  return { sent: true };
+}
+
 export async function sendCredentialsEmail(
   to: string,
   fullName: string,

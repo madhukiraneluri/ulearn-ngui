@@ -14,6 +14,8 @@ import {
 } from '@angular/forms';
 import { AdminSiteSettingsService } from '../services/admin-site-settings.service';
 import { ToastService } from '../../core/services/toast';
+import { AuthService } from '../../core/services/auth.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { prepareBlogImage } from '../services/blog-image.util';
 import {
   DEFAULT_HOME_HERO_IMAGE,
@@ -32,11 +34,15 @@ export class Settings implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly settingsService = inject(AdminSiteSettingsService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly isUploading = signal(false);
+  readonly isResettingPassword = signal(false);
   readonly previewUrl = signal<string | null>(null);
+  readonly adminEmail = signal('');
 
   form!: FormGroup;
   private pendingFile: File | null = null;
@@ -45,7 +51,28 @@ export class Settings implements OnInit {
     this.form = this.fb.group({
       heroImageUrl: ['', Validators.required]
     });
+    const email = this.auth.profile()?.email || this.auth.currentUser()?.email || '';
+    this.adminEmail.set(email);
     void this.loadSettings();
+  }
+
+  async resetPassword(): Promise<void> {
+    const email = this.adminEmail();
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Reset admin password',
+      message: `We will email a temporary password to ${email || 'your admin email'}. You will be signed out, then sign in with that password and choose a new one.`,
+      confirmLabel: 'Send temporary password'
+    });
+    if (!confirmed || this.isResettingPassword()) return;
+
+    this.isResettingPassword.set(true);
+    try {
+      const sent = await this.auth.resetOwnAdminPassword();
+      if (!sent) return;
+      await this.auth.signOut('/auth/admin');
+    } finally {
+      this.isResettingPassword.set(false);
+    }
   }
 
   private async loadSettings(): Promise<void> {

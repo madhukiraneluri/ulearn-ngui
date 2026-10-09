@@ -2,8 +2,10 @@ import {
   Component,
   ChangeDetectionStrategy,
   OnInit,
+  OnDestroy,
   inject,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  signal
 } from '@angular/core';
 import {
   AbstractControl,
@@ -16,6 +18,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast';
 import { LegalModalService } from '../../core/services/legal-modal.service';
 import { LegalPolicyId } from '../../shared/constants/legal';
 
@@ -48,22 +51,33 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
   templateUrl: './signup.html',
   styleUrl: './signup.scss'
 })
-export class SignupComponent implements OnInit {
+export class SignupComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly legalModal = inject(LegalModalService);
+  private readonly toast = inject(ToastService);
 
   form!: FormGroup;
   showPassword = false;
   showConfirmPassword = false;
 
   readonly isLoading = this.auth.isLoading;
+  readonly emailVerified = signal(false);
+  readonly codeSent = signal(false);
+  readonly resendIn = signal(0);
+  private verificationToken = '';
+  private verifiedEmail = '';
+  private resendTimer: ReturnType<typeof setInterval> | null = null;
   private submitting = false;
 
   ngOnInit(): void {
     this.initializeForm();
+  }
+
+  ngOnDestroy(): void {
+    if (this.resendTimer) clearInterval(this.resendTimer);
   }
 
   private initializeForm(): void {
@@ -79,6 +93,7 @@ export class SignupComponent implements OnInit {
           ]
         ],
         email: ['', [Validators.required, Validators.email]],
+        otp: [''],
         phoneNumber: [
           '',
           [
@@ -102,17 +117,78 @@ export class SignupComponent implements OnInit {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
+  onEmailChanged(): void {
+    const email = this.normalizedEmail();
+    if (email !== this.verifiedEmail) {
+      this.emailVerified.set(false);
+      this.verificationToken = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  async sendCode(): Promise<void> {
+    const emailControl = this.form.get('email');
+    emailControl?.markAsTouched();
+    if (emailControl?.invalid || this.isLoading() || this.resendIn() > 0) {
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const sent = await this.auth.requestSignupOtp(this.normalizedEmail());
+    if (sent) {
+      this.codeSent.set(true);
+      this.emailVerified.set(false);
+      this.verificationToken = '';
+      this.startResendCooldown();
+    }
+    this.cdr.markForCheck();
+  }
+
+  async verifyCode(): Promise<void> {
+    const code = String(this.form.get('otp')?.value ?? '').trim();
+    if (!/^\d{6}$/.test(code) || this.isLoading()) {
+      this.form.get('otp')?.markAsTouched();
+      this.form.get('otp')?.setErrors({ otp: true });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const token = await this.auth.verifySignupOtp(this.normalizedEmail(), code);
+    if (!token) {
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.verificationToken = token;
+    this.verifiedEmail = this.normalizedEmail();
+    this.emailVerified.set(true);
+    this.form.get('otp')?.setErrors(null);
+    this.cdr.markForCheck();
+  }
+
   async onSubmit(): Promise<void> {
     this.form.markAllAsTouched();
     this.cdr.markForCheck();
 
     if (this.form.invalid) return;
+    if (!this.emailVerified() || this.normalizedEmail() !== this.verifiedEmail) {
+      this.emailVerified.set(false);
+      this.toast.error('Verify your email with the code we sent before creating an account.');
+      this.cdr.markForCheck();
+      return;
+    }
     if (this.submitting || this.isLoading()) return;
 
     this.submitting = true;
     try {
       const { fullName, email, password, phoneNumber } = this.form.getRawValue();
-      const success = await this.auth.signUp(email.trim(), password, fullName.trim(), phoneNumber.trim());
+      const success = await this.auth.signUp(
+        email.trim(),
+        password,
+        fullName.trim(),
+        phoneNumber.trim(),
+        this.verificationToken
+      );
 
       if (success) {
         await this.router.navigate(['/']);
@@ -121,6 +197,24 @@ export class SignupComponent implements OnInit {
       this.submitting = false;
       this.cdr.markForCheck();
     }
+  }
+
+  private normalizedEmail(): string {
+    return String(this.form.get('email')?.value ?? '').trim().toLowerCase();
+  }
+
+  private startResendCooldown(): void {
+    if (this.resendTimer) clearInterval(this.resendTimer);
+    this.resendIn.set(60);
+    this.resendTimer = setInterval(() => {
+      const next = this.resendIn() - 1;
+      this.resendIn.set(next);
+      if (next <= 0 && this.resendTimer) {
+        clearInterval(this.resendTimer);
+        this.resendTimer = null;
+      }
+      this.cdr.markForCheck();
+    }, 1000);
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -164,6 +258,7 @@ export class SignupComponent implements OnInit {
     }
 
     if (errors['email']) return 'Please enter a valid email address';
+    if (errors['otp']) return 'Enter the 6-digit code from your email';
     if (errors['pattern'] && fieldName === 'phoneNumber') return 'Please enter a valid 10-15 digit phone number';
     if (errors['minlength']) return 'Name must be at least 2 characters';
     if (errors['maxlength']) return 'Name must be 80 characters or less';

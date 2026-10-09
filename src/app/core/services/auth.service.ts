@@ -5,8 +5,8 @@ import {
   inject
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { supabase, type UserProfile, type AuthUser } from '../supabase.client';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { invokeAuthedFunction, supabase, type UserProfile, type AuthUser } from '../supabase.client';
+import { FunctionsHttpError, type AuthChangeEvent, type Session } from '@supabase/supabase-js';
 import { ToastService } from './toast';
 
 export type SignOutReason = 'manual' | 'remote' | 'timeout';
@@ -126,67 +126,155 @@ export class AuthService {
     }
   }
 
-  async signUp(email: string, password: string, fullName: string, phoneNumber?: string): Promise<boolean> {
+  async requestSignupOtp(email: string): Promise<boolean> {
     try {
       this.isLoadingSignal.set(true);
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            phone_number: phoneNumber
-          }
-        }
-      });
-
-      if (authError) {
-        const msg = (authError.message || '').toLowerCase();
-        if (msg.includes('already') || msg.includes('duplicate') || msg.includes('registered') || msg.includes('exists')) {
-          this.toast.error('Email already exists. Please sign in or use password recovery.');
-        } else {
-          this.toast.error(authError.message);
-        }
+      const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>(
+        'send-signup-otp',
+        { body: { email: email.trim().toLowerCase() } }
+      );
+      if (error) {
+        this.toast.error(await this.readFunctionError(error));
         return false;
       }
-
-      if (!authData.user) {
-        this.toast.error('Failed to create account');
+      if (data?.error) {
+        this.toast.error(data.error);
         return false;
       }
-
-      if (!authData.session) {
-        this.toast.success('Account created! Check your email and click the confirmation link to activate your account.');
-        return true; // ← changed: true lets the caller navigate to /auth/check-email
-      }
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            full_name: fullName,
-            email: email.trim().toLowerCase(),
-            phone: phoneNumber,
-            profile_completed: false
-          }
-        ]);
-
-      if (profileError) {
-        this.toast.error('Failed to create profile');
-        return false;
-      }
-
-      await supabase.auth.signOut({ scope: 'others' });
-      this.toast.success('Account created! Please complete your profile.');
+      this.toast.success('Verification code sent. Check your inbox.');
       return true;
-    } catch (error: any) {
-      this.toast.error(error.message || 'Sign up failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not send verification code';
+      this.toast.error(message);
       return false;
     } finally {
       this.isLoadingSignal.set(false);
     }
+  }
+
+  async verifySignupOtp(email: string, code: string): Promise<string | null> {
+    try {
+      this.isLoadingSignal.set(true);
+      const { data, error } = await supabase.functions.invoke<{
+        success?: boolean;
+        verificationToken?: string;
+        error?: string;
+      }>('verify-signup-otp', {
+        body: { email: email.trim().toLowerCase(), code: code.trim() }
+      });
+      if (error) {
+        this.toast.error(await this.readFunctionError(error));
+        return null;
+      }
+      if (data?.error || !data?.verificationToken) {
+        this.toast.error(data?.error ?? 'Could not verify that code');
+        return null;
+      }
+      this.toast.success('Email verified. You can create your account.');
+      return data.verificationToken;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not verify that code';
+      this.toast.error(message);
+      return null;
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
+  }
+
+  async signUp(
+    email: string,
+    password: string,
+    fullName: string,
+    phoneNumber: string | undefined,
+    verificationToken: string
+  ): Promise<boolean> {
+    try {
+      this.isLoadingSignal.set(true);
+
+      if (!verificationToken) {
+        this.toast.error('Verify your email before creating an account.');
+        return false;
+      }
+
+      const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>(
+        'complete-signup',
+        {
+          body: {
+            email: email.trim().toLowerCase(),
+            password,
+            fullName: fullName.trim(),
+            phone: phoneNumber?.trim() ?? '',
+            verificationToken
+          }
+        }
+      );
+
+      if (error) {
+        this.toast.error(await this.readFunctionError(error));
+        return false;
+      }
+      if (data?.error || !data?.success) {
+        this.toast.error(data?.error ?? 'Failed to create account');
+        return false;
+      }
+
+      const signedIn = await this.signIn(email.trim().toLowerCase(), password, { silent: true });
+      if (!signedIn) {
+        this.toast.success('Account created. Sign in with your email and password.');
+        return false;
+      }
+
+      this.toast.success('Account created! Please complete your profile.');
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Sign up failed';
+      this.toast.error(message);
+      return false;
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
+  }
+
+  async resetOwnAdminPassword(): Promise<boolean> {
+    try {
+      this.isLoadingSignal.set(true);
+      const { data, error } = await invokeAuthedFunction<{
+        success?: boolean;
+        emailSent?: boolean;
+        error?: string;
+      }>('admin-reset-password', {});
+
+      if (error) {
+        this.toast.error(await this.readFunctionError(error));
+        return false;
+      }
+      if (data?.error || !data?.success) {
+        this.toast.error(data?.error ?? 'Could not reset password');
+        return false;
+      }
+
+      this.toast.success('Temporary password sent. Sign in with it, then choose a new password.');
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not reset password';
+      this.toast.error(message);
+      return false;
+    } finally {
+      this.isLoadingSignal.set(false);
+    }
+  }
+
+  private async readFunctionError(error: unknown): Promise<string> {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = (await error.context.json()) as { error?: string; message?: string };
+        if (body?.error) return String(body.error);
+        if (body?.message) return String(body.message);
+      } catch {
+        /* response body already consumed or not JSON */
+      }
+    }
+    return error instanceof Error ? error.message : 'Request failed';
   }
 
   async signIn(
@@ -494,6 +582,7 @@ export class AuthService {
   }
 
   postPasswordResetRedirectUrl(): string {
+    if (this.isAdmin()) return '/admin/dashboard';
     if (this.isExamOnly()) return '/exam/dashboard';
     if (!this.hasCompletedProfile()) return '/auth/complete-profile';
     return '/';
