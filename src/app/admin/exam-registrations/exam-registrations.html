@@ -1,8 +1,10 @@
 <div class="registrations-page">
   <header class="page-header">
     <div>
-      <a routerLink="/admin/exams" class="back">← Exams</a>
-      <h1>Recruitment exam portal</h1>
+      @if (!eventId()) {
+        <a routerLink="/admin/exam-portal" class="back">← Exam portal</a>
+        <h1>Exam portal</h1>
+      }
       <p>Upload Excel → assign by role → send credentials → view results</p>
     </div>
     <div class="header-right">
@@ -55,7 +57,7 @@
     <span class="filters-label">Filter all tabs:</span>
     <select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event); onPortalFilterChange()">
       <option value="">All roles</option>
-      @for (role of roleOptions; track role.slug) {
+      @for (role of rolesForPicker(); track role.slug) {
         <option [value]="role.slug">{{ role.name }}</option>
       }
     </select>
@@ -436,10 +438,10 @@
     <h3>Role exam configuration</h3>
     <p class="hint">Duplicate rows or multiple roles for the same email assign <strong>non-technical</strong> role exams only (BDE, Lead Gen, Relationship). Single-role applicants still get their chosen technical exam when applicable.</p>
     <ul>
-      @for (role of roleOptions; track role.slug) {
+      @for (role of rolesForPicker(); track role.slug) {
         <li>
           <strong>{{ role.name }}</strong> —
-          {{ role.hasCoding ? '90 min · 30 MCQ + 2 coding' : '60 min · 40 MCQ only' }}
+          {{ role.durationMinutes }} min · {{ role.hasCoding ? 'MCQ + coding' : 'MCQ only' }}
         </li>
       }
     </ul>
@@ -529,7 +531,7 @@
       <label class="field">
         <span>Role / exam</span>
         <select [ngModel]="addStudentRoleSlug()" (ngModelChange)="addStudentRoleSlug.set($event)">
-          @for (role of roleOptions; track role.slug) {
+          @for (role of rolesForPicker(); track role.slug) {
             <option [value]="role.slug">{{ role.name }}</option>
           }
         </select>

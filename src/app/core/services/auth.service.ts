@@ -43,6 +43,7 @@ export class AuthService {
   private staffLabeledSignal = signal(false);
   private staffPermissionsSignal = signal<string[]>([]);
   private staffAccessLoadedSignal = signal(false);
+  private activeExamSignal = signal(false);
   private readonly sessionInitPromise: Promise<void>;
 
   currentUser = computed(() => this.currentUserSignal());
@@ -116,6 +117,7 @@ export class AuthService {
     this.staffLabeledSignal.set(false);
     this.staffPermissionsSignal.set([]);
     this.staffAccessLoadedSignal.set(false);
+    this.activeExamSignal.set(false);
   }
 
   private isProtectedUrl(url: string): boolean {
@@ -448,6 +450,7 @@ export class AuthService {
 
       if (error) {
         console.error('Error loading profile:', error);
+        await this.loadActiveExam();
         return;
       }
 
@@ -461,8 +464,20 @@ export class AuthService {
         this.profileSignal.set(profile);
       }
       await this.loadStaffAccess();
+      await this.loadActiveExam();
     } catch (error: any) {
       console.error('Error loading profile:', error);
+      await this.loadActiveExam();
+    }
+  }
+
+  private async loadActiveExam(): Promise<void> {
+    try {
+      const { data, error } = await supabase.rpc('user_has_active_exam');
+      this.activeExamSignal.set(!error && data === true);
+    } catch (error) {
+      console.error('Error loading exam access:', error);
+      this.activeExamSignal.set(false);
     }
   }
 
@@ -605,9 +620,7 @@ export class AuthService {
 
   isExamOnly(): boolean {
     if (this.canAccessPortal()) return false;
-    const profile = this.profileSignal();
-    if (profile?.exam_only) return true;
-    return this.currentUserSignal()?.user_metadata?.['exam_only'] === true;
+    return this.activeExamSignal();
   }
 
   postLoginRedirectUrl(): string {

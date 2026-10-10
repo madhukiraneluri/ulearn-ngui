@@ -84,8 +84,8 @@ export class ExamLogin implements OnInit {
       if (!success) return;
 
       if (!this.auth.isExamOnly()) {
-        await this.auth.signOut('/exam/login');
-        this.toast.error('This login is for exam candidates only.');
+        this.toast.info('This account uses the ULearn portal.');
+        await this.router.navigateByUrl(this.auth.postLoginRedirectUrl());
         return;
       }
 

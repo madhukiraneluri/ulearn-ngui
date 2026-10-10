@@ -16,6 +16,7 @@ interface RegistrationInput {
 interface ImportPayload {
   registrations: RegistrationInput[];
   importBatchId?: string;
+  eventId?: string;
 }
 
 const ROLE_MAP: Array<{ slug: string; terms: string[]; examSlug: string }> = [
@@ -40,7 +41,11 @@ Deno.serve(async (req) => {
 
     if (rows.length === 0) return json({ error: 'registrations array is required' }, 400);
 
-    const examsBySlug = await loadExamsByRecruitmentSlug(adminClient);
+    const eventId = body?.eventId ? String(body.eventId) : '';
+    const eventStatus = eventId ? await loadEventStatus(adminClient, eventId) : null;
+    const examsBySlug = eventId
+      ? await loadExamsForEvent(adminClient, eventId)
+      : await loadExamsByRecruitmentSlug(adminClient);
     const results: Array<{ rowNumber: number; email: string; success: boolean; message: string; roleSlug?: string }> = [];
 
     for (let i = 0; i < rows.length; i++) {
@@ -60,7 +65,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const roleSlug = resolveRoleSlug(roleInterested);
+      const roleSlug = resolveRoleSlug(roleInterested, [...examsBySlug.values()]);
       if (!roleSlug) {
         results.push({ rowNumber, email, success: false, message: `Unknown role: ${roleInterested || '—'}` });
         continue;
@@ -77,7 +82,8 @@ Deno.serve(async (req) => {
         fullName,
         examId: exam.id,
         examRoleId: exam.roleId,
-        roleSlug
+        roleSlug,
+        lockToExam: eventStatus === 'active'
       });
 
       if (!provision.ok) {
@@ -124,9 +130,21 @@ Deno.serve(async (req) => {
   }
 });
 
-function resolveRoleSlug(raw: string): string | null {
+interface ExamMatch {
+  id: string;
+  title: string;
+  roleId: string;
+  slug: string;
+  roleName: string;
+}
+
+function resolveRoleSlug(raw: string, exams: ExamMatch[] = []): string | null {
   const text = raw.trim().toLowerCase();
   if (!text) return null;
+  for (const exam of exams) {
+    const name = exam.roleName.trim().toLowerCase();
+    if (text === name || text === exam.slug || (name && text.includes(name))) return exam.slug;
+  }
   for (const role of ROLE_MAP) {
     if (role.terms.some((t) => text.includes(t))) return role.slug;
     if (text.includes(role.slug.replace(/-/g, ' '))) return role.slug;
@@ -134,25 +152,60 @@ function resolveRoleSlug(raw: string): string | null {
   return null;
 }
 
-async function loadExamsByRecruitmentSlug(client: SupabaseClient): Promise<
-  Map<string, { id: string; title: string; roleId: string }>
-> {
+async function loadEventStatus(client: SupabaseClient, eventId: string): Promise<string | null> {
+  const { data } = await client.from('exam_events').select('status').eq('id', eventId).maybeSingle();
+  return data?.status ? String(data.status) : null;
+}
+
+async function loadExamsForEvent(
+  client: SupabaseClient,
+  eventId: string
+): Promise<Map<string, ExamMatch>> {
+  const { data: exams } = await client.from('exams').select('id, title').eq('event_id', eventId);
+  const map = new Map<string, ExamMatch>();
+  for (const exam of exams ?? []) {
+    const { data: role } = await client
+      .from('exam_roles')
+      .select('id, slug, name')
+      .eq('exam_id', exam.id)
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!role) continue;
+    map.set(String(role.slug), {
+      id: String(exam.id),
+      title: String(exam.title),
+      roleId: String(role.id),
+      slug: String(role.slug),
+      roleName: String(role.name)
+    });
+  }
+  return map;
+}
+
+async function loadExamsByRecruitmentSlug(client: SupabaseClient): Promise<Map<string, ExamMatch>> {
   const { data: exams } = await client
     .from('exams')
     .select('id, title, recruitment_slug')
     .not('recruitment_slug', 'is', null);
 
-  const map = new Map<string, { id: string; title: string; roleId: string }>();
+  const map = new Map<string, ExamMatch>();
   for (const exam of exams ?? []) {
     const slug = String(exam.recruitment_slug);
     const { data: role } = await client
       .from('exam_roles')
-      .select('id')
+      .select('id, name')
       .eq('exam_id', exam.id)
       .eq('slug', slug)
       .maybeSingle();
     if (role) {
-      map.set(slug, { id: String(exam.id), title: String(exam.title), roleId: String(role.id) });
+      map.set(slug, {
+        id: String(exam.id),
+        title: String(exam.title),
+        roleId: String(role.id),
+        slug,
+        roleName: String(role.name ?? exam.title)
+      });
     }
   }
   return map;
@@ -160,14 +213,16 @@ async function loadExamsByRecruitmentSlug(client: SupabaseClient): Promise<
 
 async function provisionCandidate(
   client: SupabaseClient,
-  input: { email: string; fullName: string; examId: string; examRoleId: string; roleSlug: string }
+  input: { email: string; fullName: string; examId: string; examRoleId: string; roleSlug: string; lockToExam: boolean }
 ): Promise<{ ok: true; userId: string; candidateId: string } | { ok: false; message: string }> {
   let userId: string;
 
   const existing = await client.from('profiles').select('id').eq('email', input.email).maybeSingle();
   if (existing.data?.id) {
     userId = String(existing.data.id);
-    await client.from('profiles').update({ exam_only: true, updated_at: new Date().toISOString() }).eq('id', userId);
+    if (input.lockToExam) {
+      await client.from('profiles').update({ exam_only: true, updated_at: new Date().toISOString() }).eq('id', userId);
+    }
   } else {
     const tempPassword = generateTempPassword(10);
     const gate = await issueProvisionNonce(client, input.email);
@@ -181,7 +236,7 @@ async function provisionCandidate(
         full_name: input.fullName,
         must_reset_password: true,
         created_by_admin: true,
-        exam_only: true,
+        exam_only: input.lockToExam,
         provision_nonce: gate.nonce
       }
     });
@@ -196,7 +251,7 @@ async function provisionCandidate(
       profile_completed: true,
       must_reset_password: true,
       created_by_admin: true,
-      exam_only: true,
+      exam_only: input.lockToExam,
       role: 'USER'
     });
     if (profileErr) {

@@ -52,10 +52,20 @@ export const adminRoutes: Routes = [
         import('./schedule-session/schedule-session').then(m => m.ScheduleSession)),
       gated('sessions/:sessionId', 'sessions.manage', () =>
         import('./session-detail/session-detail').then(m => m.SessionDetail)),
-      gated('exams', 'exams.manage', () =>
-        import('./exams-management/exams-management').then(m => m.ExamsManagement)),
-      gated('exams/registrations', 'exam_registrations.manage', () =>
-        import('./exam-registrations/exam-registrations').then(m => m.ExamRegistrations)),
+      {
+        path: 'exam-portal',
+        canActivate: [permissionGuard],
+        data: { anyPermission: ['exams.manage', 'exam_registrations.manage'] },
+        loadComponent: () => import('./exam-portal/exam-portal-list').then(m => m.ExamPortalList)
+      },
+      {
+        path: 'exam-portal/:eventId',
+        canActivate: [permissionGuard],
+        data: { anyPermission: ['exams.manage', 'exam_registrations.manage'] },
+        loadComponent: () => import('./exam-portal/exam-event-detail').then(m => m.ExamEventDetail)
+      },
+      { path: 'exams/registrations', redirectTo: 'exam-portal', pathMatch: 'full' },
+      { path: 'exams', redirectTo: 'exam-portal', pathMatch: 'full' },
       gated('exams/:examId', 'exams.manage', () =>
         import('./exam-detail/exam-detail').then(m => m.ExamDetail)),
       gated('enrollments', 'enrollments.manage', () =>

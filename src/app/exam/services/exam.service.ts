@@ -42,7 +42,7 @@ interface ExamCandidateRow {
   exam_role_id: string;
   registered_at: string;
   credentials_sent_at: string | null;
-  exams?: ExamRow | ExamRow[] | null;
+  exams?: (ExamRow & { exam_events?: { status?: string } | { status?: string }[] | null }) | Array<ExamRow & { exam_events?: { status?: string } | { status?: string }[] | null }> | null;
   exam_roles?: ExamRoleRow | ExamRoleRow[] | null;
 }
 
@@ -147,7 +147,7 @@ export class ExamService {
       .from('exam_candidates')
       .select(`
         id, exam_id, user_id, exam_role_id, registered_at, credentials_sent_at,
-        exams ( id, title, description, starts_at, ends_at, duration_minutes, max_concurrent, status, created_by, created_at, updated_at ),
+        exams ( id, title, description, starts_at, ends_at, duration_minutes, max_concurrent, status, created_by, created_at, updated_at, event_id, exam_events ( status ) ),
         exam_roles ( id, exam_id, name, slug, has_coding, sort_order, created_at )
       `)
       .eq('user_id', userId)
@@ -155,16 +155,24 @@ export class ExamService {
 
     if (error) throw new Error(error.message);
 
-    return ((data ?? []) as ExamCandidateRow[]).map((row) => ({
-      id: row.id,
-      examId: row.exam_id,
-      userId: row.user_id,
-      examRoleId: row.exam_role_id,
-      registeredAt: row.registered_at,
-      credentialsSentAt: row.credentials_sent_at,
-      exam: first(row.exams) ? mapExam(first(row.exams)!) : undefined,
-      role: first(row.exam_roles) ? mapRole(first(row.exam_roles)!) : undefined
-    }));
+    return ((data ?? []) as ExamCandidateRow[])
+      .map((row) => {
+        const examRow = first(row.exams);
+        const event = examRow ? first(examRow.exam_events) : undefined;
+        return {
+          id: row.id,
+          examId: row.exam_id,
+          userId: row.user_id,
+          examRoleId: row.exam_role_id,
+          registeredAt: row.registered_at,
+          credentialsSentAt: row.credentials_sent_at,
+          exam: examRow ? mapExam(examRow) : undefined,
+          role: first(row.exam_roles) ? mapRole(first(row.exam_roles)!) : undefined,
+          eventStatus: event?.status ?? null
+        };
+      })
+      .filter((row) => row.eventStatus === 'active')
+      .map(({ eventStatus: _eventStatus, ...row }) => row);
   }
 
   async getExam(examId: string): Promise<Exam | null> {
@@ -183,7 +191,7 @@ export class ExamService {
       .from('exam_candidates')
       .select(`
         id, exam_id, user_id, exam_role_id, registered_at, credentials_sent_at,
-        exams ( id, title, description, starts_at, ends_at, duration_minutes, max_concurrent, status, created_by, created_at, updated_at ),
+        exams ( id, title, description, starts_at, ends_at, duration_minutes, max_concurrent, status, created_by, created_at, updated_at, event_id, exam_events ( status ) ),
         exam_roles ( id, exam_id, name, slug, has_coding, sort_order, created_at )
       `)
       .eq('user_id', userId)

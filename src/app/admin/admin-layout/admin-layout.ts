@@ -25,7 +25,12 @@ export class AdminLayout {
   readonly sidebarOpen = signal(false);
 
   readonly navItems = computed(() =>
-    ADMIN_NAV_ITEMS.filter((item) => this.auth.hasPermission(item.permission))
+    ADMIN_NAV_ITEMS.filter((item) => {
+      if (item.path === '/admin/exam-portal') {
+        return this.auth.hasPermission('exams.manage') || this.auth.hasPermission('exam_registrations.manage');
+      }
+      return this.auth.hasPermission(item.permission);
+    })
   );
 
   toggleSidebar(): void {

@@ -23,6 +23,7 @@ interface ExamRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  event_id?: string | null;
 }
 
 interface ExamRoleRow {
@@ -47,7 +48,8 @@ function mapExam(row: ExamRow): Exam {
     status: row.status,
     createdBy: row.created_by,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    eventId: row.event_id ?? null
   };
 }
 

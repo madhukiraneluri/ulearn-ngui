@@ -5,6 +5,7 @@ import {
   OnInit,
   computed,
   inject,
+  input,
   signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -57,7 +58,9 @@ export class ExamRegistrations implements OnInit {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly cdr = inject(ChangeDetectorRef);
 
+  readonly eventId = input<string | null>(null);
   readonly roleOptions = EXAM_ROLE_DEFINITIONS;
+  readonly eventRoles = signal<Array<{ slug: string; name: string; hasCoding: boolean; durationMinutes: number }>>([]);
   readonly emailSendBatchSize = EMAIL_SEND_BATCH_SIZE;
   readonly exams = signal<Exam[]>([]);
   readonly rows = signal<ExamRegistration[]>([]);
@@ -195,17 +198,41 @@ export class ExamRegistrations implements OnInit {
   });
 
   ngOnInit(): void {
-    void this.loadExams();
-    void this.loadPortalStats();
-    void this.loadRegistrations();
-    void this.loadResults();
-    void this.loadNotAttended();
+    void this.start();
+  }
+
+  rolesForPicker(): Array<{ slug: string; name: string; hasCoding: boolean; durationMinutes: number }> {
+    const custom = this.eventRoles();
+    if (this.eventId() && custom.length) return custom;
+    return this.roleOptions.map((role) => ({
+      slug: role.slug,
+      name: role.name,
+      hasCoding: role.hasCoding,
+      durationMinutes: role.durationMinutes
+    }));
+  }
+
+  private async start(): Promise<void> {
+    await this.loadExams();
+    await Promise.all([
+      this.loadPortalStats(),
+      this.loadRegistrations(),
+      this.loadResults(),
+      this.loadNotAttended()
+    ]);
+  }
+
+  private scopedExamIds(): string[] | undefined {
+    if (!this.eventId()) return undefined;
+    return this.exams().map((exam) => exam.id);
   }
 
   private portalFilterParams(): ExamPortalFilterParams {
+    const examId = this.examFilter() || undefined;
     return {
       roleSlug: this.roleFilter() || undefined,
-      examId: this.examFilter() || undefined,
+      examId,
+      examIds: examId ? undefined : this.scopedExamIds(),
       assignmentFilter: this.assignmentFilter(),
       multiExamFilter: this.multiExamFilter()
     };
@@ -236,7 +263,24 @@ export class ExamRegistrations implements OnInit {
 
   private async loadExams(): Promise<void> {
     try {
-      this.exams.set(await this.examsService.listExams());
+      const rows = await this.examsService.listExams();
+      const eventId = this.eventId();
+      const scoped = eventId ? rows.filter((exam) => exam.eventId === eventId) : rows;
+      this.exams.set(scoped);
+      if (!eventId) return;
+      const roles: Array<{ slug: string; name: string; hasCoding: boolean; durationMinutes: number }> = [];
+      for (const exam of scoped) {
+        const examRoles = await this.examsService.listRoles(exam.id);
+        for (const role of examRoles) {
+          roles.push({
+            slug: role.slug,
+            name: role.name,
+            hasCoding: role.hasCoding,
+            durationMinutes: exam.durationMinutes
+          });
+        }
+      }
+      this.eventRoles.set(roles);
     } catch {
       // non-blocking
     }
@@ -245,15 +289,17 @@ export class ExamRegistrations implements OnInit {
   async loadRegistrations(): Promise<void> {
     this.loading.set(true);
     try {
+      const filters = this.portalFilterParams();
       const result = await this.registrationService.listRegistrations({
         page: this.page(),
         pageSize: this.pageSize(),
         search: this.search(),
-        roleSlug: this.roleFilter() || undefined,
+        roleSlug: filters.roleSlug,
         emailStatus: this.emailFilter(),
-        examId: this.examFilter() || undefined,
-        assignmentFilter: this.assignmentFilter(),
-        multiExamFilter: this.multiExamFilter()
+        examId: filters.examId,
+        examIds: filters.examIds,
+        assignmentFilter: filters.assignmentFilter,
+        multiExamFilter: filters.multiExamFilter
       });
       this.rows.set(result.rows);
       this.total.set(result.total);
@@ -412,7 +458,11 @@ export class ExamRegistrations implements OnInit {
 
       for (let i = 0; i < normalized.length; i += IMPORT_BATCH_SIZE) {
         const chunk = normalized.slice(i, i + IMPORT_BATCH_SIZE);
-        const result = await this.registrationService.importFromExcel(chunk, importBatchId);
+        const result = await this.registrationService.importFromExcel(
+          chunk,
+          importBatchId,
+          this.eventId() ?? undefined
+        );
         success += result.summary.success;
         failed += result.summary.failed;
         this.importProcessed.set(Math.min(i + chunk.length, normalized.length));
@@ -446,8 +496,9 @@ export class ExamRegistrations implements OnInit {
   async deleteAllRegistrations(): Promise<void> {
     const ok = await this.confirmDialog.confirm({
       title: 'Delete all registrations?',
-      message:
-        'This removes every imported registration and unassigns all recruitment exam candidates. Accounts are not deleted. This cannot be undone.',
+      message: this.eventId()
+        ? 'This removes registrations and candidate assignments for this exam only. Accounts are not deleted.'
+        : 'This removes every imported registration and unassigns all recruitment exam candidates. Accounts are not deleted. This cannot be undone.',
       confirmLabel: 'Delete all',
       variant: 'danger'
     });
@@ -455,7 +506,9 @@ export class ExamRegistrations implements OnInit {
 
     this.deleting.set(true);
     try {
-      await this.registrationService.deleteAllRegistrations();
+      const ids = this.scopedExamIds();
+      if (ids) await this.registrationService.deleteEventRegistrations(ids);
+      else await this.registrationService.deleteAllRegistrations();
       this.page.set(1);
       await this.loadPortalStats();
       await this.loadRegistrations();
@@ -470,7 +523,9 @@ export class ExamRegistrations implements OnInit {
   }
 
   async sendAllPendingEmails(): Promise<void> {
-    await this.runBatchedCredentialSend({});
+    await this.runBatchedCredentialSend({
+      examIds: this.scopedExamIds()
+    });
   }
 
   async sendFilteredEmails(): Promise<void> {
@@ -479,14 +534,15 @@ export class ExamRegistrations implements OnInit {
       return;
     }
     await this.runBatchedCredentialSend({
-      examId: this.examFilter() || undefined
+      examId: this.examFilter() || undefined,
+      examIds: this.examFilter() ? undefined : this.scopedExamIds()
     });
   }
 
   openAddStudentModal(): void {
     this.addStudentEmail.set('');
     this.addStudentName.set('');
-    this.addStudentRoleSlug.set(this.roleOptions[0]?.slug ?? '');
+    this.addStudentRoleSlug.set(this.rolesForPicker()[0]?.slug ?? '');
     this.addStudentSendEmail.set(true);
     this.addStudentOpen.set(true);
   }
@@ -499,7 +555,7 @@ export class ExamRegistrations implements OnInit {
   async submitAddStudent(): Promise<void> {
     const email = this.addStudentEmail().trim().toLowerCase();
     const fullName = this.addStudentName().trim();
-    const role = this.roleOptions.find((r) => r.slug === this.addStudentRoleSlug());
+    const role = this.rolesForPicker().find((r) => r.slug === this.addStudentRoleSlug());
 
     if (!email || !fullName || !role) {
       this.toast.error('Email, name, and role are required');
@@ -512,7 +568,8 @@ export class ExamRegistrations implements OnInit {
         email,
         fullName,
         roleInterested: role.name,
-        sendCredentials: this.addStudentSendEmail()
+        sendCredentials: this.addStudentSendEmail(),
+        eventId: this.eventId() ?? undefined
       });
       this.toast.success(
         this.addStudentSendEmail()
@@ -536,7 +593,7 @@ export class ExamRegistrations implements OnInit {
     this.sendPhase.set('idle');
   }
 
-  private async runBatchedCredentialSend(params: { examId?: string }): Promise<void> {
+  private async runBatchedCredentialSend(params: { examId?: string; examIds?: string[] }): Promise<void> {
     this.sending.set(true);
     this.sendModalOpen.set(true);
     this.sendPhase.set('sending');
@@ -565,10 +622,23 @@ export class ExamRegistrations implements OnInit {
           break;
         }
 
-        const result = await this.registrationService.sendCredentials({
-          examId: params.examId,
-          onlyUnsent: true
-        });
+        let result;
+        if (params.examIds) {
+          const pendingIds = await this.registrationService.listPendingRegistrationIds({
+            examIds: params.examIds,
+            limit: EMAIL_SEND_BATCH_SIZE
+          });
+          if (!pendingIds.length) break;
+          result = await this.registrationService.sendCredentials({
+            registrationIds: pendingIds.slice(0, EMAIL_SEND_BATCH_SIZE),
+            onlyUnsent: true
+          });
+        } else {
+          result = await this.registrationService.sendCredentials({
+            examId: params.examId,
+            onlyUnsent: true
+          });
+        }
 
         if (result.summary.total === 0) {
           break;
@@ -837,7 +907,7 @@ export class ExamRegistrations implements OnInit {
   }
 
   roleLabel(slug: string): string {
-    return this.roleOptions.find((role) => role.slug === slug)?.name ?? slug;
+    return this.rolesForPicker().find((role) => role.slug === slug)?.name ?? slug;
   }
 
   mcqQuestions(detail: ExamResultDetail): ExamResultQuestionReview[] {

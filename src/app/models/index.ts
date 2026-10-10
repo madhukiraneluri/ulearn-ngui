@@ -527,6 +527,7 @@ export interface Exam {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  eventId?: string | null;
 }
 
 export interface ExamRole {
@@ -714,6 +715,7 @@ export type ExamMultiExamFilter = 'all' | 'multi-exam' | 'multi-exam-other';
 export interface ExamPortalFilterParams {
   roleSlug?: string;
   examId?: string;
+  examIds?: string[];
   assignmentFilter?: ExamAssignmentFilter;
   multiExamFilter?: ExamMultiExamFilter;
 }

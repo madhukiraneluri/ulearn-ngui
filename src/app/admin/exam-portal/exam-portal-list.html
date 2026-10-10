@@ -1,0 +1,69 @@
+<div class="exam-portal">
+  <div class="page-header">
+    <div>
+      <h1>Exam portal</h1>
+      <p>Each card is a college or an exam title. Open one to manage its roles, registrations, and results.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="showForm.set(!showForm())">
+      {{ showForm() ? 'Close' : 'Create exam' }}
+    </button>
+  </div>
+
+  @if (showForm()) {
+    <section class="panel create">
+      <div class="kind">
+        <button type="button" [class.on]="kind === 'college'" (click)="kind = 'college'">College</button>
+        <button type="button" [class.on]="kind === 'batch'" (click)="kind = 'batch'">Batch</button>
+      </div>
+
+      @if (kind === 'college') {
+        <label>College</label>
+        <input [(ngModel)]="collegeName" placeholder="College name" />
+      } @else {
+        <label>Batch</label>
+        <select [(ngModel)]="batchId">
+          <option value="">Select a batch</option>
+          @for (batch of batches(); track batch.id) {
+            <option [value]="batch.id">{{ batch.name }}</option>
+          }
+        </select>
+        <label>Exam title</label>
+        <input [(ngModel)]="batchTitle" placeholder="Uses the batch name if left blank" />
+      }
+
+      <div class="times">
+        <div>
+          <label>Starts</label>
+          <input type="datetime-local" [(ngModel)]="startsAt" />
+        </div>
+        <div>
+          <label>Ends</label>
+          <input type="datetime-local" [(ngModel)]="endsAt" />
+        </div>
+      </div>
+      <p class="hint">The five recruitment roles are added automatically. The exam starts as Draft.</p>
+      <button type="button" class="btn-primary" (click)="create()" [disabled]="saving()">
+        {{ saving() ? 'Creating…' : 'Create exam' }}
+      </button>
+    </section>
+  }
+
+  @if (loading()) {
+    <p class="hint">Loading exams…</p>
+  } @else if (events().length === 0) {
+    <p class="hint">No exams yet.</p>
+  } @else {
+    <div class="cards">
+      @for (event of events(); track event.id) {
+        <button type="button" class="card" (click)="open(event)">
+          <span class="status" [attr.data-status]="event.status">{{ event.status }}</span>
+          <strong>{{ label(event) }}</strong>
+          <span class="meta">
+            {{ event.kind === 'college' ? 'College' : event.kind === 'batch' ? 'Batch' : 'Exam title' }}
+            · {{ event.startsAt | date:'d MMM y, h:mm a' }} – {{ event.endsAt | date:'d MMM y, h:mm a' }}
+          </span>
+        </button>
+      }
+    </div>
+  }
+</div>

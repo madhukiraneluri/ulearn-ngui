@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { supabase, invokeAuthedFunction } from '../../core/supabase.client';
-import { EXAM_ROLE_DEFINITIONS } from '../exam-portal/exam-role.config';
 import type {
   ExamAnswer,
   ExamCodingBreakdownItem,
@@ -93,6 +92,7 @@ export interface RegistrationListParams {
   roleSlug?: string;
   emailStatus?: 'all' | 'sent' | 'pending';
   examId?: string;
+  examIds?: string[];
   assignmentFilter?: ExamAssignmentFilter;
   multiExamFilter?: ExamMultiExamFilter;
 }
@@ -189,6 +189,18 @@ function attemptKey(userId: string, examId: string): string {
   return `${userId}:${examId}`;
 }
 
+function applyExamScope<Q>(query: Q, examId?: string, examIds?: string[]): Q {
+  const builder = query as Q & {
+    eq: (column: string, value: string) => Q;
+    in: (column: string, values: string[]) => Q;
+  };
+  if (examId) return builder.eq('exam_id', examId);
+  if (examIds) {
+    return builder.in('exam_id', examIds.length ? examIds : ['00000000-0000-0000-0000-000000000000']);
+  }
+  return query;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ExamRegistrationService {
   private async loadMultiExamEmails(
@@ -239,7 +251,7 @@ export class ExamRegistrationService {
       query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role_interested.ilike.%${q}%`);
     }
     if (params.roleSlug) query = query.eq('role_slug', params.roleSlug);
-    if (params.examId) query = query.eq('exam_id', params.examId);
+    query = applyExamScope(query, params.examId, params.examIds);
     if (params.emailStatus === 'sent') query = query.not('credentials_sent_at', 'is', null);
     if (params.emailStatus === 'pending') query = query.is('credentials_sent_at', null);
     if (params.assignmentFilter === 'multiple-roles') {
@@ -328,7 +340,7 @@ export class ExamRegistrationService {
         .order('created_at', { ascending: false });
 
       if (filters?.roleSlug) query = query.eq('role_slug', filters.roleSlug);
-      if (filters?.examId) query = query.eq('exam_id', filters.examId);
+      query = applyExamScope(query, filters?.examId, filters?.examIds);
       if (filters?.assignmentFilter === 'multiple-roles') {
         query = query.eq('from_multiple_roles', true);
       } else if (filters?.assignmentFilter === 'single-role') {
@@ -386,6 +398,25 @@ export class ExamRegistrationService {
   }
 
   async getPortalStats(filters?: ExamPortalFilterParams): Promise<ExamPortalStats> {
+    if (!filters?.examId && filters?.examIds?.length) {
+      const parts = await Promise.all(
+        filters.examIds.map((examId) => this.getPortalStats({ ...filters, examId, examIds: undefined }))
+      );
+      return parts.reduce(
+        (sum, part) => ({
+          registrations: sum.registrations + part.registrations,
+          submitted: sum.submitted + part.submitted,
+          notStarted: sum.notStarted + part.notStarted,
+          inProgress: sum.inProgress + part.inProgress,
+          notProvisioned: sum.notProvisioned + part.notProvisioned
+        }),
+        { registrations: 0, submitted: 0, notStarted: 0, inProgress: 0, notProvisioned: 0 }
+      );
+    }
+    if (!filters?.examId && filters?.examIds && filters.examIds.length === 0) {
+      return { registrations: 0, submitted: 0, notStarted: 0, inProgress: 0, notProvisioned: 0 };
+    }
+
     const { data, error } = await supabase.rpc('admin_exam_portal_stats', {
       p_role_slug: filters?.roleSlug ?? null,
       p_exam_id: filters?.examId ?? null,
@@ -412,12 +443,13 @@ export class ExamRegistrationService {
       roleInterested: string;
       fromMultipleRoles?: boolean;
     }>,
-    importBatchId?: string
+    importBatchId?: string,
+    eventId?: string
   ): Promise<{ summary: { total: number; success: number; failed: number }; importBatchId: string }> {
     const { data, error } = await invokeAuthedFunction<{
       summary: { total: number; success: number; failed: number };
       importBatchId: string;
-    }>('import-exam-registrations', { registrations, importBatchId });
+    }>('import-exam-registrations', { registrations, importBatchId, eventId });
 
     if (error) throw new Error(error instanceof Error ? error.message : 'Import failed');
     if (!data) throw new Error('Import failed');
@@ -431,21 +463,29 @@ export class ExamRegistrationService {
     if (!data?.ok) throw new Error('Delete failed');
   }
 
-  async countPendingCredentials(params?: { examId?: string }): Promise<number> {
+  async deleteEventRegistrations(examIds: string[]): Promise<void> {
+    if (!examIds.length) return;
+    const { error: regError } = await supabase.from('exam_registrations').delete().in('exam_id', examIds);
+    if (regError) throw new Error(regError.message);
+    const { error: candidateError } = await supabase.from('exam_candidates').delete().in('exam_id', examIds);
+    if (candidateError) throw new Error(candidateError.message);
+  }
+
+  async countPendingCredentials(params?: { examId?: string; examIds?: string[] }): Promise<number> {
     let query = supabase
       .from('exam_registrations')
       .select('*', { count: 'exact', head: true })
       .is('credentials_sent_at', null)
       .not('user_id', 'is', null);
 
-    if (params?.examId) query = query.eq('exam_id', params.examId);
+    query = applyExamScope(query, params?.examId, params?.examIds);
 
     const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
 
-  async listPendingRegistrationIds(params?: { examId?: string }): Promise<string[]> {
+  async listPendingRegistrationIds(params?: { examId?: string; examIds?: string[]; limit?: number }): Promise<string[]> {
     const pageSize = 1000;
     const ids: string[] = [];
     let from = 0;
@@ -458,7 +498,7 @@ export class ExamRegistrationService {
         .not('user_id', 'is', null)
         .order('created_at', { ascending: true });
 
-      if (params?.examId) query = query.eq('exam_id', params.examId);
+      query = applyExamScope(query, params?.examId, params?.examIds);
 
       const { data, error } = await query.range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
@@ -466,6 +506,7 @@ export class ExamRegistrationService {
 
       for (const row of data) {
         ids.push(String(row.id));
+        if (params?.limit && ids.length >= params.limit) return ids;
       }
       if (data.length < pageSize) break;
       from += pageSize;
@@ -479,8 +520,8 @@ export class ExamRegistrationService {
     fullName: string;
     roleInterested: string;
     sendCredentials?: boolean;
+    eventId?: string;
   }): Promise<{ registrationId?: string; message: string }> {
-    const roleDef = EXAM_ROLE_DEFINITIONS.find((r) => r.name === input.roleInterested.trim());
     const batchId = crypto.randomUUID();
     const importResult = await this.importFromExcel(
       [
@@ -490,20 +531,19 @@ export class ExamRegistrationService {
           roleInterested: input.roleInterested.trim()
         }
       ],
-      batchId
+      batchId,
+      input.eventId
     );
 
     if (importResult.summary.failed > 0) {
       throw new Error('Could not register student (check email and role)');
     }
 
-    const roleSlug = roleDef?.slug ?? input.roleInterested.trim().toLowerCase();
-
     const { data: row, error } = await supabase
       .from('exam_registrations')
       .select('id')
       .eq('email', input.email.trim().toLowerCase())
-      .eq('role_slug', roleSlug)
+      .eq('import_batch_id', batchId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -572,7 +612,7 @@ export class ExamRegistrationService {
       .from('exam_results')
       .select('*, exam_attempts ( started_at, submitted_at, status, ends_at )')
       .order('evaluated_at', { ascending: false });
-    if (examId) query = query.eq('exam_id', examId);
+    query = applyExamScope(query, examId, portalFilters?.examIds);
     if (roleSlug) query = query.eq('role_slug', roleSlug);
 
     const multiEmails = await this.loadMultiExamEmails({

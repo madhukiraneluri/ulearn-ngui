@@ -1,0 +1,48 @@
+<div class="event-detail">
+  <a routerLink="/admin/exam-portal" class="back">← Exam portal</a>
+
+  @if (event(); as current) {
+    <header>
+      <div>
+        <h1>{{ label(current) }}</h1>
+        <p>
+          {{ current.kind === 'college' ? 'College exam' : current.kind === 'batch' ? 'Batch exam' : 'Exam title' }}
+          · {{ current.startsAt | date:'d MMM y, h:mm a' }} – {{ current.endsAt | date:'d MMM y, h:mm a' }}
+        </p>
+      </div>
+      <div class="statuses">
+        @for (status of statuses; track status) {
+          <button
+            type="button"
+            [class.on]="current.status === status"
+            [disabled]="saving()"
+            (click)="setStatus(status)"
+          >{{ status }}</button>
+        }
+      </div>
+    </header>
+
+    <section class="papers">
+      <h2>Roles</h2>
+      <ul>
+        @for (paper of papers(); track paper.id) {
+          <li>
+            <span>{{ paper.title }}</span>
+            <a [routerLink]="['/admin/exams', paper.id]">Questions</a>
+          </li>
+        }
+      </ul>
+      <div class="add-role">
+        <input [(ngModel)]="roleName" placeholder="Add another role" />
+        <input type="number" min="1" [(ngModel)]="roleDuration" />
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="roleHasCoding" />
+          Coding
+        </label>
+        <button type="button" (click)="addRole()" [disabled]="saving()">Add role</button>
+      </div>
+    </section>
+
+    <app-exam-registrations [eventId]="current.id" />
+  }
+</div>
