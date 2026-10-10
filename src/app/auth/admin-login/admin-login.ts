@@ -44,7 +44,7 @@ export class AdminLogin implements OnInit {
 
   private async redirectIfAlreadyAdmin(): Promise<void> {
     if (await this.auth.ensureSessionChecked()) {
-      if (this.auth.isAdmin()) {
+      if (this.auth.canAccessPortal()) {
         await this.router.navigate(
           this.auth.mustResetPassword() ? ['/auth/set-password'] : ['/admin/dashboard']
         );
@@ -65,9 +65,9 @@ export class AdminLogin implements OnInit {
 
     if (!success) return;
 
-    if (!this.auth.isAdmin()) {
+    if (!this.auth.canAccessPortal()) {
       await this.auth.signOut('/auth/admin');
-      this.toast.error('Access denied. This account is not an administrator.');
+      this.toast.error('Access denied. This account cannot open the admin panel.');
       return;
     }
 
@@ -77,7 +77,7 @@ export class AdminLogin implements OnInit {
       return;
     }
 
-    this.toast.success('Welcome, Admin');
+    this.toast.success('Welcome');
     await this.router.navigate(['/admin/dashboard']);
   }
 

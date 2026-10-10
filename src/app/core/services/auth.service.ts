@@ -39,6 +39,10 @@ export class AuthService {
   private profileSignal = signal<UserProfile | null>(null);
   private isLoadingSignal = signal(false);
   private isAuthenticatedSignal = signal(false);
+  private staffPortalSignal = signal(false);
+  private staffLabeledSignal = signal(false);
+  private staffPermissionsSignal = signal<string[]>([]);
+  private staffAccessLoadedSignal = signal(false);
   private readonly sessionInitPromise: Promise<void>;
 
   currentUser = computed(() => this.currentUserSignal());
@@ -108,6 +112,10 @@ export class AuthService {
     this.currentUserSignal.set(null);
     this.profileSignal.set(null);
     this.isAuthenticatedSignal.set(false);
+    this.staffPortalSignal.set(false);
+    this.staffLabeledSignal.set(false);
+    this.staffPermissionsSignal.set([]);
+    this.staffAccessLoadedSignal.set(false);
   }
 
   private isProtectedUrl(url: string): boolean {
@@ -452,8 +460,35 @@ export class AuthService {
         }
         this.profileSignal.set(profile);
       }
+      await this.loadStaffAccess();
     } catch (error: any) {
       console.error('Error loading profile:', error);
+    }
+  }
+
+  private async loadStaffAccess(): Promise<void> {
+    try {
+      const { data, error } = await supabase.rpc('my_staff_access');
+      if (error || !data) {
+        this.staffPortalSignal.set(this.isAdmin());
+        this.staffLabeledSignal.set(false);
+        this.staffPermissionsSignal.set([]);
+        return;
+      }
+      const access = data as { portal?: boolean; labeled?: boolean; permissions?: unknown };
+      const permissions = Array.isArray(access.permissions)
+        ? access.permissions.filter((key): key is string => typeof key === 'string')
+        : [];
+      this.staffPortalSignal.set(access.portal === true);
+      this.staffLabeledSignal.set(access.labeled === true);
+      this.staffPermissionsSignal.set(permissions);
+    } catch (error) {
+      console.error('Error loading staff access:', error);
+      this.staffPortalSignal.set(this.isAdmin());
+      this.staffLabeledSignal.set(false);
+      this.staffPermissionsSignal.set([]);
+    } finally {
+      this.staffAccessLoadedSignal.set(true);
     }
   }
 
@@ -569,7 +604,7 @@ export class AuthService {
   }
 
   isExamOnly(): boolean {
-    if (this.isAdmin()) return false;
+    if (this.canAccessPortal()) return false;
     const profile = this.profileSignal();
     if (profile?.exam_only) return true;
     return this.currentUserSignal()?.user_metadata?.['exam_only'] === true;
@@ -583,7 +618,7 @@ export class AuthService {
   }
 
   postPasswordResetRedirectUrl(): string {
-    if (this.isAdmin()) return '/admin/dashboard';
+    if (this.canAccessPortal()) return '/admin/dashboard';
     if (this.isExamOnly()) return '/exam/dashboard';
     if (!this.hasCompletedProfile()) return '/auth/complete-profile';
     return '/';
@@ -629,5 +664,16 @@ export class AuthService {
     const metaRole = user?.user_metadata?.['role'];
     const profileRole = (this.profileSignal() as UserProfile & { role?: string })?.role;
     return metaRole === 'ADMIN' || profileRole === 'ADMIN';
+  }
+
+  canAccessPortal(): boolean {
+    if (this.isAdmin()) return true;
+    return this.staffAccessLoadedSignal() && this.staffPortalSignal();
+  }
+
+  hasPermission(key: string): boolean {
+    if (!this.staffAccessLoadedSignal()) return this.isAdmin();
+    if (this.isAdmin() && !this.staffLabeledSignal()) return true;
+    return this.staffPermissionsSignal().includes(key);
   }
 }

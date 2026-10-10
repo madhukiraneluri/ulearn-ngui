@@ -15,6 +15,7 @@ Functions deployed:
 - `resend-credentials` — admin resets temp password and emails student
 - `admin-reset-password` — signed-in admin emails themselves a temporary password and must set a new one
 - `send-signup-otp`, `verify-signup-otp`, `complete-signup` — public signup email OTP. Deploy these three with `--no-verify-jwt`
+- `send-promotion-email` — staff with the promotions permission send a message, inline images, and attachments to one or many addresses
 - `livekit-token` — mints LiveKit JWT for session join links (requires LiveKit secrets)
 
 LiveKit secrets (required for live sessions):

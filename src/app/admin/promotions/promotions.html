@@ -1,0 +1,74 @@
+<div class="promo-admin">
+  <div class="page-header">
+    <div>
+      <h1>Promotion emails</h1>
+      <p>Write the message, place images in the content, attach files, then send to one address or a list.</p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <label>Subject</label>
+    <input [(ngModel)]="subject" placeholder="New batch starting this month" />
+
+    <h2>Content</h2>
+    @for (block of blocks(); track block.id) {
+      <div class="block">
+        @if (block.type === 'text') {
+          <textarea
+            rows="4"
+            [ngModel]="block.text"
+            (ngModelChange)="updateText(block.id, $event)"
+            placeholder="Write a paragraph"
+          ></textarea>
+        } @else {
+          <img [src]="block.url" [alt]="block.alt" />
+        }
+        <div class="row">
+          <button type="button" class="text-btn" (click)="removeBlock(block.id)">Remove</button>
+          <button type="button" class="btn-secondary" (click)="addTextBlock(block.id)">Text below</button>
+          <label class="file-btn">
+            Image below
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="addImage($event, block.id)" [disabled]="isUploading()" />
+          </label>
+        </div>
+      </div>
+    }
+
+    <h2>Attachments</h2>
+    <p class="hint">Up to 3 files, 1.5 MB each. These are sent with the email, not placed in the message.</p>
+    <label class="file-btn">
+      Add attachment
+      <input type="file" multiple (change)="onAttachment($event)" />
+    </label>
+    <ul class="chips">
+      @for (name of attachmentNames(); track name) {
+        <li>{{ name }} <button type="button" (click)="removeAttachment(name)">×</button></li>
+      }
+    </ul>
+
+    <h2>Recipients</h2>
+    <div class="row">
+      <input [(ngModel)]="oneEmail" type="email" placeholder="one@email.com" />
+      <button type="button" class="btn-secondary" (click)="addOneEmail()">Add email</button>
+    </div>
+    <div class="row">
+      <label class="file-btn">
+        Upload email list
+        <input type="file" accept=".csv,.txt,.xlsx,.xls" (change)="onEmailFile($event)" />
+      </label>
+    </div>
+    <textarea #bulk rows="4" placeholder="Or paste many emails here"></textarea>
+    <button type="button" class="btn-secondary" (click)="addPasted(bulk.value); bulk.value = ''">Add pasted emails</button>
+
+    <p class="hint">{{ recipients().length }} recipient{{ recipients().length === 1 ? '' : 's' }}. Maximum 100 per send, or 20 when files are attached.</p>
+    <ul class="chips">
+      @for (email of recipients(); track email) {
+        <li>{{ email }} <button type="button" (click)="removeRecipient(email)">×</button></li>
+      }
+    </ul>
+
+    <button type="button" class="btn-primary" (click)="send()" [disabled]="isSending() || isUploading()">
+      {{ isSending() ? 'Sending…' : 'Send' }}
+    </button>
+  </section>
+</div>

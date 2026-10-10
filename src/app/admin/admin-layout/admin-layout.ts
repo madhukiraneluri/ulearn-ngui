@@ -1,18 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal
 } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
-
-interface NavItem {
-  label: string;
-  path: string;
-  icon: string;
-}
+import { ADMIN_NAV_ITEMS } from '../labels/staff-permissions';
 
 @Component({
   selector: 'app-admin-layout',
@@ -28,25 +24,9 @@ export class AdminLayout {
 
   readonly sidebarOpen = signal(false);
 
-  readonly navItems: NavItem[] = [
-    { label: 'Dashboard', path: '/admin/dashboard', icon: '📊' },
-    { label: 'Courses', path: '/admin/courses', icon: '📚' },
-    { label: 'Curriculum', path: '/admin/curriculum', icon: '📋' },
-    { label: 'Enrollments', path: '/admin/enrollments', icon: '📝' },
-    { label: 'Coupons', path: '/admin/coupons', icon: '🏷️' },
-    { label: 'Students', path: '/admin/students', icon: '👥' },
-    { label: 'Batches', path: '/admin/batches', icon: '📅' },
-    { label: 'Sessions', path: '/admin/sessions', icon: '🎥' },
-    { label: 'Exams', path: '/admin/exams', icon: '📝' },
-    { label: 'Exam registrations', path: '/admin/exams/registrations', icon: '📋' },
-    { label: 'Mentors', path: '/admin/mentors', icon: '🧑‍🏫' },
-    { label: 'Blogs', path: '/admin/blogs', icon: '📝' },
-    { label: 'Internships', path: '/admin/internships', icon: '💼' },
-    { label: 'Applications', path: '/admin/internship-applications', icon: '📨' },
-    { label: 'Papers', path: '/admin/papers', icon: '📄' },
-    { label: 'Student Stories', path: '/admin/student-stories', icon: '⭐' },
-    { label: 'Settings', path: '/admin/settings', icon: '⚙️' }
-  ];
+  readonly navItems = computed(() =>
+    ADMIN_NAV_ITEMS.filter((item) => this.auth.hasPermission(item.permission))
+  );
 
   toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);

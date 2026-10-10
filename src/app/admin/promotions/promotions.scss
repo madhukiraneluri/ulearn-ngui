@@ -1,0 +1,154 @@
+@use '../../../styles/variables' as *;
+
+.promo-admin {
+  padding: 24px;
+  max-width: 860px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+
+  h1 {
+    margin: 0 0 6px;
+    color: var(--navy);
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted);
+  }
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  h2 {
+    margin: 16px 0 0;
+    color: var(--navy);
+    font-size: 1.05rem;
+  }
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  input[type='text'],
+  input[type='email'],
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: inherit;
+  }
+}
+
+.block {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+
+  img {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  input {
+    flex: 1;
+  }
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+
+  button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 800;
+  }
+}
+
+.file-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.btn-primary,
+.btn-secondary,
+.text-btn {
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.btn-primary {
+  border: none;
+  background: linear-gradient(135deg, var(--purple), #6c4fd4);
+  color: #fff;
+  padding: 12px 18px;
+  margin-top: 8px;
+}
+
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 10px 14px;
+}
+
+.text-btn {
+  border: none;
+  background: none;
+  color: #b42318;
+  padding: 6px 0 0;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,0 +1,113 @@
+<div class="labels-admin">
+  <div class="page-header">
+    <div>
+      <h1>Labels</h1>
+      <p>Add a label, choose what that label can see, then add one member or many.</p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <p class="loading">Loading labels…</p>
+  } @else {
+    <div class="labels-layout">
+      <section class="panel">
+        <h2>Add label</h2>
+        <label>Name</label>
+        <input [(ngModel)]="newName" placeholder="Campus coordinator" />
+        <label>Description</label>
+        <input [(ngModel)]="newDescription" placeholder="What this label is for" />
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="newPortalAccess" />
+          Can open the admin panel
+        </label>
+        <button type="button" class="btn-primary" (click)="addLabel()" [disabled]="isSaving()">Add label</button>
+
+        <h2 class="list-title">All labels</h2>
+        <ul class="label-list">
+          @for (label of labels(); track label.id) {
+            <li>
+              <button type="button" class="label-item" [class.active]="label.id === selectedId()" (click)="selectLabel(label)">
+                <strong>{{ label.name }}</strong>
+                <span>{{ label.memberCount }} members · {{ label.permissions.length }} permissions</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as label) {
+        <section class="panel detail">
+          <div class="detail-head">
+            <div>
+              <h2>{{ label.name }}</h2>
+              @if (label.isSystem) {
+                <span class="pill">System label</span>
+              }
+            </div>
+            @if (!label.isSystem) {
+              <button type="button" class="btn-danger" (click)="deleteLabel()">Delete</button>
+            }
+          </div>
+
+          <label>Name</label>
+          <input [(ngModel)]="editName" />
+          <label>Description</label>
+          <input [(ngModel)]="editDescription" />
+          <label class="check">
+            <input type="checkbox" [(ngModel)]="editPortalAccess" [disabled]="label.isSystem" />
+            Can open the admin panel
+          </label>
+
+          <h3>Permissions</h3>
+          @for (group of groups; track group.group) {
+            <fieldset>
+              <legend>{{ group.group }}</legend>
+              @for (item of group.items; track item.key) {
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="hasPermission(item.key)"
+                    (change)="togglePermission(item.key, $any($event.target).checked)"
+                  />
+                  {{ item.label }}
+                </label>
+              }
+            </fieldset>
+          }
+          <button type="button" class="btn-primary" (click)="saveLabel()" [disabled]="isSaving()">Save label</button>
+
+          <h3>Members</h3>
+          <p class="hint">The person needs a ULearn account. Add one email, paste many, or upload a CSV, TXT, or Excel file.</p>
+          <div class="member-add">
+            <input [(ngModel)]="memberEmail" type="email" placeholder="name@college.com" />
+            <button type="button" class="btn-secondary" (click)="addOneMember()" [disabled]="isSaving()">Add member</button>
+          </div>
+          <textarea [(ngModel)]="bulkText" rows="4" placeholder="Paste emails, one per line or separated by commas"></textarea>
+          <div class="member-add">
+            <button type="button" class="btn-secondary" (click)="addBulkMembers()" [disabled]="isSaving()">Add pasted emails</button>
+            <label class="file-btn">
+              Upload emails
+              <input type="file" accept=".csv,.txt,.xlsx,.xls" (change)="onMemberFile($event)" />
+            </label>
+          </div>
+
+          @if (members().length === 0) {
+            <p class="hint">No members yet.</p>
+          } @else {
+            <ul class="members">
+              @for (member of members(); track member.userId) {
+                <li>
+                  <div>
+                    <strong>{{ member.fullName }}</strong>
+                    <span>{{ member.email }}</span>
+                  </div>
+                  <button type="button" class="text-btn" (click)="removeMember(member)">Remove</button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </div>
+  }
+</div>
