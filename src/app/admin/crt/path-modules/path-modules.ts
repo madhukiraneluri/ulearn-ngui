@@ -1,3 +1,4 @@
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,7 +15,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ToastService } from '../../../core/services/toast';
 import { CrtShell } from '../crt-shell/crt-shell';
-import { CrtContentStatus, CrtDemoStore } from '../crt-demo.store';
+import {
+  CrtAdminService,
+  CrtPath,
+  CrtModule
+} from '../../services/crt-admin.service';
 
 @Component({
   selector: 'app-crt-path-modules',
@@ -29,64 +34,79 @@ export class CrtPathModules implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly store = inject(CrtDemoStore);
-
-  readonly filters = [
-    { id: 'all', label: 'All' },
-    { id: 'draft', label: 'Draft' },
-    { id: 'published', label: 'Published' }
-  ] as const;
+  private readonly crtService = inject(CrtAdminService);
 
   readonly isLoading = signal(true);
+  readonly isSaving = signal(false);
   readonly pathId = signal('');
+  readonly path = signal<CrtPath | null>(null);
+  readonly modules = signal<CrtModule[]>([]);
   readonly query = signal('');
-  readonly statusFilter = signal<'all' | CrtContentStatus>('all');
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
+
   private readonly formHost = viewChild<ElementRef<HTMLElement>>('formHost');
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(2)]],
-    description: [''],
-    displayOrder: [1, [Validators.required, Validators.min(1)]],
-    status: ['draft' as CrtContentStatus, Validators.required]
+    displayOrder: [1, [Validators.required, Validators.min(1)]]
   });
 
-  readonly path = computed(() => this.store.pathById(this.pathId()));
-
-  readonly pathModules = computed(() => this.store.modules()
-    .filter((module) => module.pathId === this.pathId())
-    .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title)));
+  readonly pathModules = computed(() =>
+    [...this.modules()].sort(
+      (a, b) => a.sort_order - b.sort_order
+    )
+  );
 
   readonly visibleModules = computed(() => {
     const query = this.query().trim().toLowerCase();
-    const status = this.statusFilter();
-    return this.pathModules()
-      .filter((module) => status === 'all' || module.status === status)
-      .filter((module) => {
-        if (!query) return true;
-        return module.title.toLowerCase().includes(query)
-          || module.description.toLowerCase().includes(query);
-      });
+
+    return this.pathModules().filter(module =>
+      module.title.toLowerCase().includes(query)
+    );
   });
 
   ngOnInit(): void {
-    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const id = params.get('pathId') ?? '';
-      this.pathId.set(id);
-      if (id) this.store.selectPath(id);
-      this.closeForm();
-    });
-    const timer = setTimeout(() => this.isLoading.set(false), 280);
-    this.destroyRef.onDestroy(() => clearTimeout(timer));
+    this.route.paramMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const id = params.get('pathId') ?? '';
+        this.pathId.set(id);
+        this.closeForm();
+
+        if (id) {
+          void this.loadData(id);
+        } else {
+          this.path.set(null);
+          this.modules.set([]);
+          this.isLoading.set(false);
+        }
+      });
+  }
+
+  async loadData(pathId: string): Promise<void> {
+    this.isLoading.set(true);
+
+    try {
+      const [paths, modules] = await Promise.all([
+        this.crtService.listPaths(),
+        this.crtService.listModules(pathId)
+      ]);
+
+      this.path.set(paths.find(item => item.id === pathId) ?? null);
+      this.modules.set(modules);
+    } catch (error) {
+      console.error('Failed to load CRT modules:', error);
+      this.toast.error(
+        error instanceof Error ? error.message : 'Unable to load modules.'
+      );
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
-  }
-
-  setFilter(id: 'all' | CrtContentStatus): void {
-    this.statusFilter.set(id);
   }
 
   isFirst(moduleId: string): boolean {
@@ -99,31 +119,34 @@ export class CrtPathModules implements OnInit {
   }
 
   openCreate(): void {
-    const pathId = this.pathId();
-    if (!this.store.pathById(pathId)) return;
+    if (!this.path()) {
+      this.toast.error('Learning path not found.');
+      return;
+    }
+
     this.editingId.set(null);
     this.form.reset({
       title: '',
-      description: '',
-      displayOrder: this.store.nextModuleOrder(pathId),
-      status: 'draft'
+      displayOrder: this.pathModules().length + 1
     });
+
     this.revealForm();
   }
 
   openEdit(id: string): void {
-    const module = this.store.moduleById(id);
+    const module = this.modules().find(item => item.id === id);
+
     if (!module) {
-      this.toast.error('That module is no longer in the demonstration data.');
+      this.toast.error('Module not found.');
       return;
     }
+
     this.editingId.set(id);
     this.form.reset({
       title: module.title,
-      description: module.description,
-      displayOrder: module.displayOrder,
-      status: module.status
+      displayOrder: module.sort_order + 1
     });
+
     this.revealForm();
   }
 
@@ -132,57 +155,113 @@ export class CrtPathModules implements OnInit {
     this.editingId.set(null);
   }
 
-  move(moduleId: string, direction: -1 | 1): void {
-    const moved = this.store.moveModule(this.pathId(), moduleId, direction);
-    if (!moved) this.toast.info('That module is already at the end of the list.');
+  async move(moduleId: string, direction: -1 | 1): Promise<void> {
+    const ordered = this.pathModules();
+    const currentIndex = ordered.findIndex(item => item.id === moduleId);
+    const targetIndex = currentIndex + direction;
+
+    if (
+      currentIndex < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= ordered.length
+    ) {
+      return;
+    }
+
+    const reordered = [...ordered];
+    [reordered[currentIndex], reordered[targetIndex]] = [
+      reordered[targetIndex],
+      reordered[currentIndex]
+    ];
+
+    const updates = reordered.map((module, index) => ({
+      id: module.id,
+      sort_order: index
+    }));
+
+    try {
+      await this.crtService.reorderModules(updates);
+      await this.loadData(this.pathId());
+      this.toast.success('Module order updated.');
+    } catch (error) {
+      console.error('Failed to reorder modules:', error);
+      this.toast.error(
+        error instanceof Error ? error.message : 'Unable to reorder modules.'
+      );
+    }
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const pathId = this.pathId();
-    if (!this.store.pathById(pathId)) {
+
+    if (!this.path()) {
       this.toast.error('This learning path was not found.');
       return;
     }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.toast.error('Check the highlighted fields.');
       return;
     }
 
+    if (this.isSaving()) return;
+
     const raw = this.form.getRawValue();
     const displayOrder = Number(raw.displayOrder);
+
     if (!Number.isInteger(displayOrder) || displayOrder < 1) {
       this.toast.error('Display order must be a whole number of at least 1.');
       return;
     }
 
-    const input = {
-      pathId,
-      title: raw.title.trim(),
-      description: raw.description.trim(),
-      displayOrder,
-      status: raw.status
-    };
     const editingId = this.editingId();
-    if (editingId) {
-      const updated = this.store.updateModule(editingId, input);
-      if (!updated) {
-        this.toast.error('That module is no longer in the demonstration data.');
-        return;
-      }
-      this.toast.success('Module updated');
-    } else {
-      this.store.createModule(input);
-      this.toast.success('Module saved');
+
+    if (displayOrder > this.pathModules().length + (editingId ? 0 : 1)) {
+      this.toast.error('Display order is outside the available range.');
+      return;
     }
-    this.closeForm();
+
+    this.isSaving.set(true);
+
+    try {
+      if (editingId) {
+        await this.crtService.updateModule(editingId, {
+          title: raw.title.trim(),
+          sort_order: displayOrder - 1
+        });
+        this.toast.success('Module updated successfully.');
+      } else {
+        await this.crtService.createModule(
+          pathId,
+          raw.title.trim(),
+          displayOrder - 1
+        );
+        this.toast.success('Module created successfully.');
+      }
+
+      this.closeForm();
+      await this.loadData(pathId);
+    } catch (error) {
+      console.error('Failed to save module:', error);
+      this.toast.error(
+        error instanceof Error ? error.message : 'Unable to save module.'
+      );
+    } finally {
+      this.isSaving.set(false);
+    }
   }
 
   private revealForm(): void {
     this.showForm.set(true);
+
     const timer = setTimeout(() => {
-      this.formHost()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      this.formHost()?.nativeElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
     });
+
     this.destroyRef.onDestroy(() => clearTimeout(timer));
   }
 }

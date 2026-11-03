@@ -1,3 +1,4 @@
+
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +14,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../../core/services/toast';
 import { CrtShell } from '../crt-shell/crt-shell';
-import { CrtContentStatus, CrtDemoStore } from '../crt-demo.store';
+import { CrtAdminService, CrtPath } from '../../services/crt-admin.service';
+
+type CrtContentStatus = 'draft' | 'published';
 
 @Component({
   selector: 'app-crt-learning-paths',
@@ -27,7 +30,10 @@ export class CrtLearningPaths implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly store = inject(CrtDemoStore);
+  private readonly crtService = inject(CrtAdminService);
+
+  readonly paths = signal<CrtPath[]>([]);
+  readonly moduleCounts = signal<Record<string, number>>({});
 
   readonly filters = [
     { id: 'all', label: 'All' },
@@ -36,35 +42,68 @@ export class CrtLearningPaths implements OnInit {
   ] as const;
 
   readonly isLoading = signal(true);
+  readonly isSaving = signal(false);
   readonly query = signal('');
   readonly statusFilter = signal<'all' | CrtContentStatus>('all');
   readonly showForm = signal(false);
   readonly editingId = signal<string | null>(null);
+
   private readonly formHost = viewChild<ElementRef<HTMLElement>>('formHost');
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(2)]],
     description: [''],
-    displayOrder: [1, [Validators.required, Validators.min(1)]],
     status: ['draft' as CrtContentStatus, Validators.required]
   });
 
   readonly visiblePaths = computed(() => {
     const query = this.query().trim().toLowerCase();
     const status = this.statusFilter();
-    return this.store.paths()
-      .filter((path) => status === 'all' || path.status === status)
-      .filter((path) => {
+
+    return this.paths()
+      .filter(path => status === 'all' || path.status === status)
+      .filter(path => {
         if (!query) return true;
+
         return path.title.toLowerCase().includes(query)
-          || path.description.toLowerCase().includes(query);
+          || (path.description ?? '').toLowerCase().includes(query);
       })
-      .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title));
+      .sort((a, b) => a.title.localeCompare(b.title));
   });
 
   ngOnInit(): void {
-    const timer = setTimeout(() => this.isLoading.set(false), 280);
-    this.destroyRef.onDestroy(() => clearTimeout(timer));
+    void this.loadPaths();
+  }
+
+  async loadPaths(): Promise<void> {
+    this.isLoading.set(true);
+
+    try {
+      const paths = await this.crtService.listPaths();
+      this.paths.set(paths);
+
+      const counts: Record<string, number> = {};
+
+      await Promise.all(
+        paths.map(async path => {
+          const modules = await this.crtService.listModules(path.id);
+          counts[path.id] = modules.length;
+        })
+      );
+
+      this.moduleCounts.set(counts);
+    } catch (error) {
+      console.error('Failed to load CRT learning paths:', error);
+      this.toast.error(
+        error instanceof Error ? error.message : 'Unable to load learning paths.'
+      );
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  moduleCount(pathId: string): number {
+    return this.moduleCounts()[pathId] ?? 0;
   }
 
   onSearch(event: Event): void {
@@ -77,28 +116,32 @@ export class CrtLearningPaths implements OnInit {
 
   openCreate(): void {
     this.editingId.set(null);
+
     this.form.reset({
       title: '',
       description: '',
-      displayOrder: this.store.nextPathOrder(),
       status: 'draft'
     });
+
     this.revealForm();
   }
 
   openEdit(id: string): void {
-    const path = this.store.pathById(id);
+    const path = this.paths().find(item => item.id === id);
+
     if (!path) {
-      this.toast.error('That learning path is no longer in the demonstration data.');
+      this.toast.error('Learning path not found.');
       return;
     }
+
     this.editingId.set(id);
+
     this.form.reset({
       title: path.title,
-      description: path.description,
-      displayOrder: path.displayOrder,
+      description: path.description ?? '',
       status: path.status
     });
+
     this.revealForm();
   }
 
@@ -107,50 +150,58 @@ export class CrtLearningPaths implements OnInit {
     this.editingId.set(null);
   }
 
-  openModules(pathId: string): void {
-    this.store.selectPath(pathId);
-  }
-
-  save(): void {
+  async save(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.toast.error('Check the highlighted fields.');
       return;
     }
 
+    if (this.isSaving()) return;
+
     const raw = this.form.getRawValue();
-    const displayOrder = Number(raw.displayOrder);
-    if (!Number.isInteger(displayOrder) || displayOrder < 1) {
-      this.toast.error('Display order must be a whole number of at least 1.');
-      return;
-    }
 
     const input = {
       title: raw.title.trim(),
       description: raw.description.trim(),
-      displayOrder,
       status: raw.status
     };
-    const editingId = this.editingId();
-    if (editingId) {
-      const updated = this.store.updatePath(editingId, input);
-      if (!updated) {
-        this.toast.error('That learning path is no longer in the demonstration data.');
-        return;
+
+    this.isSaving.set(true);
+
+    try {
+      const editingId = this.editingId();
+
+      if (editingId) {
+        await this.crtService.updatePath(editingId, input);
+        this.toast.success('Learning path updated successfully.');
+      } else {
+        await this.crtService.createPath(input);
+        this.toast.success('Learning path created successfully.');
       }
-      this.toast.success('Learning path updated');
-    } else {
-      this.store.createPath(input);
-      this.toast.success('Learning path saved');
+
+      this.closeForm();
+      await this.loadPaths();
+    } catch (error) {
+      console.error('Failed to save CRT learning path:', error);
+      this.toast.error(
+        error instanceof Error ? error.message : 'Unable to save learning path.'
+      );
+    } finally {
+      this.isSaving.set(false);
     }
-    this.closeForm();
   }
 
   private revealForm(): void {
     this.showForm.set(true);
+
     const timer = setTimeout(() => {
-      this.formHost()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      this.formHost()?.nativeElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
     });
+
     this.destroyRef.onDestroy(() => clearTimeout(timer));
   }
 }

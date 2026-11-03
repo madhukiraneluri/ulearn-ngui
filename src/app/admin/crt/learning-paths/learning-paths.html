@@ -1,3 +1,4 @@
+
 <app-crt-shell crumb="Learning Paths">
   <div class="page-head">
     <h1>Learning Paths</h1>
@@ -9,8 +10,14 @@
     <div class="toolbar">
       <label class="search">
         <span class="visually-hidden">Search learning paths</span>
-        <input type="search" placeholder="Search…" [value]="query()" (input)="onSearch($event)" />
+        <input
+          type="search"
+          placeholder="Search…"
+          [value]="query()"
+          (input)="onSearch($event)"
+        />
       </label>
+
       <div class="filters" role="group" aria-label="Path status">
         @for (option of filters; track option.id) {
           <button
@@ -23,13 +30,18 @@
           </button>
         }
       </div>
-      <button type="button" class="btn-add" (click)="openCreate()">+ Create Path</button>
+
+      <button type="button" class="btn-add" (click)="openCreate()">
+        + Create Path
+      </button>
     </div>
 
-    @if (store.paths().length === 0) {
+    @if (paths().length === 0) {
       <div class="empty">
         <p>No learning paths yet.</p>
-        <button type="button" class="btn-text" (click)="openCreate()">Create the first path</button>
+        <button type="button" class="btn-text" (click)="openCreate()">
+          Create the first path
+        </button>
       </div>
     } @else if (visiblePaths().length === 0) {
       <p class="empty">No learning paths match your search.</p>
@@ -38,7 +50,6 @@
         <table>
           <thead>
             <tr>
-              <th>Order</th>
               <th>Path title</th>
               <th>Description</th>
               <th>Status</th>
@@ -46,27 +57,43 @@
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             @for (path of visiblePaths(); track path.id) {
               <tr>
-                <td>{{ path.displayOrder }}</td>
                 <td>
                   <a
                     class="title-link"
                     [routerLink]="['/admin/crt/paths', path.id, 'modules']"
-                    (click)="openModules(path.id)"
                   >
                     {{ path.title }}
                   </a>
                 </td>
+
                 <td class="clamp">{{ path.description || '—' }}</td>
-                <td><span class="status-pill" [attr.data-tone]="path.status">{{ path.status }}</span></td>
-                <td>{{ store.moduleCount(path.id) }}</td>
+
+                <td>
+                  <span
+                    class="status-pill"
+                    [attr.data-tone]="path.status"
+                  >
+                    {{ path.status }}
+                  </span>
+                </td>
+
+                <td>{{ moduleCount(path.id) }}</td>
+
                 <td>
                   <div class="row-actions">
-                    <button type="button" (click)="openEdit(path.id)">Edit</button>
+                    <button type="button" (click)="openEdit(path.id)">
+                      Edit
+                    </button>
                     <span aria-hidden="true">|</span>
-                    <a [routerLink]="['/admin/crt/paths', path.id, 'modules']" (click)="openModules(path.id)">Open</a>
+                    <a
+                      [routerLink]="['/admin/crt/paths', path.id, 'modules']"
+                    >
+                      Open
+                    </a>
                   </div>
                 </td>
               </tr>
@@ -77,36 +104,73 @@
     }
 
     @if (showForm()) {
-      <form class="form-panel" #formHost [formGroup]="form" (ngSubmit)="save()">
-        <h2>{{ editingId() ? 'Edit Learning Path' : 'Create Learning Path' }}</h2>
+      <form
+        class="form-panel"
+        #formHost
+        [formGroup]="form"
+        (ngSubmit)="save()"
+      >
+        <h2>
+          {{ editingId() ? 'Edit Learning Path' : 'Create Learning Path' }}
+        </h2>
+
         <div class="form-group">
           <label for="path-title">Path title *</label>
-          <input id="path-title" class="form-input" type="text" formControlName="title" placeholder="Enter path title" />
+          <input
+            id="path-title"
+            class="form-input"
+            type="text"
+            formControlName="title"
+            placeholder="Enter path title"
+          />
+
           @if (form.controls.title.invalid && form.controls.title.touched) {
-            <span class="field-error" role="alert">Enter a path title of at least 2 characters.</span>
+            <span class="field-error" role="alert">
+              Enter a path title of at least 2 characters.
+            </span>
           }
         </div>
+
         <div class="form-group">
           <label for="path-description">Description</label>
-          <textarea id="path-description" class="form-textarea" rows="3" formControlName="description" placeholder="Enter path description"></textarea>
+          <textarea
+            id="path-description"
+            class="form-textarea"
+            rows="3"
+            formControlName="description"
+            placeholder="Enter path description"
+          ></textarea>
         </div>
-        <div class="form-group">
-          <label for="path-order">Display order *</label>
-          <input id="path-order" class="form-input" type="number" min="1" step="1" formControlName="displayOrder" />
-          @if (form.controls.displayOrder.invalid && form.controls.displayOrder.touched) {
-            <span class="field-error" role="alert">Enter a display order of 1 or more.</span>
-          }
-        </div>
+
         <div class="form-group">
           <label for="path-status">Status *</label>
-          <select id="path-status" class="form-select" formControlName="status">
+          <select
+            id="path-status"
+            class="form-select"
+            formControlName="status"
+          >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
           </select>
         </div>
+
         <div class="form-actions">
-          <button type="button" class="btn-text" (click)="closeForm()">Cancel</button>
-          <button type="submit" class="btn-text">{{ editingId() ? 'Save Path' : 'Save Path' }}</button>
+          <button
+            type="button"
+            class="btn-text"
+            (click)="closeForm()"
+            [disabled]="isSaving()"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="btn-text"
+            [disabled]="isSaving()"
+          >
+            {{ isSaving() ? 'Saving…' : 'Save Path' }}
+          </button>
         </div>
       </form>
     }

@@ -1,6 +1,4 @@
-<p class="demo-banner">
-  Demonstration data. These records stay in memory for this session and are not saved to the database.
-</p>
+
 
 <div class="crt-frame">
   <aside class="crt-nav" aria-label="CRT Admin">
@@ -19,6 +17,11 @@
       <span aria-hidden="true">/</span>
       <span>{{ crumb() }}</span>
     </p>
+        @if (crumb() === 'Questions' || crumb() === 'Batch Assignments') {
+      <p class="demo-banner">
+        Demonstration data. These records stay in memory for this session and are not saved to the database.
+      </p>
+    }
     <ng-content />
   </div>
 </div>
