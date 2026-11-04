@@ -262,9 +262,23 @@ export class CrtPracticeService {
       attempt_max_score: this.databaseNumber(row['attempt_max_score'], 'attempt_max_score'),
     };
   }
+  async listMyPracticeAttempts(): Promise<CrtAttemptSummary[]> {
+    const userId = await this.requireUserId();
+
+    const { data, error } = await supabase
+      .from('crt_attempts')
+      .select(ATTEMPT_SUMMARY_COLUMNS)
+      .eq('user_id', userId)
+      .eq('kind', 'practice')
+      .order('started_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => this.toAttemptSummary(row));
+  }
 
   async listMyAttempts(): Promise<CrtAttemptSummary[]> {
     const userId = await this.requireUserId();
+
     const { data, error } = await supabase
       .from('crt_attempts')
       .select(ATTEMPT_SUMMARY_COLUMNS)
