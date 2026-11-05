@@ -106,6 +106,22 @@ export const routes: Routes = [
     loadComponent: () => import('./crt/result/crt-result').then(m => m.CrtResult)
   },
   {
+    path: 'crt/mock/:pathId/attempts/:attemptId/result',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () =>
+      import('./crt/mock-result/crt-mock-result').then(
+        (m) => m.CrtMockResultComponent
+      )
+  },
+  {
+    path: 'crt/mock/:pathId',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () =>
+      import('./crt/mock/crt-mock').then((m) => m.CrtMockComponent)
+  },
+  {
     path: 'crt/history',
     canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
     data: { permission: 'crt.access' },
