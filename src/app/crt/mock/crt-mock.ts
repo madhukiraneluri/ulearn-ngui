@@ -1,13 +1,14 @@
 
 import {
-    ChangeDetectionStrategy,
-    Component,
-    OnDestroy,
-    OnInit,
-    computed,
-    signal,
-  } from '@angular/core';
-  import { ActivatedRoute, Router } from '@angular/router';
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  signal,
+} from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
   import {
     CrtMockQuestion,
     CrtMockService,
@@ -123,7 +124,7 @@ import {
 
     private async saveSelectedAnswer(
       questionId: string,
-      selectedIndex: number
+      selectedIndex: 0 | 1 | 2 | 3
     ): Promise<void> {
       const savePromise = this.mockService
         .saveAnswer(this.attemptId, questionId, selectedIndex)
