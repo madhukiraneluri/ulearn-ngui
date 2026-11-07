@@ -5,6 +5,7 @@
  * A competency with applicable:false is omitted and is not given a score.
  */
 
+import { newProviderAttemptId, readProviderCall, type ProviderCall, type ProviderUsage } from './interview-usage.ts';
 import {
   providerFailure,
   providerUrl,
@@ -504,11 +505,13 @@ export interface EvaluationRequest {
   now?: () => number;
   random?: () => number;
   budgetMs?: number;
+  /** Test seam. Production uses a server UUID and never a client value. */
+  createAttemptId?: () => string;
 }
 
 export type EvaluationReply =
-  | { ok: true; text: string }
-  | { ok: false; code: string; httpStatus: number };
+  | { ok: true; text: string; usage: ProviderUsage; calls: ProviderCall[] }
+  | { ok: false; code: string; httpStatus: number; calls: ProviderCall[] };
 
 export async function requestEvaluationReply(options: EvaluationRequest): Promise<EvaluationReply> {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -518,11 +521,14 @@ export async function requestEvaluationReply(options: EvaluationRequest): Promis
   const budgetMs = options.budgetMs ?? 90_000;
   const started = now();
   const attempts = Math.max(0, options.maxRetries) + 1;
-  let last: EvaluationReply = { ok: false, code: 'INTERVIEW_AI_UNAVAILABLE', httpStatus: 503 };
+  const calls: ProviderCall[] = [];
+  const createAttemptId = options.createAttemptId ?? newProviderAttemptId;
+  let attemptId = createAttemptId();
+  let last: EvaluationReply = { ok: false, code: 'INTERVIEW_AI_UNAVAILABLE', httpStatus: 503, calls };
 
   for (let attempt = 0; attempt < attempts; attempt++) {
     const remaining = budgetMs - (now() - started);
-    if (remaining < 1000) return { ok: false, code: 'INTERVIEW_AI_TIMEOUT', httpStatus: 504 };
+    if (remaining < 1000) return { ok: false, code: 'INTERVIEW_AI_TIMEOUT', httpStatus: 504, calls };
     try {
       const response = await fetchImpl(providerUrl(), {
         method: 'POST',
@@ -530,6 +536,7 @@ export async function requestEvaluationReply(options: EvaluationRequest): Promis
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${options.apiKey}`,
+          'Idempotency-Key': attemptId,
         },
         body: JSON.stringify({
           model: options.model,
@@ -544,15 +551,18 @@ export async function requestEvaluationReply(options: EvaluationRequest): Promis
       });
       if (!response.ok) {
         const failure = providerFailure(response.status);
-        last = { ok: false, code: failure.code, httpStatus: failure.httpStatus };
+        last = { ok: false, code: failure.code, httpStatus: failure.httpStatus, calls };
         if (!failure.retry || attempt === attempts - 1) return last;
         await wait(retryDelayMs(attempt, options.retryBaseMs, response.headers.get('retry-after'), random));
         continue;
       }
       const payload = await response.json().catch(() => null);
+      const call: ProviderCall = { ...readProviderCall(payload), attemptId };
+      calls.push(call);
       const text = readOpenAiAnswer(payload);
-      if (typeof text === 'string' && text !== 'blocked') return { ok: true, text };
-      last = { ok: false, code: 'INTERVIEW_AI_UNAVAILABLE', httpStatus: 503 };
+      if (typeof text === 'string' && text !== 'blocked') return { ok: true, text, usage: call.usage, calls };
+      last = { ok: false, code: 'INTERVIEW_AI_UNAVAILABLE', httpStatus: 503, calls };
+      attemptId = createAttemptId();
       if (attempt === attempts - 1) return last;
       await wait(retryDelayMs(attempt, options.retryBaseMs, null, random));
     } catch (error) {
@@ -561,6 +571,7 @@ export async function requestEvaluationReply(options: EvaluationRequest): Promis
         ok: false,
         code: timedOut ? 'INTERVIEW_AI_TIMEOUT' : 'INTERVIEW_AI_UNAVAILABLE',
         httpStatus: timedOut ? 504 : 503,
+        calls,
       };
       if (attempt === attempts - 1) return last;
       await wait(retryDelayMs(attempt, options.retryBaseMs, null, random));

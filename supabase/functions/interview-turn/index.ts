@@ -28,6 +28,11 @@ import {
   resumeSystemAddendum,
   type AskedResumeQuestion,
 } from '../_shared/interview-resume.ts';
+import {
+  recordInterviewAiUsage,
+  usageRecordKey,
+  type ProviderCall,
+} from '../_shared/interview-usage.ts';
 
 /**
  * interview-turn
@@ -168,6 +173,7 @@ Deno.serve(async (req) => {
       const basePrompt = resumeSummary
         ? `${template.systemPrompt}\n\n${resumeSystemAddendum(resumeSummary, askedResumeQuestions)}`
         : template.systemPrompt;
+      const capturedUsage: ProviderCall[] = [];
       const resolved = await resolveResumeAwareReply({
         summary: resumeSummary,
         asked: askedResumeQuestions,
@@ -181,10 +187,27 @@ Deno.serve(async (req) => {
             maxRetries: aiConfig.maxRetries,
             retryBaseMs: aiConfig.retryBaseMs,
           });
+          capturedUsage.push(...reply.calls);
           if (!reply.ok) return { ok: false, code: reply.code, httpStatus: reply.httpStatus };
           return { ok: true, text: reply.text };
         },
       });
+      for (let index = 0; index < capturedUsage.length; index += 1) {
+        const call = capturedUsage[index];
+        if (!call) continue;
+        await recordInterviewAiUsage(writer, {
+          sessionId: session.id,
+          userId,
+          callKind: 'turn',
+          idempotencyKey: usageRecordKey({
+            responseId: call.responseId,
+            attemptId: call.attemptId,
+          }),
+          provider: 'openai',
+          model: aiConfig.model,
+          usage: call.usage,
+        });
+      }
       if (!resolved.ok) {
         await markClaimFailed(writer, session.id, clientTurnId, reserved.claimedAt);
         await markSessionFailed(writer, session.id);
