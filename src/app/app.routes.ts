@@ -128,7 +128,7 @@ export const routes: Routes = [
     loadComponent: () => import('./crt/history/crt-history').then(m => m.CrtHistory)
   },
   {
-    path: 'crt/history/:attemptId/review',
+    path: 'crt/history/:attemptId',
     canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
     data: { permission: 'crt.access' },
     loadComponent: () => import('./crt/review/crt-review').then(m => m.CrtReview)
@@ -141,6 +141,21 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./interview/interview').then(m => m.Interview)
+      },
+      {
+        path: 'history',
+        loadComponent: () =>
+          import('./interview/interview-history').then(m => m.InterviewHistory)
+      },
+      {
+        path: 'session/:id/result',
+        loadComponent: () =>
+          import('./interview/interview-result').then(m => m.InterviewResult)
+      },
+      {
+        path: 'session/:id/feedback',
+        loadComponent: () =>
+          import('./interview/interview-session-feedback').then(m => m.InterviewSessionFeedback)
       },
       {
         path: 'session/:id',
