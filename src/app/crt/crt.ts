@@ -48,11 +48,6 @@ interface CrtPathProgress {
       color: var(--muted);
     }
 
-    .assignment-note {
-      margin-top: 12px;
-      font-size: 0.875rem;
-    }
-
     .status,
     .banner {
       margin-top: 32px;

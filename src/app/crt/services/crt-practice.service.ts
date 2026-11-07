@@ -99,6 +99,7 @@ const ATTEMPT_SUMMARY_COLUMNS =
 
 @Injectable({ providedIn: 'root' })
 export class CrtPracticeService {
+  /** Published paths visible to the signed-in student (RLS: batch assignment + crt.access). */
   async listPublishedPaths(): Promise<CrtPracticePath[]> {
     const { data, error } = await supabase
       .from('crt_paths')

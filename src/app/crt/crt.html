@@ -2,12 +2,8 @@
 <section class="crt-home">
   <header class="page-header">
     <h1>Campus Recruitment Training</h1>
-    <p>Your published learning paths. Continue where you left off and build your skills.</p>
+    <p>Learning paths assigned to your batch. Continue where you left off and build your skills.</p>
     <p><a routerLink="/crt/history">View Attempt History</a></p>
-    <p class="assignment-note">
-      All published learning paths are displayed for now. Student-specific path assignments
-      will be introduced in CRT-012.
-    </p>
   </header>
 
   @if (loading()) {
@@ -19,7 +15,8 @@
     </div>
   } @else if (paths().length === 0) {
     <p class="status">
-      No published learning paths are available yet. Please check again later.
+      No CRT learning paths are assigned to your batch yet. When your campus admin assigns a path
+      to a batch you belong to, it will appear here.
     </p>
   } @else {
     <ul class="path-list">
