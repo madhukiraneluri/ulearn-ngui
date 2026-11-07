@@ -102,6 +102,7 @@ const ATTEMPT_SUMMARY_COLUMNS =
   'id, path_id, module_id, kind, status, started_at, submitted_at, duration_seconds, score, max_score';
 @Injectable({ providedIn: 'root' })
 export class CrtPracticeService {
+  /** Published paths visible to the signed-in student (RLS: batch assignment + crt.access). */
   async listPublishedPaths(): Promise<CrtPracticePath[]> {
     const { data, error } = await supabase
       .from('crt_paths')

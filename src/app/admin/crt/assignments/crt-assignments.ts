@@ -7,13 +7,18 @@ import {
   computed,
   inject,
   signal,
-  viewChild
+  viewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../core/services/toast';
+import { CrtAdminService, CrtPath } from '../../services/crt-admin.service';
+import { AdminBatchesService, AdminBatchRow } from '../../services/admin-batches.service';
+import {
+  CrtPathAssignment,
+  CrtPathAssignmentsService,
+} from '../../services/crt-path-assignments.service';
 import { CrtShell } from '../crt-shell/crt-shell';
-import { CrtAssignment, CrtAssignmentStatus, CrtDemoStore } from '../crt-demo.store';
 
 @Component({
   selector: 'app-crt-assignments',
@@ -21,198 +26,173 @@ import { CrtAssignment, CrtAssignmentStatus, CrtDemoStore } from '../crt-demo.st
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, CrtShell],
   templateUrl: './crt-assignments.html',
-  styleUrl: '../crt-admin.scss'
+  styleUrl: '../crt-admin.scss',
 })
 export class CrtAssignments implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly store = inject(CrtDemoStore);
-
-  readonly filters = [
-    { id: 'all', label: 'All' },
-    { id: 'draft', label: 'Draft' },
-    { id: 'active', label: 'Active' }
-  ] as const;
+  private readonly crtAdmin = inject(CrtAdminService);
+  private readonly batchesService = inject(AdminBatchesService);
+  private readonly assignmentsService = inject(CrtPathAssignmentsService);
 
   readonly isLoading = signal(true);
+  readonly loadError = signal<string | null>(null);
+  readonly saving = signal(false);
   readonly query = signal('');
-  readonly statusFilter = signal<'all' | CrtAssignmentStatus>('all');
   readonly showForm = signal(false);
-  readonly editingId = signal<string | null>(null);
-  readonly viewId = signal<string | null>(null);
+  readonly paths = signal<CrtPath[]>([]);
+  readonly batches = signal<AdminBatchRow[]>([]);
+  readonly assignments = signal<CrtPathAssignment[]>([]);
   private readonly formHost = viewChild<ElementRef<HTMLElement>>('formHost');
 
   readonly form = this.fb.nonNullable.group({
     pathId: ['', Validators.required],
     batchId: ['', Validators.required],
-    dueDate: ['', Validators.required],
-    status: ['active' as CrtAssignmentStatus, Validators.required]
   });
 
-  readonly pathChoices = computed(() => {
-    const editing = this.store.assignmentById(this.editingId() ?? '');
-    return this.store.paths()
-      .filter((path) => path.status === 'published' || path.id === editing?.pathId)
-      .sort((a, b) => a.displayOrder - b.displayOrder);
-  });
-
-  readonly viewing = computed(() => {
-    const id = this.viewId();
-    return id ? this.store.assignmentById(id) : undefined;
-  });
+  readonly publishedPaths = computed(() =>
+    this.paths()
+      .filter((path) => path.status === 'published')
+      .sort((a, b) => a.title.localeCompare(b.title)),
+  );
 
   readonly visibleAssignments = computed(() => {
-    const query = this.query().trim().toLowerCase();
-    const status = this.statusFilter();
-    return this.store.assignments().filter((assignment) => {
-      if (status !== 'all' && assignment.status !== status) return false;
-      if (!query) return true;
-      const batch = this.store.batchName(assignment.batchId).toLowerCase();
-      const path = this.store.pathTitle(assignment.pathId).toLowerCase();
-      return batch.includes(query) || path.includes(query);
-    });
+    const q = this.query().trim().toLowerCase();
+    if (!q) return this.assignments();
+    return this.assignments().filter(
+      (row) =>
+        row.batchName.toLowerCase().includes(q) ||
+        row.pathTitle.toLowerCase().includes(q),
+    );
   });
 
   ngOnInit(): void {
-    const timer = setTimeout(() => this.isLoading.set(false), 280);
-    this.destroyRef.onDestroy(() => clearTimeout(timer));
+    void this.load();
+  }
+
+  async load(): Promise<void> {
+    this.isLoading.set(true);
+    this.loadError.set(null);
+    try {
+      const [paths, batches, assignments] = await Promise.all([
+        this.crtAdmin.listPaths(),
+        this.batchesService.listAll(),
+        this.assignmentsService.list(),
+      ]);
+      this.paths.set(paths);
+      this.batches.set(batches);
+      this.assignments.set(assignments);
+    } catch (error: unknown) {
+      this.assignments.set([]);
+      this.loadError.set(
+        error instanceof Error ? error.message : 'Could not load batch assignments.',
+      );
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
   }
 
-  setFilter(id: 'all' | CrtAssignmentStatus): void {
-    this.statusFilter.set(id);
-  }
-
-  formatDate(value: string): string {
-    const date = new Date(`${value}T00:00:00`);
+  formatAssignedAt(value: string): string {
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(date);
   }
 
   openCreate(): void {
-    if (this.pathChoices().length === 0) {
+    if (this.publishedPaths().length === 0) {
       this.toast.error('Publish a learning path before assigning it.');
       return;
     }
-    this.viewId.set(null);
-    this.editingId.set(null);
-    this.form.reset({
-      pathId: '',
-      batchId: '',
-      dueDate: '',
-      status: 'active'
-    });
-    this.revealForm();
-  }
-
-  openEdit(id: string): void {
-    const assignment = this.store.assignmentById(id);
-    if (!assignment) {
-      this.toast.error('That assignment is no longer in the demonstration data.');
+    if (this.batches().length === 0) {
+      this.toast.error('Create a batch before assigning a path.');
       return;
     }
-    this.viewId.set(null);
-    this.editingId.set(id);
-    this.form.reset({
-      pathId: assignment.pathId,
-      batchId: assignment.batchId,
-      dueDate: assignment.dueDate,
-      status: assignment.status
-    });
+    this.form.reset({ pathId: '', batchId: '' });
     this.revealForm();
-  }
-
-  openView(id: string): void {
-    if (!this.store.assignmentById(id)) {
-      this.toast.error('That assignment is no longer in the demonstration data.');
-      return;
-    }
-    this.showForm.set(false);
-    this.editingId.set(null);
-    this.viewId.set(id);
   }
 
   closeForm(): void {
     this.showForm.set(false);
-    this.editingId.set(null);
   }
 
-  closeView(): void {
-    this.viewId.set(null);
-  }
-
-  async unassign(assignment: CrtAssignment): Promise<void> {
+  async unassign(assignment: CrtPathAssignment): Promise<void> {
     const confirmed = await this.confirmDialog.confirm({
       title: 'Unassign path',
-      message: `Remove ${this.store.pathTitle(assignment.pathId)} from ${this.store.batchName(assignment.batchId)}?`,
+      message: `Remove ${assignment.pathTitle} from ${assignment.batchName}?`,
       confirmLabel: 'Unassign',
-      variant: 'danger'
+      variant: 'danger',
     });
     if (!confirmed) return;
-    this.store.deleteAssignment(assignment.id);
-    if (this.editingId() === assignment.id) this.closeForm();
-    if (this.viewId() === assignment.id) this.closeView();
-    this.toast.success('Path unassigned');
+
+    try {
+      await this.assignmentsService.unassign(assignment.pathId, assignment.batchId);
+      this.assignments.update((list) =>
+        list.filter(
+          (row) =>
+            !(row.pathId === assignment.pathId && row.batchId === assignment.batchId),
+        ),
+      );
+      this.toast.success('Path unassigned');
+    } catch (error: unknown) {
+      this.toast.error(
+        error instanceof Error ? error.message : 'Could not unassign this path.',
+      );
+    }
   }
 
-  save(): void {
+  async save(): Promise<void> {
+    if (this.saving()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.toast.error('Check the highlighted fields.');
+      this.toast.error('Select a learning path and a batch.');
       return;
     }
-    const raw = this.form.getRawValue();
-    const path = this.store.pathById(raw.pathId);
-    const editing = this.store.assignmentById(this.editingId() ?? '');
-    const pathAllowed = path?.status === 'published' || path?.id === editing?.pathId;
-    if (!path || !pathAllowed) {
+
+    const { pathId, batchId } = this.form.getRawValue();
+    const path = this.paths().find((item) => item.id === pathId);
+    if (!path || path.status !== 'published') {
       this.toast.error('Choose a published learning path.');
       return;
     }
-    if (!this.store.batches().some((batch) => batch.id === raw.batchId)) {
+    if (!this.batches().some((batch) => batch.id === batchId)) {
       this.toast.error('Choose a batch.');
       return;
     }
-    const duplicate = this.store.assignments().some((assignment) =>
-      assignment.id !== this.editingId()
-      && assignment.batchId === raw.batchId
-      && assignment.pathId === raw.pathId
+
+    const duplicate = this.assignments().some(
+      (row) => row.pathId === pathId && row.batchId === batchId,
     );
     if (duplicate) {
       this.toast.error('This batch is already assigned to that learning path.');
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const input = {
-      pathId: raw.pathId,
-      batchId: raw.batchId,
-      assignedDate: editing?.assignedDate ?? today,
-      dueDate: raw.dueDate,
-      status: raw.status
-    };
-    const editingId = this.editingId();
-    if (editingId) {
-      const updated = this.store.updateAssignment(editingId, input);
-      if (!updated) {
-        this.toast.error('That assignment is no longer in the demonstration data.');
-        return;
-      }
-      this.toast.success('Assignment updated');
-    } else {
-      this.store.createAssignment(input);
-      this.toast.success('Path assigned');
+    this.saving.set(true);
+    try {
+      await this.assignmentsService.assign(pathId, batchId);
+      const refreshed = await this.assignmentsService.list();
+      this.assignments.set(refreshed);
+      this.toast.success('Path assigned to batch');
+      this.closeForm();
+    } catch (error: unknown) {
+      this.toast.error(
+        error instanceof Error ? error.message : 'Could not save this assignment.',
+      );
+    } finally {
+      this.saving.set(false);
     }
-    this.closeForm();
   }
 
   private revealForm(): void {
