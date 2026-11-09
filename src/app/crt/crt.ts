@@ -6,6 +6,10 @@ import {
   CrtPracticeModule,
   CrtPracticeService
 } from './services/crt-practice.service';
+import {
+  CrtStudentAnnouncement,
+  CrtStudentAnnouncementsService,
+} from './services/crt-announcements.service';
 import { CrtReadinessScore, CrtReadinessService } from './services/crt-readiness.service';
 
 interface CrtPathProgress {
@@ -179,19 +183,82 @@ interface CrtPathProgress {
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    .announcements-section {
+      margin-top: 32px;
+    }
+
+    .announcements-section h2 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.125rem;
+    }
+
+    .announcements-section .section-lead {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .announcement-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .announcement-card {
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .announcement-card h3 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+
+    .announcement-card p {
+      margin: 0 0 12px;
+      color: var(--navy);
+      white-space: pre-wrap;
+    }
+
+    .announcement-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8125rem;
+    }
+
+    .announcements-section .status {
+      margin-top: 0;
+    }
   `
 })
 export class Crt implements OnInit {
   private readonly practice = inject(CrtPracticeService);
   private readonly readiness = inject(CrtReadinessService);
+  private readonly announcementsService = inject(CrtStudentAnnouncementsService);
   private readonly router = inject(Router);
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly paths = signal<CrtPathProgress[]>([]);
 
+  readonly announcementsLoading = signal(true);
+  readonly announcementsError = signal<string | null>(null);
+  readonly announcements = signal<CrtStudentAnnouncement[]>([]);
+
   ngOnInit(): void {
     void this.load();
+    void this.loadAnnouncements();
   }
 
   async load(): Promise<void> {
@@ -286,5 +353,44 @@ export class Crt implements OnInit {
       item.continueModule.id,
       'practice'
     ]);
+  }
+
+  async loadAnnouncements(): Promise<void> {
+    this.announcementsLoading.set(true);
+    this.announcementsError.set(null);
+    try {
+      const rows = await this.announcementsService.listLatestPublished();
+      this.announcements.set(rows);
+    } catch (error: unknown) {
+      this.announcements.set([]);
+      this.announcementsError.set(
+        error instanceof Error
+          ? error.message
+          : 'Could not load announcements.',
+      );
+    } finally {
+      this.announcementsLoading.set(false);
+    }
+  }
+
+  formatPublishedAt(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  formatDriveDate(value: string | null): string | null {
+    if (!value) return null;
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
   }
 }

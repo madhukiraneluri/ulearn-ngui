@@ -6,6 +6,39 @@
     <p><a routerLink="/crt/history">View Attempt History</a></p>
   </header>
 
+  <section class="announcements-section" aria-labelledby="crt-announcements-heading">
+    <h2 id="crt-announcements-heading">Announcements</h2>
+    <p class="section-lead">Latest placement notices and drive dates from your campus team.</p>
+
+    @if (announcementsLoading()) {
+      <p class="status" role="status">Loading announcements…</p>
+    } @else if (announcementsError()) {
+      <div class="banner" role="alert">
+        <p>{{ announcementsError() }}</p>
+        <button type="button" class="btn-primary" (click)="loadAnnouncements()">
+          Try again
+        </button>
+      </div>
+    } @else if (announcements().length === 0) {
+      <p class="status">No announcements right now. Check back later.</p>
+    } @else {
+      <ul class="announcement-list">
+        @for (item of announcements(); track item.id) {
+          <li class="announcement-card">
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.body }}</p>
+            <p class="announcement-meta">
+              <span>Published {{ formatPublishedAt(item.published_at) }}</span>
+              @if (formatDriveDate(item.drive_date); as driveDate) {
+                <span>Drive date {{ driveDate }}</span>
+              }
+            </p>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
   @if (loading()) {
     <p class="status" role="status">Loading your learning paths and readiness scores...</p>
   } @else if (loadError()) {

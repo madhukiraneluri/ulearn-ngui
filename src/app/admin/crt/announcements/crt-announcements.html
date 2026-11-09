@@ -1,0 +1,174 @@
+<app-crt-shell crumb="Announcements">
+  <div class="page-head">
+    <h1>CRT Announcements</h1>
+    <p>Publish placement notices and drive dates for students with Allowed CRT.</p>
+  </div>
+
+  @if (isLoading()) {
+    <p class="state" role="status">Loading announcements…</p>
+  } @else if (loadError()) {
+    <div class="banner" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-text" (click)="load()">Try again</button>
+    </div>
+  } @else {
+    <div class="toolbar">
+      <label class="search">
+        <span class="visually-hidden">Search announcements</span>
+        <input
+          type="search"
+          placeholder="Search by title or body…"
+          [value]="query()"
+          (input)="onSearch($event)"
+        />
+      </label>
+      <button type="button" class="btn-add" (click)="openCreate()">
+        + Create Announcement
+      </button>
+    </div>
+
+    @if (announcements().length === 0) {
+      <div class="empty">
+        <p>No announcements yet.</p>
+        <button type="button" class="btn-text" (click)="openCreate()">
+          Create the first announcement
+        </button>
+      </div>
+    } @else if (visibleAnnouncements().length === 0) {
+      <p class="empty">No announcements match your search.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Body</th>
+              <th>Drive date</th>
+              <th>Status</th>
+              <th>Published</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleAnnouncements(); track row.id) {
+              <tr>
+                <td><strong>{{ row.title }}</strong></td>
+                <td class="clamp">{{ row.body }}</td>
+                <td>{{ formatDriveDate(row.drive_date) }}</td>
+                <td>
+                  <span class="status-pill" [attr.data-tone]="row.status">
+                    {{ row.status }}
+                  </span>
+                </td>
+                <td>{{ formatDateTime(row.published_at) }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      (click)="openEdit(row)"
+                      [disabled]="isRowBusy(row.id)"
+                    >
+                      Edit
+                    </button>
+                    <span aria-hidden="true">|</span>
+                    @if (row.status === 'draft') {
+                      <button
+                        type="button"
+                        (click)="publish(row)"
+                        [disabled]="isRowBusy(row.id)"
+                      >
+                        {{ isRowBusy(row.id) ? '…' : 'Publish' }}
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="unpublish(row)"
+                        [disabled]="isRowBusy(row.id)"
+                      >
+                        {{ isRowBusy(row.id) ? '…' : 'Unpublish' }}
+                      </button>
+                    }
+                    <span aria-hidden="true">|</span>
+                    <button
+                      type="button"
+                      class="danger"
+                      (click)="remove(row)"
+                      [disabled]="isRowBusy(row.id)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (showForm()) {
+      <form
+        class="form-panel"
+        #formHost
+        [formGroup]="form"
+        (ngSubmit)="save()"
+      >
+        <h2>
+          {{ editingId() ? 'Edit Announcement' : 'Create Announcement' }}
+        </h2>
+
+        <div class="form-group">
+          <label for="announcement-title">Title *</label>
+          <input
+            id="announcement-title"
+            class="form-input"
+            type="text"
+            formControlName="title"
+            placeholder="Announcement title"
+          />
+          @if (form.controls.title.invalid && form.controls.title.touched) {
+            <span class="field-error" role="alert">Enter a title.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="announcement-body">Body *</label>
+          <textarea
+            id="announcement-body"
+            class="form-textarea"
+            rows="5"
+            formControlName="body"
+            placeholder="Announcement details for CRT students"
+          ></textarea>
+          @if (form.controls.body.invalid && form.controls.body.touched) {
+            <span class="field-error" role="alert">Enter announcement body text.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="announcement-drive-date">Drive date</label>
+          <input
+            id="announcement-drive-date"
+            class="form-input"
+            type="date"
+            formControlName="driveDate"
+          />
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn-text"
+            (click)="closeForm()"
+            [disabled]="isSaving()"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn-text" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : editingId() ? 'Save Changes' : 'Create Draft' }}
+          </button>
+        </div>
+      </form>
+    }
+  }
+</app-crt-shell>
