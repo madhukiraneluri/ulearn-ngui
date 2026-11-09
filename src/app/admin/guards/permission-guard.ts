@@ -7,6 +7,14 @@ export const permissionGuard: CanActivateFn = async (route) => {
   const router = inject(Router);
   await auth.ensureSessionChecked();
 
+  const requireIsAdmin = route.data?.['requireIsAdmin'] as boolean | undefined;
+  if (requireIsAdmin) {
+    if (!auth.canAccessPortal()) {
+      return router.createUrlTree(['/admin/no-access']);
+    }
+    return true;
+  }
+
   const anyPermission = route.data?.['anyPermission'] as string[] | undefined;
   if (anyPermission?.length) {
     if (anyPermission.some((key) => auth.hasPermission(key))) return true;
