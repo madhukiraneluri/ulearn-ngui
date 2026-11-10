@@ -8,14 +8,27 @@
           global across your organization for authorized staff.
         </p>
       </div>
-      <button
-        type="button"
-        class="btn-secondary"
-        (click)="exportCsv()"
-        [disabled]="loading() || exporting()"
-      >
-        {{ exporting() ? 'Exporting…' : 'Export CSV' }}
-      </button>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="btn-secondary"
+          (click)="openAssignModal()"
+          [disabled]="loading() || selectedCount() === 0"
+        >
+          Assign remedial module
+          @if (selectedCount() > 0) {
+            <span class="selection-count">({{ selectedCount() }})</span>
+          }
+        </button>
+        <button
+          type="button"
+          class="btn-secondary"
+          (click)="exportCsv()"
+          [disabled]="loading() || exporting()"
+        >
+          {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      </div>
     </header>
 
     <form class="filters" (ngSubmit)="apply()">
@@ -79,10 +92,17 @@
       @if (report.page.total === 0) {
         <p class="state">No students match these filters.</p>
       } @else {
+        @if (selectedCount() > 0) {
+          <p class="selection-bar">
+            {{ selectedCount() }} student(s) selected.
+            <button type="button" class="btn-text" (click)="clearSelection()">Clear</button>
+          </p>
+        }
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th class="col-select">Select</th>
                 <th>Student</th>
                 <th>Email</th>
                 <th>Batch</th>
@@ -94,6 +114,14 @@
             <tbody>
               @for (row of report.rows; track row.userId + row.batchId + row.pathId) {
                 <tr>
+                  <td class="col-select">
+                    <input
+                      type="checkbox"
+                      [checked]="isUserSelected(row.userId)"
+                      [attr.aria-label]="'Select ' + row.studentName"
+                      (change)="toggleUserSelection(row.userId)"
+                    />
+                  </td>
                   <td>
                     <strong>{{ row.studentName }}</strong>
                   </td>
@@ -123,4 +151,69 @@
       }
     }
   </div>
+
+  @if (showAssignModal()) {
+    <div class="modal-overlay" (click)="closeAssignModal()"></div>
+    <div class="modal" role="dialog" aria-labelledby="remedial-assign-title" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="remedial-assign-title">Assign remedial module</h2>
+        <button type="button" class="close-btn" (click)="closeAssignModal()" aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">
+          Assign extra practice for {{ selectedCount() }} selected student(s). Students need CRT access and
+          batch path assignment; duplicates and ineligible students are skipped.
+        </p>
+        @if (!pathId) {
+          <p class="banner" role="alert">Select a CRT path in the filters before assigning a module.</p>
+        } @else if (loadingModules()) {
+          <p class="state" role="status">Loading modules…</p>
+        } @else if (moduleOptions().length === 0) {
+          <p class="state">No modules on this path.</p>
+        } @else {
+          <label class="modal-field">
+            Module
+            <select name="assignModuleId" [(ngModel)]="assignModuleId">
+              <option value="">Choose module</option>
+              @for (mod of moduleOptions(); track mod.id) {
+                <option [value]="mod.id">{{ mod.title }}</option>
+              }
+            </select>
+          </label>
+          <label class="modal-field">
+            Due (optional)
+            <input
+              type="datetime-local"
+              name="dueAt"
+              [(ngModel)]="dueAtInput"
+            />
+          </label>
+        }
+
+        @if (assignError(); as message) {
+          <p class="banner" role="alert">{{ message }}</p>
+        }
+        @if (assignResult(); as result) {
+          <p class="assign-result" role="status">
+            Assigned <strong>{{ result.assigned }}</strong>, skipped
+            <strong>{{ result.skipped }}</strong>.
+          </p>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeAssignModal()">Close</button>
+          <button
+            type="button"
+            class="btn-primary"
+            (click)="submitRemedialAssign()"
+            [disabled]="assigning() || !pathId || moduleOptions().length === 0 || !assignModuleId"
+          >
+            {{ assigning() ? 'Assigning…' : 'Assign module' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </app-crt-shell>

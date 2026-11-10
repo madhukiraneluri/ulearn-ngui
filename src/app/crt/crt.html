@@ -46,6 +46,49 @@
     }
   </section>
 
+  @if (remedialLoading() || remedialError() || remedialAssignmentsList().length > 0) {
+    <section class="remedial-section" aria-labelledby="crt-remedial-heading">
+      <h2 id="crt-remedial-heading">Assigned for you</h2>
+      <p class="section-lead">
+        Extra module practice assigned by your mentor. Complete one practice to clear the assignment.
+      </p>
+
+      @if (remedialLoading()) {
+        <p class="status" role="status">Loading assigned practice…</p>
+      } @else if (remedialError(); as message) {
+        <div class="banner" role="alert">
+          <p>{{ message }}</p>
+          <button type="button" class="btn-primary" (click)="loadRemedialAssignments()">
+            Try again
+          </button>
+        </div>
+      } @else if (remedialAssignmentsList().length > 0) {
+        <ul class="remedial-list">
+          @for (item of remedialAssignmentsList(); track item.assignmentId) {
+            <li class="remedial-card">
+              <div>
+                <h3>{{ item.moduleTitle }}</h3>
+                <p class="path-title">{{ item.pathTitle }}</p>
+                <p class="remedial-meta">
+                  Assigned {{ formatDateTime(item.assignedAt) }}
+                  @if (formatDateTime(item.dueAt); as due) {
+                    <span> · Due {{ due }}</span>
+                  }
+                </p>
+              </div>
+              <a
+                class="btn-primary"
+                [routerLink]="['/crt/paths', item.pathId, 'modules', item.moduleId, 'practice']"
+              >
+                Start practice
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
   @if (loading()) {
     <p class="status" role="status">Loading your learning paths and readiness scores...</p>
   } @else if (loadError()) {

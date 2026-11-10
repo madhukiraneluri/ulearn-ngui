@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../core/services/toast';
+import { CrtAdminService, type CrtModule } from '../../services/crt-admin.service';
 import {
   CrtMentorDashboardFilterMeta,
   CrtMentorDashboardReport,
@@ -15,6 +16,10 @@ import {
   CrtMentorDashboardService,
   type CrtMentorDashboardPathOption,
 } from '../../services/crt-mentor-dashboard.service';
+import {
+  CrtRemedialAssignmentsService,
+  type CrtRemedialAssignBulkResult,
+} from '../../services/crt-remedial-assignments.service';
 import { CrtShell } from '../crt-shell/crt-shell';
 import { mentorDashboardCsv } from './mentor-dashboard-csv';
 
@@ -32,6 +37,8 @@ const EXPORT_MAX_ROWS = 20000;
 })
 export class CrtMentorDashboard implements OnInit {
   private readonly dashboard = inject(CrtMentorDashboardService);
+  private readonly remedial = inject(CrtRemedialAssignmentsService);
+  private readonly crtAdmin = inject(CrtAdminService);
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(true);
@@ -40,6 +47,17 @@ export class CrtMentorDashboard implements OnInit {
   readonly exportError = signal<string | null>(null);
   readonly filterMeta = signal<CrtMentorDashboardFilterMeta>({ batches: [] });
   readonly report = signal<CrtMentorDashboardReport | null>(null);
+
+  readonly selectedUserIds = signal<string[]>([]);
+  readonly showAssignModal = signal(false);
+  readonly loadingModules = signal(false);
+  readonly assigning = signal(false);
+  readonly assignError = signal<string | null>(null);
+  readonly assignResult = signal<CrtRemedialAssignBulkResult | null>(null);
+  readonly moduleOptions = signal<CrtModule[]>([]);
+
+  assignModuleId = '';
+  dueAtInput = '';
 
   batchId = '';
   pathId = '';
@@ -86,16 +104,131 @@ export class CrtMentorDashboard implements OnInit {
 
   async apply(): Promise<void> {
     this.offset = 0;
+    this.selectedUserIds.set([]);
     await this.reload(false);
+  }
+
+  readonly selectedCount = computed(() => this.selectedUserIds().length);
+
+  toggleUserSelection(userId: string): void {
+    const current = this.selectedUserIds();
+    this.selectedUserIds.set(
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    );
+  }
+
+  isUserSelected(userId: string): boolean {
+    return this.selectedUserIds().includes(userId);
+  }
+
+  clearSelection(): void {
+    this.selectedUserIds.set([]);
+  }
+
+  async openAssignModal(): Promise<void> {
+    if (this.selectedUserIds().length === 0) {
+      this.toast.error('Select at least one student.');
+      return;
+    }
+    if (!this.pathId) {
+      this.toast.error('Select a CRT path filter before assigning a module.');
+      return;
+    }
+
+    this.assignError.set(null);
+    this.assignResult.set(null);
+    this.assignModuleId = '';
+    this.dueAtInput = '';
+    this.showAssignModal.set(true);
+    this.loadingModules.set(true);
+    this.moduleOptions.set([]);
+
+    try {
+      const modules = await this.crtAdmin.listModules(this.pathId);
+      this.moduleOptions.set(modules);
+    } catch (err) {
+      this.assignError.set(
+        err instanceof Error ? err.message : 'Could not load modules for this path.',
+      );
+    } finally {
+      this.loadingModules.set(false);
+    }
+  }
+
+  closeAssignModal(): void {
+    this.showAssignModal.set(false);
+    this.assignError.set(null);
+    this.assignModuleId = '';
+    this.dueAtInput = '';
+  }
+
+  async submitRemedialAssign(): Promise<void> {
+    const userIds = [...new Set(this.selectedUserIds())];
+    if (userIds.length === 0) {
+      this.toast.error('Select at least one student.');
+      return;
+    }
+    if (!this.assignModuleId) {
+      this.toast.error('Select a module to assign.');
+      return;
+    }
+
+    const dueAt = this.parseDueAtInput();
+    if (dueAt === false) {
+      return;
+    }
+
+    this.assigning.set(true);
+    this.assignError.set(null);
+    this.assignResult.set(null);
+    try {
+      const result = await this.remedial.assignBulk({
+        userIds,
+        moduleId: this.assignModuleId,
+        dueAt,
+      });
+      this.assignResult.set(result);
+      if (result.assigned > 0) {
+        this.toast.success(
+          `Assigned ${result.assigned} student(s)${result.skipped > 0 ? `; ${result.skipped} skipped` : ''}.`,
+        );
+      } else if (result.skipped > 0) {
+        this.toast.error(`No new assignments created. ${result.skipped} student(s) were skipped.`);
+      } else {
+        this.toast.error('No assignments were created.');
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not assign remedial modules.';
+      this.assignError.set(message);
+      this.toast.error(message);
+    } finally {
+      this.assigning.set(false);
+    }
+  }
+
+  private parseDueAtInput(): string | null | false {
+    const trimmed = this.dueAtInput.trim();
+    if (!trimmed) return null;
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) {
+      this.toast.error('Due date must be a valid date and time.');
+      return false;
+    }
+    return date.toISOString();
   }
 
   async previousPage(): Promise<void> {
     this.offset = Math.max(0, this.offset - PAGE_SIZE);
+    this.selectedUserIds.set([]);
     await this.reload(false);
   }
 
   async nextPage(): Promise<void> {
     this.offset += PAGE_SIZE;
+    this.selectedUserIds.set([]);
     await this.reload(false);
   }
 

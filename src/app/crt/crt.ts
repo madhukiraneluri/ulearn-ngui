@@ -1,5 +1,12 @@
 
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   CrtPracticePath,
@@ -11,6 +18,10 @@ import {
   CrtStudentAnnouncementsService,
 } from './services/crt-announcements.service';
 import { CrtReadinessScore, CrtReadinessService } from './services/crt-readiness.service';
+import {
+  CrtStudentRemedialAssignment,
+  CrtStudentRemedialAssignmentsService,
+} from './services/crt-student-remedial-assignments.service';
 
 interface CrtPathProgress {
   path: CrtPracticePath;
@@ -240,12 +251,79 @@ interface CrtPathProgress {
     .announcements-section .status {
       margin-top: 0;
     }
+
+    .remedial-section {
+      margin-top: 32px;
+    }
+
+    .remedial-section h2 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.125rem;
+    }
+
+    .remedial-section .section-lead {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .remedial-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .remedial-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .remedial-card h3 {
+      margin: 0 0 6px;
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+
+    .remedial-card .path-title {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .remedial-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8125rem;
+    }
+
+    .remedial-section .status {
+      margin-top: 0;
+    }
+
+    .remedial-card .btn-primary {
+      margin-top: 0;
+      text-decoration: none;
+      display: inline-block;
+    }
   `
 })
 export class Crt implements OnInit {
   private readonly practice = inject(CrtPracticeService);
   private readonly readiness = inject(CrtReadinessService);
   private readonly announcementsService = inject(CrtStudentAnnouncementsService);
+  private readonly remedialAssignments = inject(CrtStudentRemedialAssignmentsService);
   private readonly router = inject(Router);
 
   readonly loading = signal(true);
@@ -255,6 +333,17 @@ export class Crt implements OnInit {
   readonly announcementsLoading = signal(true);
   readonly announcementsError = signal<string | null>(null);
   readonly announcements = signal<CrtStudentAnnouncement[]>([]);
+
+  readonly remedialLoading = signal(true);
+  readonly remedialError = signal<string | null>(null);
+  readonly remedialAssignmentsList = signal<CrtStudentRemedialAssignment[]>([]);
+
+  constructor() {
+    effect(() => {
+      this.remedialAssignments.openAssignmentsRefresh();
+      void this.loadRemedialAssignments();
+    });
+  }
 
   ngOnInit(): void {
     void this.load();
@@ -353,6 +442,37 @@ export class Crt implements OnInit {
       item.continueModule.id,
       'practice'
     ]);
+  }
+
+  async loadRemedialAssignments(): Promise<void> {
+    this.remedialLoading.set(true);
+    this.remedialError.set(null);
+    try {
+      const rows = await this.remedialAssignments.listOpenForStudent();
+      this.remedialAssignmentsList.set(rows);
+    } catch (error: unknown) {
+      this.remedialAssignmentsList.set([]);
+      this.remedialError.set(
+        error instanceof Error
+          ? error.message
+          : 'Could not load remedial assignments.',
+      );
+    } finally {
+      this.remedialLoading.set(false);
+    }
+  }
+
+  formatDateTime(value: string | null): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
   }
 
   async loadAnnouncements(): Promise<void> {

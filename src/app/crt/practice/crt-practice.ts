@@ -14,6 +14,7 @@ import {
   CrtPracticeQuestion,
   CrtPracticeService
 } from '../services/crt-practice.service';
+import { CrtStudentRemedialAssignmentsService } from '../services/crt-student-remedial-assignments.service';
 
 type OptionIndex = 0 | 1 | 2 | 3;
 
@@ -158,6 +159,7 @@ type OptionIndex = 0 | 1 | 2 | 3;
 })
 export class CrtPractice implements OnInit {
   private readonly practice = inject(CrtPracticeService);
+  private readonly remedialAssignments = inject(CrtStudentRemedialAssignmentsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -303,6 +305,7 @@ export class CrtPractice implements OnInit {
 
     try {
       const score = await this.practice.submitAttempt(this.attemptId);
+      this.remedialAssignments.invalidateOpenAssignments();
       this.now.set(Date.now());
       this.stopTimer();
       this.officialScore.set(score);
