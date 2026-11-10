@@ -1,5 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import {
+  CrtCompanyPackHistoryAttempt,
+  CrtCompanyPackService
+} from '../services/crt-company-pack.service';
 import { CrtHistoryAttempt, CrtAttemptSummary, CrtPracticeService } from '../services/crt-practice.service';
 
 @Component({
@@ -74,14 +78,23 @@ import { CrtHistoryAttempt, CrtAttemptSummary, CrtPracticeService } from '../ser
       font-weight: 700;
       text-decoration: none;
     }
+    .section-title {
+      margin: 32px 0 0;
+      color: var(--navy);
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.15rem;
+    }
   `
 })
 export class CrtHistory implements OnInit {
   private readonly practice = inject(CrtPracticeService);
+  private readonly packs = inject(CrtCompanyPackService);
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
+  readonly packError = signal<string | null>(null);
   readonly attempts = signal<CrtHistoryAttempt[]>([]);
+  readonly packAttempts = signal<CrtCompanyPackHistoryAttempt[]>([]);
 
   ngOnInit(): void {
     void this.load();
@@ -90,14 +103,30 @@ export class CrtHistory implements OnInit {
   async load(): Promise<void> {
     this.loading.set(true);
     this.loadError.set(null);
-    try {
-      this.attempts.set(await this.practice.listMyHistoryAttempts());
-    } catch (error: unknown) {
+    this.packError.set(null);
+
+    const [practiceResult, packResult] = await Promise.allSettled([
+      this.practice.listMyHistoryAttempts(),
+      this.packs.listSubmittedHistory()
+    ]);
+
+    if (practiceResult.status === 'fulfilled') {
+      this.attempts.set(practiceResult.value);
+    } else {
       this.attempts.set([]);
-      this.loadError.set(error instanceof Error ? error.message : 'Could not load attempt history.');
-    } finally {
-      this.loading.set(false);
+      const reason = practiceResult.reason;
+      this.loadError.set(reason instanceof Error ? reason.message : 'Could not load attempt history.');
     }
+
+    if (packResult.status === 'fulfilled') {
+      this.packAttempts.set(packResult.value);
+    } else {
+      this.packAttempts.set([]);
+      const reason = packResult.reason;
+      this.packError.set(reason instanceof Error ? reason.message : 'Could not load company pack history.');
+    }
+
+    this.loading.set(false);
   }
 
   statusLabel(status: CrtAttemptSummary['status']): string {
@@ -121,6 +150,19 @@ export class CrtHistory implements OnInit {
     if (attempt.status !== 'submitted') return 'Not submitted';
     return formatElapsed(attempt.duration_seconds);
   }
+
+  packScoreLabel(attempt: CrtCompanyPackHistoryAttempt): string {
+    if (attempt.score === null || attempt.max_score === null) return 'Not available';
+    return `${formatHistoryNumber(attempt.score)} of ${formatHistoryNumber(attempt.max_score)}`;
+  }
+
+  packPercentageLabel(attempt: CrtCompanyPackHistoryAttempt): string {
+    return attempt.percentage === null ? 'Not available' : `${attempt.percentage}%`;
+  }
+}
+
+function formatHistoryNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
 }
 
 function formatElapsed(totalSeconds: number): string {

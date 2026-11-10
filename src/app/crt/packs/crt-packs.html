@@ -1,0 +1,34 @@
+<section class="crt-packs">
+  <header class="page-header">
+    <a routerLink="/crt">Back to CRT Home</a>
+    <h1>Company Packs</h1>
+    <p>Published company practice packs.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="status" role="status">Loading company packs...</p>
+  } @else if (loadError()) {
+    <div class="banner" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-primary" (click)="load()">Try again</button>
+    </div>
+  } @else if (packs().length === 0) {
+    <p class="status">No published company packs are available yet.</p>
+  } @else {
+    <ul class="pack-list">
+      @for (card of packs(); track card.pack.id) {
+        <li class="pack-card">
+          <div>
+            <h2>{{ card.pack.name }}</h2>
+            @if (card.pack.description) {
+              <p>{{ card.pack.description }}</p>
+            }
+          </div>
+          <a class="btn-primary" [routerLink]="practiceLink(card)">
+            {{ card.attemptId ? 'Continue Practice' : 'Start Practice' }}
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

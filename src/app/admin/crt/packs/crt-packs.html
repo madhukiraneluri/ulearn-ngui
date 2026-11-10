@@ -1,0 +1,295 @@
+<app-crt-shell crumb="Company Packs">
+  <div class="page-head">
+    <h1>Company Packs</h1>
+  </div>
+
+  @if (isLoading()) {
+    <p class="state" role="status">Loading company packs…</p>
+  } @else if (loadError()) {
+    <div class="state error" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-text" (click)="loadPacks()">Try again</button>
+    </div>
+  } @else {
+    <div class="toolbar">
+      <label class="search">
+        <span class="visually-hidden">Search company packs</span>
+        <input
+          type="search"
+          placeholder="Search…"
+          [value]="query()"
+          (input)="onSearch($event)"
+        />
+      </label>
+
+      <div class="filters" role="group" aria-label="Pack status">
+        @for (option of filters; track option.id) {
+          <button
+            type="button"
+            class="filter-btn"
+            [class.active]="statusFilter() === option.id"
+            (click)="setFilter(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+
+      <button type="button" class="btn-add" (click)="openCreate()">
+        + Create Pack
+      </button>
+    </div>
+
+    @if (packs().length === 0) {
+      <div class="empty">
+        <p>No company packs yet.</p>
+        <button type="button" class="btn-text" (click)="openCreate()">
+          Create the first pack
+        </button>
+      </div>
+    } @else if (visiblePacks().length === 0) {
+      <p class="empty">No company packs match your search.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pack name</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Questions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (pack of visiblePacks(); track pack.id) {
+              <tr>
+                <td>
+                  <button type="button" class="title-link btn-text" (click)="openQuestions(pack.id)">
+                    {{ pack.name }}
+                  </button>
+                </td>
+                <td class="clamp">{{ pack.description || '—' }}</td>
+                <td>
+                  <span class="status-pill" [attr.data-tone]="pack.status">
+                    {{ pack.status }}
+                  </span>
+                </td>
+                <td>{{ questionCount(pack.id) }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" (click)="openQuestions(pack.id)">Questions</button>
+                    <span aria-hidden="true">|</span>
+                    <button type="button" (click)="openEdit(pack.id)">Edit</button>
+                    @if (pack.status === 'draft') {
+                      <span aria-hidden="true">|</span>
+                      <button
+                        type="button"
+                        (click)="publish(pack)"
+                        [disabled]="busyPackId() === pack.id"
+                      >
+                        Publish
+                      </button>
+                    } @else {
+                      <span aria-hidden="true">|</span>
+                      <button
+                        type="button"
+                        (click)="unpublish(pack)"
+                        [disabled]="busyPackId() === pack.id"
+                      >
+                        Unpublish
+                      </button>
+                    }
+                    <span aria-hidden="true">|</span>
+                    <button
+                      type="button"
+                      class="danger"
+                      (click)="remove(pack)"
+                      [disabled]="busyPackId() === pack.id"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (showForm()) {
+      <form class="form-panel" #formHost [formGroup]="form" (ngSubmit)="save()">
+        <h2>{{ editingId() ? 'Edit Company Pack' : 'Create Company Pack' }}</h2>
+        <p class="filter-note">New packs stay draft until you publish them.</p>
+
+        <div class="form-group">
+          <label for="pack-name">Pack name *</label>
+          <input
+            id="pack-name"
+            class="form-input"
+            type="text"
+            formControlName="name"
+            placeholder="Enter pack name"
+          />
+          @if (form.controls.name.invalid && form.controls.name.touched) {
+            <span class="field-error" role="alert">
+              Enter a pack name of at least 2 characters.
+            </span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="pack-description">Description</label>
+          <textarea
+            id="pack-description"
+            class="form-textarea"
+            rows="3"
+            formControlName="description"
+            placeholder="Enter pack description"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-text" (click)="closeForm()" [disabled]="isSaving()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-text" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : 'Save Pack' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (selectedPack(); as pack) {
+      <section class="detail-panel" aria-labelledby="pack-questions-heading">
+        <h2 id="pack-questions-heading">Questions in {{ pack.name }}</h2>
+        <p class="filter-note">
+          <span class="status-pill" [attr.data-tone]="pack.status">{{ pack.status }}</span>
+          <span>Attach questions that already exist in the question bank.</span>
+        </p>
+
+        @if (membershipLoading()) {
+          <p class="state" role="status">Loading pack questions…</p>
+        } @else if (membershipError()) {
+          <div class="state error" role="alert">
+            <p>{{ membershipError() }}</p>
+            <button type="button" class="btn-text" (click)="openQuestions(pack.id)">Try again</button>
+          </div>
+        } @else if (memberships().length === 0) {
+          <p class="empty">No questions are attached to this pack yet.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Question</th>
+                  <th>Topic</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (membership of memberships(); track membership.question_id) {
+                  <tr>
+                    <td>
+                      <label class="visually-hidden" [attr.for]="'sort-' + membership.question_id">
+                        Sort order
+                      </label>
+                      <input
+                        [id]="'sort-' + membership.question_id"
+                        class="form-input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        [value]="membership.sort_order"
+                        [disabled]="membershipBusy()"
+                        (change)="saveSort(membership.question_id, $event)"
+                      />
+                    </td>
+                    <td class="question-text">{{ questionStem(membership.question_id) }}</td>
+                    <td>{{ questionTopic(membership.question_id) }}</td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn-text"
+                        [disabled]="membershipBusy()"
+                        (click)="detach(membership.question_id)"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="form-group">
+          <label for="pack-question-search">Add an existing question</label>
+          <input
+            id="pack-question-search"
+            class="form-input"
+            type="search"
+            placeholder="Search the question bank…"
+            [value]="questionQuery()"
+            (input)="onQuestionSearch($event)"
+          />
+        </div>
+
+        @if (bankLoading()) {
+          <p class="state" role="status">Loading question bank…</p>
+        } @else if (bankError()) {
+          <div class="state error" role="alert">
+            <p>{{ bankError() }}</p>
+            <button type="button" class="btn-text" (click)="openQuestions(pack.id)">Try again</button>
+          </div>
+        } @else if (questions().length === 0) {
+          <p class="empty">The question bank is empty.</p>
+        } @else if (availableQuestions().length === 0) {
+          <p class="empty">No unattached questions match your search.</p>
+        } @else {
+          @if (matchingQuestions().length > availableQuestions().length) {
+            <p class="filter-note">
+              Showing 25 of {{ matchingQuestions().length }} questions. Search to narrow the list.
+            </p>
+          }
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Topic</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (question of availableQuestions(); track question.id) {
+                  <tr>
+                    <td class="question-text">{{ question.stem }}</td>
+                    <td>{{ question.topic || 'No topic' }}</td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn-text"
+                        [disabled]="membershipBusy()"
+                        (click)="attach(question.id)"
+                      >
+                        Attach
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="detail-actions">
+          <button type="button" class="btn-text" (click)="closeQuestions()">Close</button>
+        </div>
+      </section>
+    }
+  }
+</app-crt-shell>

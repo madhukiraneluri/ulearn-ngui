@@ -1,0 +1,91 @@
+<section class="crt-pack-practice">
+  <header class="page-header">
+    <a routerLink="/crt/packs">Back to company packs</a>
+    <h1>Company Pack</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="status" role="status">Loading company pack...</p>
+  } @else if (loadError()) {
+    <div class="banner" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-primary" (click)="load()">Try again</button>
+    </div>
+  } @else if (questions().length === 0) {
+    <p class="status">This company pack has no questions yet.</p>
+  } @else {
+    <div class="meta">
+      <p>Question {{ questionNumber() }} of {{ questions().length }}</p>
+      <p>Answered {{ answeredCount() }} of {{ questions().length }}</p>
+    </div>
+
+    @if (saveError()) {
+      <div class="banner" role="alert">
+        <p>{{ saveError() }}</p>
+      </div>
+    }
+
+    @if (currentQuestion(); as question) {
+      <article class="question">
+        <h2>{{ question.stem }}</h2>
+        <div class="options" role="radiogroup" [attr.aria-label]="'Question ' + questionNumber()">
+          @for (option of question.options; track $index) {
+            <label [class.selected]="isSelected($index)">
+              <input
+                type="radio"
+                [name]="question.question_id"
+                [checked]="isSelected($index)"
+                [disabled]="answersLocked()"
+                (change)="selectOption(optionIndex($index))"
+              />
+              <span>{{ optionLabel($index) }}. {{ option }}</span>
+            </label>
+          }
+        </div>
+      </article>
+    }
+
+    @if (saving()) {
+      <p class="status" role="status">Saving answer...</p>
+    }
+    @if (submitting()) {
+      <p class="status" role="status">Submitting company pack...</p>
+    }
+    @if (submitError()) {
+      <div class="banner" role="alert">
+        <p>{{ submitError() }}</p>
+        @if (submitted()) {
+          <a class="btn-primary" [routerLink]="['/crt/packs', packId(), 'attempts', attemptId(), 'result']">
+            Open result
+          </a>
+        }
+      </div>
+    }
+
+    @if (!submitted() && confirming()) {
+      <div class="confirm" role="alertdialog" aria-label="Confirm submission">
+        <p>Submit this company pack? Unanswered questions stay unanswered. The server scores the attempt.</p>
+        <button type="button" class="btn-primary" [disabled]="saving() || submitting()" (click)="confirmSubmit()">
+          Submit pack
+        </button>
+        <button type="button" class="btn-secondary" [disabled]="submitting()" (click)="cancelSubmit()">
+          Keep practicing
+        </button>
+      </div>
+    }
+
+    <div class="actions">
+      <button type="button" class="btn-secondary" [disabled]="questionIndex() === 0" (click)="previous()">
+        Previous
+      </button>
+      <button type="button" class="btn-secondary" [disabled]="questionIndex() >= questions().length - 1" (click)="next()">
+        Next
+      </button>
+      @if (!submitted() && !confirming()) {
+        <button type="button" class="btn-primary" [disabled]="answersLocked()" (click)="requestSubmit()">
+          Submit
+        </button>
+      }
+    </div>
+  }
+</section>

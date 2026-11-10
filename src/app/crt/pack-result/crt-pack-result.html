@@ -1,0 +1,39 @@
+<section class="crt-pack-result">
+  <header class="page-header">
+    <p class="page-links">
+      <a routerLink="/crt/packs">Back to company packs</a>
+      <a routerLink="/crt">Back to CRT Home</a>
+    </p>
+    <h1>Company Pack Result</h1>
+  </header>
+
+  @if (loading()) {
+    <p class="status" role="status">Loading result...</p>
+  } @else if (loadError()) {
+    <div class="banner" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn-primary" (click)="load()">Try again</button>
+    </div>
+  } @else if (!result()) {
+    <p class="status">This submitted result could not be found.</p>
+  } @else {
+    <p class="confirmation" role="status">{{ feedback() }}</p>
+    <dl class="summary">
+      <div>
+        <dt>Score</dt>
+        <dd>{{ scoreText() }}</dd>
+      </div>
+      <div>
+        <dt>Maximum score</dt>
+        <dd>{{ maxScoreText() }}</dd>
+      </div>
+      <div>
+        <dt>Percentage</dt>
+        <dd>{{ percentageText() }}</dd>
+      </div>
+    </dl>
+    <p class="note">
+      Score and maximum score are the values stored for this submitted company pack attempt.
+    </p>
+  }
+</section>

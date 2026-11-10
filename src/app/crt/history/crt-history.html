@@ -7,29 +7,61 @@
 
   @if (loading()) {
     <p class="status" role="status">Loading attempts...</p>
-  } @else if (loadError()) {
-    <div class="banner" role="alert">
-      <p>{{ loadError() }}</p>
-      <button type="button" class="btn-primary" (click)="load()">Try again</button>
-    </div>
-  } @else if (attempts().length === 0) {
-    <p class="status">You have not started a practice attempt yet.</p>
   } @else {
-    <ul class="attempt-list">
-      @for (attempt of attempts(); track attempt.id) {
-        <li class="attempt-card">
-          <p class="status-line">{{ statusLabel(attempt.status) }}</p>
-          <p>Date: {{ formatDate(attempt.started_at) }}</p>
-          <p>Type: {{ attempt.kind === 'mock' ? 'Mock Test' : 'Practice' }}</p>
-          <p>Path: {{ attempt.path_title ?? 'Path unavailable' }}</p>
-          <p>Module: {{ attempt.module_title ?? 'All modules' }}</p>
-          <p>Score: {{ scoreLabel(attempt) }}</p>
-          <p>Duration: {{ durationLabel(attempt) }}</p>
-          @if (attempt.status === 'submitted') {
-            <a class="btn-primary" [routerLink]="['/crt/history', attempt.id]">Review</a>
-          }
-        </li>
-      }
-    </ul>
+    @if (loadError()) {
+      <div class="banner" role="alert">
+        <p>{{ loadError() }}</p>
+        <button type="button" class="btn-primary" (click)="load()">Try again</button>
+      </div>
+    } @else if (attempts().length === 0) {
+      <p class="status">You have not started a practice attempt yet.</p>
+    } @else {
+      <ul class="attempt-list">
+        @for (attempt of attempts(); track attempt.id) {
+          <li class="attempt-card">
+            <p class="status-line">{{ statusLabel(attempt.status) }}</p>
+            <p>Date: {{ formatDate(attempt.started_at) }}</p>
+            <p>Type: {{ attempt.kind === 'mock' ? 'Mock Test' : 'Practice' }}</p>
+            <p>Path: {{ attempt.path_title ?? 'Path unavailable' }}</p>
+            <p>Module: {{ attempt.module_title ?? 'All modules' }}</p>
+            <p>Score: {{ scoreLabel(attempt) }}</p>
+            <p>Duration: {{ durationLabel(attempt) }}</p>
+            @if (attempt.status === 'submitted') {
+              <a class="btn-primary" [routerLink]="['/crt/history', attempt.id]">Review</a>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <h2 class="section-title">Company Packs</h2>
+
+    @if (packError()) {
+      <div class="banner" role="alert">
+        <p>{{ packError() }}</p>
+        <button type="button" class="btn-primary" (click)="load()">Try again</button>
+      </div>
+    } @else if (packAttempts().length === 0) {
+      <p class="status">You have not submitted a company pack yet.</p>
+    } @else {
+      <ul class="attempt-list">
+        @for (attempt of packAttempts(); track attempt.id) {
+          <li class="attempt-card">
+            <p class="status-line">Submitted</p>
+            <p>Date: {{ formatDate(attempt.submitted_at ?? '') }}</p>
+            <p>Type: Company Pack</p>
+            <p>Pack: {{ attempt.pack_name ?? 'Pack unavailable' }}</p>
+            <p>Score: {{ packScoreLabel(attempt) }}</p>
+            <p>Percentage: {{ packPercentageLabel(attempt) }}</p>
+            <a
+              class="btn-primary"
+              [routerLink]="['/crt/packs', attempt.pack_id, 'attempts', attempt.id, 'result']"
+            >
+              View result
+            </a>
+          </li>
+        }
+      </ul>
+    }
   }
 </section>

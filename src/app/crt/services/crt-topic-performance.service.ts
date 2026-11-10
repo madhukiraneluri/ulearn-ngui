@@ -16,17 +16,19 @@ interface GradedAnswer {
 export class CrtTopicPerformanceService {
   async listTopicPerformance(pathId: string): Promise<CrtTopicPerformance[]> {
     const userId = await this.requireUserId();
-    const [attemptIds, moduleIds] = await Promise.all([
+    const [attemptIds, moduleIds, packAttemptIds] = await Promise.all([
       this.listSubmittedAttemptIds(userId, pathId),
       this.listModuleIds(pathId),
+      this.listSubmittedPackAttemptIds(userId),
     ]);
 
-    const [questions, answers] = await Promise.all([
+    const [questions, answers, packAnswers] = await Promise.all([
       this.listPathQuestions(moduleIds),
       this.listGradedAnswers(attemptIds),
+      this.listGradedPackAnswers(packAttemptIds),
     ]);
     const topicsByQuestionId = new Map(questions.map((question) => [question.id, question.topic]));
-    return aggregateTopicPerformance(answers, topicsByQuestionId);
+    return aggregateTopicPerformance([...answers, ...packAnswers], topicsByQuestionId);
   }
 
   private async listSubmittedAttemptIds(userId: string, pathId: string): Promise<string[]> {
@@ -76,6 +78,33 @@ export class CrtTopicPerformanceService {
 
     const { data, error } = await supabase
       .from('crt_attempt_answers')
+      .select('question_id, is_correct')
+      .in('attempt_id', [...attemptIds])
+      .not('is_correct', 'is', null);
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).flatMap((row) => {
+      if (typeof row.question_id !== 'string' || typeof row.is_correct !== 'boolean') return [];
+      return [{ questionId: row.question_id, isCorrect: row.is_correct }];
+    });
+  }
+
+  private async listSubmittedPackAttemptIds(userId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('crt_company_pack_attempts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'submitted');
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).flatMap((row) => (typeof row.id === 'string' ? [row.id] : []));
+  }
+
+  private async listGradedPackAnswers(attemptIds: readonly string[]): Promise<GradedAnswer[]> {
+    if (attemptIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('crt_company_pack_attempt_answers')
       .select('question_id, is_correct')
       .in('attempt_id', [...attemptIds])
       .not('is_correct', 'is', null);

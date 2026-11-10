@@ -94,6 +94,33 @@ export const routes: Routes = [
     loadComponent: () => import('./crt/skills/crt-skills').then(m => m.CrtSkills)
   },
   {
+    path: 'crt/packs',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () => import('./crt/packs/crt-packs').then(m => m.CrtCompanyPacks)
+  },
+  {
+    path: 'crt/packs/:packId/practice',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () =>
+      import('./crt/pack-practice/crt-pack-practice').then(m => m.CrtPackPractice)
+  },
+  {
+    path: 'crt/packs/:packId/attempts/:attemptId/result',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () =>
+      import('./crt/pack-result/crt-pack-result').then(m => m.CrtPackResult)
+  },
+  {
+    path: 'crt/packs/:packId/attempts/:attemptId',
+    canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
+    data: { permission: 'crt.access' },
+    loadComponent: () =>
+      import('./crt/pack-practice/crt-pack-practice').then(m => m.CrtPackPractice)
+  },
+  {
     path: 'crt/paths/:pathId/modules',
     canActivate: [authGuard, blockExamOnlyGuard, featurePermissionGuard],
     data: { permission: 'crt.access' },
