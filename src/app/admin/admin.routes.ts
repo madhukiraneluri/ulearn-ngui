@@ -67,6 +67,8 @@ export const adminRoutes: Routes = [
         import('./crt/questions/crt-questions').then(m => m.CrtQuestions)),
       gated('crt/assignments', 'batches.manage', () =>
         import('./crt/assignments/crt-assignments').then(m => m.CrtAssignments)),
+      gated('crt/mentors', 'students.manage', () =>
+        import('./crt/mentor-dashboard/crt-mentor-dashboard').then(m => m.CrtMentorDashboard)),
       {
         path: 'crt/announcements',
         canActivate: [permissionGuard],

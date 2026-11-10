@@ -1,0 +1,126 @@
+<app-crt-shell crumb="Mentor Dashboard">
+  <div class="mentor-dashboard">
+    <header class="page-header">
+      <div>
+        <h1>Mentor dashboard</h1>
+        <p>
+          Students in batches with published CRT path assignments. Reports are
+          global across your organization for authorized staff.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="exportCsv()"
+        [disabled]="loading() || exporting()"
+      >
+        {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+      </button>
+    </header>
+
+    <form class="filters" (ngSubmit)="apply()">
+      <label>
+        Batch
+        <select name="batchId" [(ngModel)]="batchId" (ngModelChange)="onBatchChange()">
+          <option value="">All batches</option>
+          @for (batch of filterMeta().batches; track batch.id) {
+            <option [value]="batch.id">{{ batch.name }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        CRT path
+        <select name="pathId" [(ngModel)]="pathId">
+          <option value="">All assigned paths</option>
+          @for (path of pathOptions(); track path.id) {
+            <option [value]="path.id">{{ path.title }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Readiness below
+        <input
+          type="number"
+          name="readinessBelow"
+          min="0"
+          max="100"
+          step="1"
+          placeholder="Any"
+          [(ngModel)]="readinessBelowInput"
+        />
+      </label>
+      <label>
+        Inactive more than (days)
+        <input
+          type="number"
+          name="inactiveDays"
+          min="0"
+          step="1"
+          placeholder="Any"
+          [(ngModel)]="inactiveDaysInput"
+        />
+      </label>
+      <button type="submit" class="btn-secondary" [disabled]="loading()">Apply filters</button>
+    </form>
+    <p class="hint">{{ statusWindowHint() }}</p>
+
+    @if (exportError(); as exportMessage) {
+      <p class="banner" role="alert">{{ exportMessage }}</p>
+    }
+
+    @if (loading()) {
+      <p class="state" role="status">Loading mentor dashboard…</p>
+    } @else if (error(); as message) {
+      <div class="banner" role="alert">
+        <p>{{ message }}</p>
+        <button type="button" class="btn-text" (click)="apply()">Try again</button>
+      </div>
+    } @else if (report(); as report) {
+      @if (report.page.total === 0) {
+        <p class="state">No students match these filters.</p>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Email</th>
+                <th>Batch</th>
+                <th>Last attempt</th>
+                <th>Readiness</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of report.rows; track row.userId + row.batchId + row.pathId) {
+                <tr>
+                  <td>
+                    <strong>{{ row.studentName }}</strong>
+                  </td>
+                  <td>{{ row.email || '—' }}</td>
+                  <td>{{ row.batchName }}</td>
+                  <td>{{ formatLastAttempt(row.lastAttemptAt) }}</td>
+                  <td>{{ row.readinessScore }}/100</td>
+                  <td>
+                    <span class="status-pill" [attr.data-status]="row.status">
+                      {{ statusLabel(row.status) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button type="button" class="btn-secondary" (click)="previousPage()" [disabled]="!canGoBack()">
+            Previous
+          </button>
+          <span>{{ pageStart() }}–{{ pageEnd() }} of {{ report.page.total }}</span>
+          <button type="button" class="btn-secondary" (click)="nextPage()" [disabled]="!canGoForward()">
+            Next
+          </button>
+        </div>
+      }
+    }
+  </div>
+</app-crt-shell>
