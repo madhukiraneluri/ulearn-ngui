@@ -72,6 +72,13 @@ export const adminRoutes: Routes = [
       gated('crt/mentors', 'students.manage', () =>
         import('./crt/mentor-dashboard/crt-mentor-dashboard').then(m => m.CrtMentorDashboard)),
       {
+        path: 'crt/analytics',
+        canActivate: [permissionGuard],
+        data: { anyPermission: ['dashboard.view', 'students.manage'] },
+        loadComponent: () =>
+          import('./crt/analytics/crt-analytics').then(m => m.CrtAnalytics),
+      },
+      {
         path: 'crt/announcements',
         canActivate: [permissionGuard],
         data: { requireIsAdmin: true },

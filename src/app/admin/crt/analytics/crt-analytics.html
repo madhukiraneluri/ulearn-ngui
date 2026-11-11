@@ -1,0 +1,89 @@
+<app-crt-shell crumb="Analytics">
+  <div class="crt-analytics">
+    <header class="page-header">
+      <div>
+        <h1>CRT analytics</h1>
+        <p>
+          Practice and mock activity, students at or above a readiness threshold, and questions with the highest wrong-answer rate.
+        </p>
+      </div>
+    </header>
+
+    <form class="filters" (ngSubmit)="apply()">
+      <label>
+        Readiness threshold
+        <input
+          type="number"
+          name="threshold"
+          min="0"
+          max="100"
+          step="1"
+          [(ngModel)]="thresholdInput"
+          [disabled]="loading()"
+        />
+      </label>
+      <button type="submit" class="btn-secondary" [disabled]="loading()">
+        {{ loading() ? 'Loading...' : 'Apply' }}
+      </button>
+    </form>
+    <p class="hint">Counts students whose readiness on a published assigned path is at least this score.</p>
+
+    @if (loading()) {
+      <p class="status" role="status">Loading CRT analytics...</p>
+    } @else if (error()) {
+      <div class="banner" role="alert">
+        <p>{{ error() }}</p>
+        <button type="button" class="btn-secondary" (click)="load()">Try again</button>
+      </div>
+    } @else if (dashboard(); as report) {
+      <section class="stats-grid" aria-label="CRT totals">
+        <article class="stat-card">
+          <p class="stat-label">Practice started</p>
+          <p class="stat-value">{{ report.practiceStarted }}</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Practice submitted</p>
+          <p class="stat-value">{{ report.practiceSubmitted }}</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Mocks submitted</p>
+          <p class="stat-value">{{ report.mocksSubmitted }}</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Students at or above threshold</p>
+          <p class="stat-value">{{ report.studentsAtOrAboveThreshold }}</p>
+        </article>
+      </section>
+
+      <section class="questions" aria-labelledby="weak-questions-heading">
+        <h2 id="weak-questions-heading">Top 10 weak questions</h2>
+        @if (report.weakQuestions.length === 0) {
+          <p class="empty">No question has at least 10 submitted answers yet.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Topic</th>
+                  <th>Answer count</th>
+                  <th>Wrong answer rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (question of report.weakQuestions; track question.questionId) {
+                  <tr>
+                    <td>{{ question.stem }}</td>
+                    <td>{{ question.topic ?? '-' }}</td>
+                    <td>{{ question.answerCount }}</td>
+                    <td>{{ formatRate(question.wrongAnswerRate) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+  </div>
+</app-crt-shell>
